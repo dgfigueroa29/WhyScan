@@ -291,6 +291,7 @@ de cálculo, y una comilla delante rompería justo lo que existe para dar.
 ## Cómo construir
 
 ```bash
+python3 tools/checks.py                              # comprobaciones sin compilador (segundos)
 ./gradlew :androidApp:assembleDebug                  # Android
 ./gradlew :composeApp:run                            # Desktop
 ./gradlew :composeApp:wasmJsBrowserDevelopmentRun    # Web
@@ -299,6 +300,16 @@ de cálculo, y una comilla delante rompería justo lo que existe para dar.
 ```
 
 iOS se construye desde `iosApp/` en Xcode (requiere macOS).
+
+**`tools/checks.py` tarda segundos y no necesita Gradle ni red.** Reproduce lo que detekt exige de
+longitud de línea y orden de imports —para poder verlo sin arrancar nada— y además comprueba lo que
+**no comprueba nadie más**: que los catálogos de recursos estén parejos entre inglés y español, que
+cada `Res.string.X` tenga su `import`, que no queden claves huérfanas y que el `package` de cada
+`.kt` siga a su carpeta. Un catálogo desparejado no rompe la compilación: rompe la pantalla de quien
+tenga el idioma que falta.
+
+Lo ejecuta también CI, como primer paso y antes incluso de instalar Java. Eso no es solo rapidez: es
+lo que impide que estas comprobaciones se desincronicen en silencio de lo que detekt exige de verdad.
 
 ---
 
