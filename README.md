@@ -266,6 +266,12 @@ Añadirla obligó a mirar cómo se comportaba la base de datos ante un cambio de
   clara de que esa lectura le importa a alguien; el techo existe para acotar lo que genera una sesión
   continua, no para borrar lo que alguien escribió a mano.
 
+Y uno más, que apareció después al tirar del mismo hilo: **el id resumía el valor con
+`rawValue.hashCode()`**, treinta y dos bits. Dos valores distintos que colisionen y se lean en el
+mismo milisegundo dan el mismo id, y con `INSERT OR IGNORE` el segundo se descarta en silencio. La
+probabilidad siempre fue ínfima; lo que cambió es la consecuencia, porque de ese id cuelga ahora la
+nota. Pasa a FNV-1a de 64 bits, escrito a mano en diez líneas.
+
 También se puede **borrar una lectura suelta** —antes era todo o nada—. Ese borrado no pregunta y por
 eso **se puede deshacer**: son las dos caras de la misma decisión, porque un diálogo por cada fila
 convierte limpiar veinte lecturas en veinte interrupciones. Vaciar el historial entero sí pregunta, y

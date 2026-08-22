@@ -403,10 +403,17 @@ sea explícita.
 
 **Deuda de calidad que ya se puede ver**
 
-- [ ] **`Detection.idOf` usa `rawValue.hashCode()`.** Dos valores distintos con el mismo hash, leídos
-      por el mismo motor en el mismo milisegundo, colisionan — y con `INSERT OR IGNORE` la segunda
-      lectura se descarta en silencio. La probabilidad es ínfima y las consecuencias son pequeñas,
-      pero el id ya no es solo un identificador: ahora cuelga de él la nota del usuario
+- [x] **`Detection.idOf` usaba `rawValue.hashCode()`.** Dos valores distintos con el mismo hash,
+      leídos por el mismo motor en el mismo milisegundo, colisionaban — y con `INSERT OR IGNORE` la
+      segunda lectura se descartaba en silencio, que es la peor forma de perder un dato. La
+      probabilidad es ínfima; lo que cambió es la consecuencia, porque desde las notas de este id
+      cuelga texto que escribió una persona. Pasa a FNV-1a de 64 bits, diez líneas en `:core:model`
+      en lugar de una dependencia de hashing por una función: no es criptográfico y no hace falta
+      que lo sea, solo separa lecturas distintas. El test usa la colisión de manual de
+      `String.hashCode()` —`"Aa"` y `"BB"` dan los dos 2112— para fijar exactamente lo que se
+      arregló. **Efecto de una sola vez:** las filas ya guardadas conservan su id viejo, así que un
+      código anotado antes del cambio y releído después crea una fila nueva en vez de reconocerse.
+      Se acepta porque la app no está publicada, que es la única ventana en la que esto sale gratis
 
 ### Pendiente para publicar
 

@@ -4,11 +4,11 @@
 |---|---|
 | Proyecto | WhyScan |
 | Documento | Software Design Document (SDD) |
-| Versión | 1.12 |
+| Versión | 1.13 |
 | Estado | Vigente — **el proyecto compila y pasa CI** en Android (con R8), Escritorio y Web, y el framework de iOS **enlaza entero** desde el workflow manual `ios.yml`. Fases 1, 2, 4 y 5 cerradas salvo lo listado como pendiente; la 3 (iOS) escrita y despriorizada por falta de dispositivo, no de compilación. **La app arrancó por primera vez en un dispositivo real** en la versión anterior, y ese arranque encontró un defecto que ninguna comprobación automática podía ver (§10); esta versión convierte esa comprobación en un test y, con él, destapa un segundo defecto de meses en la persistencia (§11) |
 | Fecha | 2026-08-22 |
 | Autor | Equipo WhyScan |
-| Alcance de esta versión | Anotar desde la pantalla de escaneo, con la nota viviendo en el historial y no en el escáner (§9.10). Antes, en la misma fase: cierre de D18 y D22 —el grafo de Android y la migración pasan a tener test (§10, §11, §13.1)—, el historial agrupado por día, deshacer un borrado, búsqueda sin acentos y exportación a texto plano (§9.7); y antes, las notas del historial (ADR-0012), marca, tema, idiomas y el rediseño del escáner (ADR-0010, ADR-0011), y el renombrado a **WhyScan** (§1.1) |
+| Alcance de esta versión | Anotar desde la pantalla de escaneo, con la nota viviendo en el historial y no en el escáner (§9.10), y el id de una detección ensanchado a 64 bits ahora que de él cuelga la nota (§6.1). Antes, en la misma fase: cierre de D18 y D22 —el grafo de Android y la migración pasan a tener test (§10, §11, §13.1)—, el historial agrupado por día, deshacer un borrado, búsqueda sin acentos y exportación a texto plano (§9.7); y antes, las notas del historial (ADR-0012), marca, tema, idiomas y el rediseño del escáner (ADR-0010, ADR-0011), y el renombrado a **WhyScan** (§1.1) |
 
 ---
 
@@ -356,6 +356,21 @@ seis decoradores, al comparador y al marcador a acarrear un campo que en todo es
 siempre `null` — además de hacer que "estas dos lecturas son la misma" dependiera de si alguien
 escribió algo. El razonamiento completo, y los tres defectos de persistencia que destapó, están en
 [ADR-0012](adr/ADR-0012-la-nota-es-del-historial-no-de-la-deteccion.md).
+
+#### El id de una detección
+
+`Detection.idOf(engineId, rawValue, detectedAtMillis)` es determinista a propósito: dos lecturas del
+mismo código, con el mismo motor, en el mismo milisegundo, **son** la misma detección. De ahí sale
+que `INSERT OR IGNORE` sea idempotente sin generador de UUID multiplataforma, y de ahí sale también
+que anotar desde el escáner tenga que leer la nota existente en vez de suponer que no la hay (§9.10).
+
+El valor se resume con **FNV-1a de 64 bits** y no con `rawValue.hashCode()`. No es un cambio de
+determinismo —Kotlin especifica `hashCode()` de `String` igual en las cuatro plataformas— sino de
+anchura: con 32 bits, dos valores distintos que colisionen y se lean en el mismo milisegundo dan el
+mismo id, y el `INSERT OR IGNORE` descarta el segundo **en silencio**. La probabilidad siempre fue
+ínfima; lo que cambió es la consecuencia, porque ahora de ese id cuelga texto que escribió una
+persona. El hash está escrito a mano en `:core:model` en lugar de traer una dependencia por una
+función, y no es criptográfico ni hace falta que lo sea: no defiende de nadie, solo separa lecturas.
 
 ### 6.2 Formatos soportados (G3)
 
@@ -1144,6 +1159,7 @@ información que solo existía como posición o como color":
 | **Grafo de Android** | `androidUnitTest` | Que el `platformModule` de Android resuelva, con un `Context` real en la JVM (`AndroidKoinGraphTest`, §10) | kotlin-test, Robolectric |
 | **Migración de la base** | `jvmTest` | Que una base v1 con filas dentro siga teniéndolas tras abrirla con el código v2 (`MigrationTest`, §11) | kotlin-test |
 | Notas desde el escáner | `commonTest` | Que la nota escrita al leer un código acabe en el historial, que reabrir el campo sobre un código ya anotado traiga lo que había —el agujero que justifica observar en vez de recordar— y que cerrar sin guardar no toque nada | kotlin-test |
+| Id de una detección | `commonTest` | Que la misma lectura dé el mismo id, que cambiar motor, instante o valor lo cambie, y que dos valores que colisionan en `hashCode()` —`"Aa"` y `"BB"`— den ids distintos (§6.1) | kotlin-test |
 
 Objetivo de cobertura: **≥ 80 % en `:core:domain` y `:core:data`**; la UI no se persigue por
 cobertura sino por casos de estado representativos.
