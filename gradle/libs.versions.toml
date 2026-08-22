@@ -78,7 +78,10 @@ serialization = "1.11.0"
 
 # AndroidX / Jetbrains multiplatform
 androidxActivityCompose = "1.13.0"
-androidxCoreKtx = "1.15.0"
+# 1.18.0 y no 1.15.0, que es lo que decía antes: el grafo ya resolvía 1.18.0 por otra vía, así
+# que lo declarado era una versión que no usaba nadie. Lo destapó `tools/check_resolved_versions.py`
+# en su primera ejecución, que es exactamente para lo que existe (deuda D24).
+androidxCoreKtx = "1.18.0"
 # La que pide Koin 4.2.2; subirla más alto haría que Gradle resolviera por encima de lo que espera.
 #noinspection NewerVersionAvailable
 lifecycle = "2.9.6"

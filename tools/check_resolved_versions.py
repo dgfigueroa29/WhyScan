@@ -40,6 +40,9 @@ CATALOG = os.path.join(REPO, "gradle", "libs.versions.toml")
 # `org.grupo:artefacto:pedida -> resuelta`, con el ruido del árbol delante y a veces `(*)` detrás.
 UPGRADE = re.compile(r"([\w.\-]+):([\w.\-]+):([\w.\-+]+)\s+->\s+([\w.\-+]+)")
 
+# Cuántos ascensos de terceros se enseñan antes de resumir el resto en una línea.
+THIRD_PARTY_SAMPLE = 10
+
 
 def declared_versions() -> dict[str, str]:
     """Los módulos del catálogo con la versión que se les escribió, resolviendo `version.ref`.
@@ -113,9 +116,14 @@ def main(paths: list[str]) -> int:
     print(f"{len(declared)} módulos con versión declarada en el catálogo")
 
     if theirs:
-        print(f"\n{len(theirs)} ascensos entre dependencias de terceros (informativo):\n")
-        for line in theirs:
+        # Recortado a propósito. La lista completa son más de cien líneas —el grafo de una app
+        # Android moderna asciende medio classpath— y un log que nadie puede leer no informa de
+        # nada. Lo que importa aquí es el orden de magnitud; lo que hay que mirar va abajo.
+        print(f"\n{len(theirs)} ascensos entre dependencias de terceros, normales. Los primeros:\n")
+        for line in theirs[:THIRD_PARTY_SAMPLE]:
             print(f"  · {line}")
+        if len(theirs) > THIRD_PARTY_SAMPLE:
+            print(f"  · … y {len(theirs) - THIRD_PARTY_SAMPLE} más")
 
     if ours:
         print(f"\n{len(ours)} versiones del catálogo que el grafo NO respeta:\n")
