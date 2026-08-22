@@ -434,6 +434,60 @@ sea explícita.
       código anotado antes del cambio y releído después crea una fila nueva en vez de reconocerse.
       Se acepta porque la app no está publicada, que es la única ventana en la que esto sale gratis
 
+### Ronda 5 — auditoría de clase mundial 🚧
+
+Revisión contra seguridad, calidad, robustez, estabilidad, arquitectura y buenas prácticas. Lo que
+salió, ordenado por lo que costaría equivocarse.
+
+**Hecho**
+
+- [x] **La copia de seguridad del sistema subía el historial a la nube.** Es el hallazgo más grave
+      de todo el proyecto y llevaba ahí desde la Fase 1. `allowBackup="true"` hacía que Android
+      subiera `databases/` a la cuenta de Drive del usuario, y en iOS pasaba lo mismo sin bandera
+      que lo delatara — `Documents` entra en iCloud por defecto. Lo que se subía incluye el
+      `rawValue` **literal**: un QR de WiFi se guarda como `WIFI:T:WPA;S:red;P:clave;;`, con la
+      contraseña dentro. **La ausencia de `INTERNET` no cubría esto**, y ahí está la lección: el
+      backup no lo hace la app sino un proceso del sistema, así que la garantía más fuerte del
+      producto tenía una puerta que no pasaba por él. En Android hacen falta **dos** cosas y no una:
+      `allowBackup="false"` apaga la nube y `dataExtractionRules` cierra la transferencia entre
+      dispositivos, que desde Android 12 es un canal aparte. Coste aceptado y escrito: **al cambiar
+      de teléfono se pierde el historial**; la vía que queda es exportarlo, y es del usuario. Queda
+      un chequeo en CI que falla si el manifiesto vuelve atrás — no es un error de compilación ni de
+      lint, es una promesa de producto que descansa en tres líneas de XML, y sin eso no la vigilaba
+      nadie
+
+**Pendiente, por orden de impacto**
+
+- [ ] **Treinta `viewModelScope.launch` sin una sola red de seguridad.** Cero
+      `CoroutineExceptionHandler`, dos `runCatching` en todo `feature/*/commonMain`. Una excepción
+      de Room —disco lleno, `SQLITE_FULL`, base corrupta— sube por el `launch` y **mata la app**. Se
+      combina mal con que `fallbackToDestructiveMigrationOnDowngrade` no cubre corrupción: base
+      corrupta → excepción al abrir → **crash permanente en el arranque** que el usuario no puede
+      deshacer sin borrar los datos. Es el peor modo de fallo que existe y este proyecto ya vivió uno
+- [ ] **El objetivo de cobertura no lo mide nada.** El SDD §13.1 dice "≥ 80 % en `:core:domain` y
+      `:core:data`" y no hay Kover ni JaCoCo: 51 ficheros de test para ~19.000 líneas y **nadie sabe
+      el número**. O se instrumenta o se borra la frase; un objetivo sin medición no disciplina nada
+- [ ] **Nada compone la raíz.** `KoinGraphTest` cubre que el grafo resuelva, pero sigue sin haber
+      nada que monte `App()`. `runComposeUiTest` corre en la JVM sin emulador y cerraría la mitad de
+      D18 que quedó abierta
+- [ ] **Nada vigila las dependencias.** Sin `INTERNET` la superficie es pequeña, pero ML Kit,
+      CameraX, ZXing y el detector del navegador **parsean entrada no confiable**: imágenes y códigos
+      que trae un desconocido. Dependabot y `dependency-review-action` en los PR
+- [ ] **`mailto:` se concatena sin escapar.** `"mailto:${address}?subject=${subject}"` deja inyectar
+      parámetros desde un QR ajeno. En Android acaba en un compositor que el usuario ve antes de
+      enviar, así que es asistencia a phishing y no ejecución — pero es una línea de escape
+
+**Mirado y correcto, para no volver a gastar escrutinio ahí**
+
+- El manejo de URLs es seguro **por construcción**: `parseUrl` solo clasifica como enlace lo que
+  empieza por `http://`, `https://` o `www.`, así que `javascript:`, `intent://`, `file://` y
+  `content://` no producen acción de abrir. En un lector de códigos, donde el atacante controla el
+  contenido entero y la víctima solo apunta la cámara, esa lista blanca implícita es **la** decisión
+  de seguridad que importa
+- `exported="true"` en `MainActivity` es correcto y obligatorio: es el único `intent-filter` y es
+  `MAIN`/`LAUNCHER`. No hay superficie exportada de más
+- La poda del historial está acotada de verdad (`dao.trimTo` en cada guardado)
+
 ### Pendiente para publicar
 
 **Necesita un dispositivo.** Todo lo de este bloque está bloqueado por lo mismo, y por eso vive aquí

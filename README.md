@@ -54,7 +54,7 @@ el comparador en paralelo y las latencias por lectura.
 | Que el grafo de Koin resuelva | ✅ los módulos comunes, escritorio **y Android** (este con Robolectric, en la JVM y sin emulador). D18 cerrada |
 | Qué hay de nuevo | ✅ una vez tras cada actualización, y siempre accesible desde Ajustes. A quien acaba de instalar no se le estrena nada |
 | Accesibilidad (RNF-05) | ✅ contraste AA **verificado por test** (56 pares, los dos temas), semántica para lectores de pantalla y **modo dislexia** que ajusta la escala tipográfica entera |
-| Privacidad (RNF-03) | ✅ auditada: sin trazas, sin cliente HTTP, sin analítica y sin permiso `INTERNET` |
+| Privacidad (RNF-03) | ✅ auditada: sin trazas, sin cliente HTTP, sin analítica, sin permiso `INTERNET` y **sin copia de seguridad del sistema** — esa última era la puerta que no pasaba por la app, y la vigila un chequeo en CI |
 | ZXing en Java (Desktop) | ✅ el único decodificador de escritorio; **verificado de verdad**, decodificando imágenes generadas en el test |
 
 El catálogo muestra las ocho alternativas con su estado real; los motores aún no implementados se

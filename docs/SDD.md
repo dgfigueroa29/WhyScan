@@ -4,11 +4,11 @@
 |---|---|
 | Proyecto | WhyScan |
 | Documento | Software Design Document (SDD) |
-| Versión | 1.16 |
+| Versión | 1.17 |
 | Estado | Vigente — **el proyecto compila y pasa CI** en Android (con R8), Escritorio y Web, y el framework de iOS **enlaza entero** desde el workflow manual `ios.yml`. Fases 1, 2, 4 y 5 cerradas salvo lo listado como pendiente; la 3 (iOS) escrita y despriorizada por falta de dispositivo, no de compilación. **La app arrancó por primera vez en un dispositivo real** en la versión anterior, y ese arranque encontró un defecto que ninguna comprobación automática podía ver (§10); esta versión convierte esa comprobación en un test y, con él, destapa un segundo defecto de meses en la persistencia (§11) |
 | Fecha | 2026-08-22 |
 | Autor | Equipo WhyScan |
-| Alcance de esta versión | Cierre de la deuda D17, D19 y D24: la API depreciada de iOS, una postura sobre los avisos del compilador tomada con el inventario delante, y un chequeo que cruza versiones declaradas contra resueltas. Antes: la pantalla de **qué hay de nuevo** (§9.11) y las comprobaciones sin compilador en el repositorio y en CI, que salda D23. Antes: **modo dislexia**: la escala tipográfica entera se ajusta con lo que la investigación sobre lectura sí respalda —espaciado, interlínea y tamaño— y no con una fuente empaquetada (§9.9). Antes: anotar desde la pantalla de escaneo, con la nota viviendo en el historial y no en el escáner (§9.10), y el id de una detección ensanchado a 64 bits ahora que de él cuelga la nota (§6.1). Antes, en la misma fase: cierre de D18 y D22 —el grafo de Android y la migración pasan a tener test (§10, §11, §13.1)—, el historial agrupado por día, deshacer un borrado, búsqueda sin acentos y exportación a texto plano (§9.7); y antes, las notas del historial (ADR-0012), marca, tema, idiomas y el rediseño del escáner (ADR-0010, ADR-0011), y el renombrado a **WhyScan** (§1.1) |
+| Alcance de esta versión | **La copia de seguridad del sistema se apaga en las dos plataformas** (§9.3, hallazgo 3): la garantía de que lo escaneado no sale del dispositivo tenía una puerta que no pasaba por la app. Antes: cierre de la deuda D17, D19 y D24: la API depreciada de iOS, una postura sobre los avisos del compilador tomada con el inventario delante, y un chequeo que cruza versiones declaradas contra resueltas. Antes: la pantalla de **qué hay de nuevo** (§9.11) y las comprobaciones sin compilador en el repositorio y en CI, que salda D23. Antes: **modo dislexia**: la escala tipográfica entera se ajusta con lo que la investigación sobre lectura sí respalda —espaciado, interlínea y tamaño— y no con una fuente empaquetada (§9.9). Antes: anotar desde la pantalla de escaneo, con la nota viviendo en el historial y no en el escáner (§9.10), y el id de una detección ensanchado a 64 bits ahora que de él cuelga la nota (§6.1). Antes, en la misma fase: cierre de D18 y D22 —el grafo de Android y la migración pasan a tener test (§10, §11, §13.1)—, el historial agrupado por día, deshacer un borrado, búsqueda sin acentos y exportación a texto plano (§9.7); y antes, las notas del historial (ADR-0012), marca, tema, idiomas y el rediseño del escáner (ADR-0010, ADR-0011), y el renombrado a **WhyScan** (§1.1) |
 
 ---
 
@@ -1049,6 +1049,8 @@ Garantías de privacidad (RNF-03), verificables en revisión de código:
 - El historial guarda el **valor decodificado**, nunca la imagen.
 - El caso `RequiresDownload` (ML Kit) se comunica explícitamente al usuario antes de descargar.
 - La app declara `android:usesCleartextTraffic="false"` y no incluye SDK de analítica de terceros.
+- **La copia de seguridad del sistema está apagada** en las dos plataformas: `allowBackup="false"`
+  más `dataExtractionRules` en Android, y `NSURLIsExcludedFromBackupKey` sobre el archivo en iOS.
 
 #### Auditoría, con lo que se comprobó y lo que salió
 
@@ -1062,7 +1064,8 @@ los dos hallazgos.
 | Ninguna analítica | Sin Firebase, Crashlytics ni equivalentes, ni en código ni en el catálogo |
 | Permisos declarados | Solo `CAMERA`, con `uses-feature` no obligatorio. **No se declara `INTERNET`**, que es la garantía más fuerte: aunque alguien añadiera una llamada de red, en Android no saldría |
 | Lo que se persiste | La tabla de Room y el DTO de Web guardan valor, formato, motor, fuente, instante y latencia. No hay campo donde quepa un píxel |
-| Lo que sale del dispositivo | Solo por acción explícita del usuario: compartir, abrir un enlace o exportar el historial a un archivo que él elige |
+| Lo que sale del dispositivo | Solo por acción explícita del usuario: compartir, abrir un enlace o exportar el historial a un archivo que él elige. **Esta fila fue falsa hasta la versión 1.17** — ver el hallazgo 3 |
+| La copia de seguridad del sistema | Apagada en las dos plataformas. Es el único canal que no pasa por la app y por tanto el único que la ausencia de `INTERNET` no cubre |
 
 **Hallazgo 1 — `fetch` en el motor de Web.** El decodificador del navegador llama a `fetch`, que es
 exactamente lo que una auditoría busca. Resultó ser sobre un **data URL** construido en el momento a
@@ -1070,6 +1073,34 @@ partir de los bytes que ya están en memoria: `createImageBitmap` necesita un `B
 sin arrastrar `kotlinx-browser`. No sale nada del dispositivo. Aun así se añadió un guardia que
 rechaza cualquier URL que no empiece por `data:`, para que la propiedad se compruebe leyendo cuatro
 líneas en vez de razonando sobre el llamante.
+
+**Hallazgo 3 — la garantía tenía una puerta que no pasaba por la app.** Es el más grave de los tres
+y apareció en una revisión posterior, lo que dice algo sobre las dos primeras: **se auditó lo que la
+app hace y no lo que el sistema hace con lo que la app guarda.**
+
+`android:allowBackup="true"` —el valor que traía el manifiesto desde la Fase 1— hace que Android
+suba `databases/` y `shared_prefs/` a la cuenta de Drive del usuario. En iOS pasa lo mismo sin
+ninguna bandera que lo delate: todo lo que vive en `Documents` entra en la copia de iCloud por
+defecto. Y lo que se sube no es poca cosa: el historial guarda el `rawValue` **literal**, así que un
+QR de WiFi se persiste como `WIFI:T:WPA;S:red;P:clave;;` —con la contraseña dentro— junto a vCards
+con datos de contacto y las notas que escribe el usuario.
+
+La ausencia de `INTERNET` seguía siendo cierta y seguía sin servir para esto: **el backup no lo hace
+la app**, lo hace un proceso del sistema que no necesita ese permiso. La fila de arriba decía "solo
+por acción explícita del usuario" y era falsa por una vía que la propia auditoría no había mirado.
+
+Se cierra en las dos plataformas, y en Android hacen falta **dos** cosas y no una: `allowBackup` a
+`false` apaga la copia en la nube, pero desde Android 12 la transferencia directa entre dispositivos
+es un canal aparte que esa bandera no toca, y eso lo cierra `dataExtractionRules`.
+
+El coste está aceptado y escrito: **al cambiar de teléfono se pierde el historial**. En una app sin
+cuenta ni nube no hay a dónde restaurarlo, y la vía que sí existe es la exportación, que es del
+usuario. Se prefiere eso a que la promesa sea mentira.
+
+Queda además una comprobación en `tools/checks.py` que falla si el manifiesto vuelve a declarar
+`INTERNET`, pierde las reglas de extracción o reactiva la copia. No es un error de compilación ni de
+lint —es una promesa de producto que descansa en tres líneas de XML— así que sin eso no lo vigilaba
+nadie, que es exactamente cómo llegó hasta aquí.
 
 **Hallazgo 2 — falta declarar la ausencia de red.** No declarar `INTERNET` ya impide la salida en
 Android, pero es una garantía silenciosa: no aparece en ninguna parte y el próximo que añada una

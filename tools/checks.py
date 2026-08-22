@@ -118,6 +118,48 @@ def check_kotlin_file(path: str) -> None:
             report(path, f"package {declared.group(1)} no coincide con la ruta {on_disk}")
 
 
+def check_privacy_guarantee() -> None:
+    """La app promete que lo escaneado no sale del dispositivo. Esto comprueba que sea verdad.
+
+    Es la comprobación más barata del archivo y la que cubre el fallo más caro. La garantía está
+    escrita en el README, en la pantalla de Ajustes y en el propio manifiesto, y descansa en dos
+    cosas: que no se pida `INTERNET` y que la copia de seguridad del sistema esté apagada.
+
+    Lo segundo estuvo mal durante toda la vida del proyecto. `allowBackup="true"` subía
+    `databases/` a la cuenta de Drive del usuario, y ahí va el `rawValue` literal de cada código —
+    un QR de WiFi incluye la contraseña—. La app no pide permiso de internet, pero el backup **no lo
+    hace la app**: lo hace un proceso del sistema que no necesita ese permiso.
+
+    Nada avisaba, porque no es un error de compilación ni de lint: es una promesa de producto que
+    depende de tres líneas de XML. Por eso vive aquí y no en la cabeza de nadie.
+    """
+    manifest = os.path.join(REPO, "androidApp", "src", "main", "AndroidManifest.xml")
+    if not os.path.exists(manifest):
+        report(manifest, "no existe: ¿se movió el módulo de Android?")
+        return
+
+    root = ET.parse(manifest).getroot()
+    android = "{http://schemas.android.com/apk/res/android}"
+
+    for permission in root.iter("uses-permission"):
+        if permission.get(f"{android}name") == "android.permission.INTERNET":
+            report(manifest, "declara INTERNET: la garantía de privacidad deja de ser cierta")
+
+    application = root.find("application")
+    if application is None:
+        report(manifest, "sin <application>")
+        return
+
+    if application.get(f"{android}allowBackup") != "false":
+        report(manifest, 'allowBackup debe ser "false": el historial acabaría en Drive')
+    if not application.get(f"{android}dataExtractionRules"):
+        report(
+            manifest,
+            "falta dataExtractionRules: desde Android 12 la transferencia entre dispositivos"
+            " es un canal aparte que allowBackup no cierra",
+        )
+
+
 def check_xml_is_well_formed() -> None:
     for f in walk(REPO, ".xml"):
         try:
@@ -180,6 +222,7 @@ def check_compose_resources() -> int:
 
 def main() -> int:
     check_kotlin_sources()
+    check_privacy_guarantee()
     check_xml_is_well_formed()
     keys = check_compose_resources()
 

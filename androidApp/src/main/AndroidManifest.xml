@@ -18,9 +18,28 @@
         android:name="android.hardware.camera"
         android:required="false" />
 
+    <!--
+        Sin copia de seguridad del sistema, y es parte de la misma promesa que la ausencia de
+        `INTERNET`.
+
+        Con `allowBackup="true"` —lo que había— Android subía `databases/` y `shared_prefs/` a la
+        cuenta de Drive del usuario. La app no pide permiso de internet, pero **el backup no lo hace
+        la app**: lo hace un proceso del sistema que no necesita ese permiso. Así que el historial
+        salía del dispositivo por una puerta que la garantía escrita en Ajustes no contemplaba, y en
+        ese historial va el `rawValue` literal de cada código: un QR de WiFi es
+        `WIFI:T:WPA;S:red;P:clave;;`, con la contraseña dentro.
+
+        La bandera sola no basta desde Android 12: la transferencia directa entre dispositivos es un
+        canal aparte. Por eso además `dataExtractionRules`, que cierra los dos.
+
+        El coste está aceptado y conviene tenerlo escrito: **al cambiar de teléfono se pierde el
+        historial**. En una app sin cuenta ni nube no hay a dónde restaurarlo. La exportación a CSV,
+        JSON o texto plano es la vía que sí existe, y es del usuario.
+    -->
     <application
         android:name=".WhyScanApplication"
-        android:allowBackup="true"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:localeConfig="@xml/locales_config"
