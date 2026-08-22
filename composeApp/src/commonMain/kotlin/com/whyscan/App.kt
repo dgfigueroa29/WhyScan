@@ -89,7 +89,10 @@ fun App(
         // (ver `ProvideAppLanguage`), y no hay motivo para volver a construir el `ColorScheme` por
         // eso. Al revés sí lo habría.
         ProvideAppLanguage(preferences.language.tag) {
-            WhyScanTheme(darkTheme = darkTheme) {
+            WhyScanTheme(
+                darkTheme = darkTheme,
+                easierReading = preferences.dyslexiaFriendly,
+            ) {
                 AppScaffold(navigator = navigator, advancedMode = preferences.advancedMode)
             }
         }

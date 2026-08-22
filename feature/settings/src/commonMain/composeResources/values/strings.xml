@@ -13,6 +13,12 @@
     <string name="settings_language_english">English</string>
     <string name="settings_language_spanish">Español</string>
 
+    <!-- Accessibility. The switch is called "dyslexia mode" because that is what the people who
+         need it will look for; the hint says what it actually does, which is not a magic font. -->
+    <string name="settings_accessibility">Accessibility</string>
+    <string name="settings_dyslexia_mode">Dyslexia mode</string>
+    <string name="settings_dyslexia_mode_hint">Bigger text, more space between letters and more air between lines — the adjustments that reading research actually backs. It adds to your system font size, it does not replace it.</string>
+
     <string name="settings_advanced">Advanced</string>
     <string name="settings_advanced_mode">Engine workbench</string>
     <string name="settings_advanced_mode_hint">Brings back the engine catalogue, the side-by-side comparison and the per-read latencies. Off by default: scanning a code does not require choosing a decoder.</string>

@@ -21,6 +21,15 @@ data class AppPreferences(
      * latencias. Lo que había antes no era otra app: era esta con el diagnóstico en la portada.
      */
     val advancedMode: Boolean = false,
+    /**
+     * Modo dislexia: ajusta la tipografía para que cueste menos leer.
+     *
+     * Es una preferencia de app y no un ajuste del sistema porque no sustituye al tamaño de fuente
+     * del sistema —la app lo respeta usando `sp`— sino que se suma a él. Alguien puede necesitar
+     * esto **en esta app** y no en todas, que es justo el caso de una pantalla llena de cadenas
+     * alfanuméricas que no forman palabras.
+     */
+    val dyslexiaFriendly: Boolean = false,
 )
 
 /**
@@ -75,4 +84,5 @@ interface AppPreferencesRepository {
     suspend fun setThemeMode(mode: ThemeMode)
     suspend fun setLanguage(language: AppLanguage)
     suspend fun setAdvancedMode(enabled: Boolean)
+    suspend fun setDyslexiaFriendly(enabled: Boolean)
 }

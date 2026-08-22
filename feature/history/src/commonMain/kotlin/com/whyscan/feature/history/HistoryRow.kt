@@ -19,7 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import com.whyscan.core.designsystem.CodeValueStyle
+import com.whyscan.core.designsystem.LocalCodeValueStyle
 import com.whyscan.core.designsystem.Spacing
 import com.whyscan.core.domain.scan.OpenKind
 import com.whyscan.core.domain.scan.ResultAction
@@ -76,7 +76,7 @@ internal fun HistoryRow(
         ) {
             // Monoespaciada por lo mismo que en la pantalla de escaneo: es un dato que se coteja
             // carácter a carácter, y en una proporcional `1`, `l` e `I` se confunden.
-            Text(detection.barcode.rawValue, style = CodeValueStyle)
+            Text(detection.barcode.rawValue, style = LocalCodeValueStyle.current)
 
             Text(
                 text = detection.metaLine(advancedMode),

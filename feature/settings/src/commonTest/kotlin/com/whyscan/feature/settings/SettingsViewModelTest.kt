@@ -91,6 +91,15 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun `el_modo_dislexia_se_persiste`() = runTest {
+        val viewModel = viewModel()
+
+        viewModel.onAction(SettingsAction.SetDyslexiaFriendly(true))
+
+        assertEquals(true, repository.current().dyslexiaFriendly)
+    }
+
+    @Test
     fun `un_cambio_en_el_repositorio_llega_al_estado`() = runTest {
         // La pantalla no es la única que puede escribir: el modo avanzado también se apaga desde
         // otra parte de la app. El estado tiene que venir del repositorio y no de un eco local.
@@ -131,5 +140,9 @@ private class FakeAppPreferencesRepository : AppPreferencesRepository {
 
     override suspend fun setAdvancedMode(enabled: Boolean) {
         state.update { it.copy(advancedMode = enabled) }
+    }
+
+    override suspend fun setDyslexiaFriendly(enabled: Boolean) {
+        state.update { it.copy(dyslexiaFriendly = enabled) }
     }
 }

@@ -48,15 +48,22 @@ class SettingsAppPreferencesRepository(
         state.update { it.copy(advancedMode = enabled) }
     }
 
+    override suspend fun setDyslexiaFriendly(enabled: Boolean) {
+        settings[KEY_DYSLEXIA] = enabled
+        state.update { it.copy(dyslexiaFriendly = enabled) }
+    }
+
     private fun readFromDisk(): AppPreferences = AppPreferences(
         themeMode = ThemeMode.fromId(settings.getStringOrNull(KEY_THEME)),
         language = AppLanguage.fromId(settings.getStringOrNull(KEY_LANGUAGE)),
         advancedMode = settings.getBoolean(KEY_ADVANCED, false),
+        dyslexiaFriendly = settings.getBoolean(KEY_DYSLEXIA, false),
     )
 
     private companion object {
         const val KEY_THEME = "app.theme_mode"
         const val KEY_LANGUAGE = "app.language"
         const val KEY_ADVANCED = "app.advanced_mode"
+        const val KEY_DYSLEXIA = "app.dyslexia_friendly"
     }
 }

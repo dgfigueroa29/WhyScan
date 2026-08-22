@@ -5,6 +5,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
@@ -119,20 +120,28 @@ object Spacing {
 /**
  * Envuelve el contenido en el tema de WhyScan.
  *
- * Recibe un booleano y no un `ThemeMode`: resolver "sistema" contra lo que el sistema dice **ahora**
- * es cosa de quien tiene el estado de la app delante, y así este módulo no depende del dominio.
- * El valor por defecto sigue siendo el del sistema para que cualquier `@Preview` o punto de entrada
- * que no quiera saber de preferencias siga funcionando.
+ * Recibe booleanos y no los enums del dominio: resolver "sistema" contra lo que el sistema dice
+ * **ahora** es cosa de quien tiene el estado de la app delante, y así este módulo no depende del
+ * dominio. Los valores por defecto dejan que cualquier `@Preview` o punto de entrada que no quiera
+ * saber de preferencias siga funcionando.
+ *
+ * @param easierReading el modo dislexia. Cambia la escala tipográfica entera —espaciado entre
+ *   letras, interlínea y tamaño— y también el estilo del valor de un código, que viaja aparte por
+ *   [LocalCodeValueStyle] porque no es un rol de Material. Que las dos cosas salgan de aquí es lo
+ *   que evita que una pantalla tenga que preguntarse si el modo está encendido.
  */
 @Composable
 fun WhyScanTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    easierReading: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
-        typography = WhyScanTypography,
-        shapes = WhyScanShapes,
-        content = content,
-    )
+    CompositionLocalProvider(LocalCodeValueStyle provides codeValueStyle(easierReading)) {
+        MaterialTheme(
+            colorScheme = if (darkTheme) DarkColors else LightColors,
+            typography = whyScanTypography(easierReading),
+            shapes = WhyScanShapes,
+            content = content,
+        )
+    }
 }

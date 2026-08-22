@@ -13,6 +13,12 @@
     <string name="settings_language_english">English</string>
     <string name="settings_language_spanish">Español</string>
 
+    <!-- Accesibilidad. El interruptor se llama "modo dislexia" porque es lo que va a buscar quien
+         lo necesita; la explicación dice qué hace de verdad, que no es una fuente mágica. -->
+    <string name="settings_accessibility">Accesibilidad</string>
+    <string name="settings_dyslexia_mode">Modo dislexia</string>
+    <string name="settings_dyslexia_mode_hint">Texto más grande, más espacio entre letras y más aire entre líneas: los ajustes que la investigación sobre lectura sí respalda. Se suma al tamaño de fuente del sistema, no lo reemplaza.</string>
+
     <string name="settings_advanced">Avanzado</string>
     <string name="settings_advanced_mode">Banco de motores</string>
     <string name="settings_advanced_mode_hint">Devuelve el catálogo de motores, la comparación en paralelo y las latencias de cada lectura. Apagado por defecto: escanear un código no debería obligar a elegir un decodificador.</string>

@@ -35,10 +35,13 @@ import com.whyscan.feature.settings.resources.Res
 import com.whyscan.feature.settings.resources.a11y_language_option
 import com.whyscan.feature.settings.resources.a11y_theme_option
 import com.whyscan.feature.settings.resources.settings_about
+import com.whyscan.feature.settings.resources.settings_accessibility
 import com.whyscan.feature.settings.resources.settings_advanced
 import com.whyscan.feature.settings.resources.settings_advanced_mode
 import com.whyscan.feature.settings.resources.settings_advanced_mode_hint
 import com.whyscan.feature.settings.resources.settings_appearance
+import com.whyscan.feature.settings.resources.settings_dyslexia_mode
+import com.whyscan.feature.settings.resources.settings_dyslexia_mode_hint
 import com.whyscan.feature.settings.resources.settings_language
 import com.whyscan.feature.settings.resources.settings_language_english
 import com.whyscan.feature.settings.resources.settings_language_spanish
@@ -88,30 +91,23 @@ fun SettingsContent(
         }
 
         item {
-            SettingsSection(stringResource(Res.string.settings_advanced)) {
-                // Etiqueta e interruptor se fusionan en un solo nodo de accesibilidad: por
-                // separado, un lector de pantalla enfoca el Switch y dice "activado" sin decir
-                // activado *qué*. Es el mismo criterio que en el escaneo continuo.
-                Row(
-                    modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = stringResource(Res.string.settings_advanced_mode),
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Switch(
-                        checked = state.preferences.advancedMode,
-                        onCheckedChange = { onAction(SettingsAction.SetAdvancedMode(it)) },
-                    )
-                }
+            SettingsSection(stringResource(Res.string.settings_accessibility)) {
+                SettingsSwitch(
+                    label = stringResource(Res.string.settings_dyslexia_mode),
+                    hint = stringResource(Res.string.settings_dyslexia_mode_hint),
+                    checked = state.preferences.dyslexiaFriendly,
+                    onCheckedChange = { onAction(SettingsAction.SetDyslexiaFriendly(it)) },
+                )
+            }
+        }
 
-                Text(
-                    text = stringResource(Res.string.settings_advanced_mode_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+        item {
+            SettingsSection(stringResource(Res.string.settings_advanced)) {
+                SettingsSwitch(
+                    label = stringResource(Res.string.settings_advanced_mode),
+                    hint = stringResource(Res.string.settings_advanced_mode_hint),
+                    checked = state.preferences.advancedMode,
+                    onCheckedChange = { onAction(SettingsAction.SetAdvancedMode(it)) },
                 )
             }
         }
@@ -139,6 +135,44 @@ fun SettingsContent(
             }
         }
     }
+}
+
+/**
+ * Un interruptor con su etiqueta y la línea que explica qué hace.
+ *
+ * Etiqueta e interruptor se fusionan en un solo nodo de accesibilidad: por separado, un lector de
+ * pantalla enfoca el `Switch` y dice "activado" sin decir activado *qué*. Es el mismo criterio que
+ * en el escaneo continuo.
+ *
+ * La explicación queda **fuera** de ese nodo a propósito. Dentro, el lector la leería entera cada
+ * vez que el foco pasa por el interruptor, incluso al volver a él por tercera vez para cambiarlo;
+ * fuera, sigue estando a un gesto y no se repite.
+ */
+@Composable
+private fun SettingsSwitch(
+    label: String,
+    hint: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f),
+        )
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+
+    Text(
+        text = hint,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 @Composable

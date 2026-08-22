@@ -43,7 +43,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
-import com.whyscan.core.designsystem.CodeValueStyle
+import com.whyscan.core.designsystem.LocalCodeValueStyle
 import com.whyscan.core.designsystem.Radius
 import com.whyscan.core.designsystem.Spacing
 import com.whyscan.core.domain.scan.ResultActionsFactory
@@ -322,7 +322,7 @@ internal fun DetectionCard(
             // impresa, y en proporcional `1`, `l` e `I` se confunden.
             Text(
                 text = detection.barcode.rawValue,
-                style = CodeValueStyle,
+                style = LocalCodeValueStyle.current,
                 // Un QR puede traer un vCard entero. Tres líneas y elipsis: lo que no cabe se copia
                 // o se comparte con los botones de abajo, que es lo que se hace con un valor largo.
                 maxLines = CODE_VALUE_MAX_LINES,

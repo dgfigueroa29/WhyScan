@@ -52,7 +52,7 @@ el comparador en paralelo y las latencias por lectura.
 | Exportación del historial | ✅ CSV, JSON y texto plano, guardado en las cuatro plataformas |
 | Migraciones de la base | ✅ `@AutoMigration`, y un test que abre una base v1 con datos y comprueba que siguen ahí |
 | Que el grafo de Koin resuelva | ✅ los módulos comunes, escritorio **y Android** (este con Robolectric, en la JVM y sin emulador). D18 cerrada |
-| Accesibilidad (RNF-05) | ✅ contraste AA **verificado por test** (56 pares, los dos temas), y semántica para lectores de pantalla |
+| Accesibilidad (RNF-05) | ✅ contraste AA **verificado por test** (56 pares, los dos temas), semántica para lectores de pantalla y **modo dislexia** que ajusta la escala tipográfica entera |
 | Privacidad (RNF-03) | ✅ auditada: sin trazas, sin cliente HTTP, sin analítica y sin permiso `INTERNET` |
 | ZXing en Java (Desktop) | ✅ el único decodificador de escritorio; **verificado de verdad**, decodificando imágenes generadas en el test |
 

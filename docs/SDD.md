@@ -4,11 +4,11 @@
 |---|---|
 | Proyecto | WhyScan |
 | Documento | Software Design Document (SDD) |
-| Versión | 1.13 |
+| Versión | 1.14 |
 | Estado | Vigente — **el proyecto compila y pasa CI** en Android (con R8), Escritorio y Web, y el framework de iOS **enlaza entero** desde el workflow manual `ios.yml`. Fases 1, 2, 4 y 5 cerradas salvo lo listado como pendiente; la 3 (iOS) escrita y despriorizada por falta de dispositivo, no de compilación. **La app arrancó por primera vez en un dispositivo real** en la versión anterior, y ese arranque encontró un defecto que ninguna comprobación automática podía ver (§10); esta versión convierte esa comprobación en un test y, con él, destapa un segundo defecto de meses en la persistencia (§11) |
 | Fecha | 2026-08-22 |
 | Autor | Equipo WhyScan |
-| Alcance de esta versión | Anotar desde la pantalla de escaneo, con la nota viviendo en el historial y no en el escáner (§9.10), y el id de una detección ensanchado a 64 bits ahora que de él cuelga la nota (§6.1). Antes, en la misma fase: cierre de D18 y D22 —el grafo de Android y la migración pasan a tener test (§10, §11, §13.1)—, el historial agrupado por día, deshacer un borrado, búsqueda sin acentos y exportación a texto plano (§9.7); y antes, las notas del historial (ADR-0012), marca, tema, idiomas y el rediseño del escáner (ADR-0010, ADR-0011), y el renombrado a **WhyScan** (§1.1) |
+| Alcance de esta versión | **Modo dislexia**: la escala tipográfica entera se ajusta con lo que la investigación sobre lectura sí respalda —espaciado, interlínea y tamaño— y no con una fuente empaquetada (§9.9). Antes: anotar desde la pantalla de escaneo, con la nota viviendo en el historial y no en el escáner (§9.10), y el id de una detección ensanchado a 64 bits ahora que de él cuelga la nota (§6.1). Antes, en la misma fase: cierre de D18 y D22 —el grafo de Android y la migración pasan a tener test (§10, §11, §13.1)—, el historial agrupado por día, deshacer un borrado, búsqueda sin acentos y exportación a texto plano (§9.7); y antes, las notas del historial (ADR-0012), marca, tema, idiomas y el rediseño del escáner (ADR-0010, ADR-0011), y el renombrado a **WhyScan** (§1.1) |
 
 ---
 
@@ -1160,6 +1160,7 @@ información que solo existía como posición o como color":
 | **Migración de la base** | `jvmTest` | Que una base v1 con filas dentro siga teniéndolas tras abrirla con el código v2 (`MigrationTest`, §11) | kotlin-test |
 | Notas desde el escáner | `commonTest` | Que la nota escrita al leer un código acabe en el historial, que reabrir el campo sobre un código ya anotado traiga lo que había —el agujero que justifica observar en vez de recordar— y que cerrar sin guardar no toque nada | kotlin-test |
 | Id de una detección | `commonTest` | Que la misma lectura dé el mismo id, que cambiar motor, instante o valor lo cambie, y que dos valores que colisionan en `hashCode()` —`"Aa"` y `"BB"`— den ids distintos (§6.1) | kotlin-test |
+| Modo dislexia | `commonTest` | Que **los quince roles** de la escala crezcan, ganen espaciado e interlínea y no conserven tracking negativo; que apagado no cambie absolutamente nada; y que el valor de un código siga siendo monoespaciado (§9.9) | kotlin-test |
 
 Objetivo de cobertura: **≥ 80 % en `:core:domain` y `:core:data`**; la UI no se persigue por
 cobertura sino por casos de estado representativos.
@@ -1662,6 +1663,36 @@ Los radios (`Radius`) están algo más redondeados que los de fábrica y se expo
 porque el visor y el overlay no son componentes de Material y aun así tienen que usar los mismos
 valores. Antes el visor usaba `Spacing.md` como radio: un `dp` suelto con disfraz, que daba el número
 correcto por casualidad y se habría redondeado de rebote al cambiar el margen de la app.
+
+#### Modo dislexia
+
+Un interruptor en Ajustes → Accesibilidad que ajusta la escala tipográfica entera. Cambia tres cosas,
+y merece la pena decir por qué esas y no otras:
+
+| Qué | Cuánto | Por qué |
+|---|---|---|
+| Espacio entre letras | +0,75 sp, y el suelo pasa a cero | **Es lo único con evidencia sólida.** Separar las letras mejora velocidad y precisión de lectura en personas con dislexia sin entrenamiento previo (Zorzi et al., PNAS 2012). El suelo a cero elimina los *tracking* negativos de los estilos grandes, que están ahí por estética y aprietan justo lo que conviene separar |
+| Interlínea | 1,75× el tamaño ya crecido | Reduce el salto de renglón equivocado, que es lo que más cuesta al releer |
+| Tamaño | ×1,15 | **Se suma** al tamaño de fuente del sistema, no lo sustituye: la app ya lo respeta usando `sp`. Alguien puede necesitar esto en esta app y no en todas |
+
+**No empaqueta una fuente "para dislexia", y es deliberado.** Es lo primero que se espera de un modo
+así. Los estudios controlados sobre OpenDyslexic y Dyslexie **no encuentran mejora** frente a una
+sans-serif normal bien espaciada: lo que ayudaba era el espaciado que esas fuentes traen de fábrica,
+no la forma de sus letras (Kuster et al., 2018; Wery y Diliberto, 2017). Empaquetarla costaría unos
+300 KB por peso y prometería algo que la evidencia no sostiene, así que se aplica directamente lo que
+sí funciona. Lo que sí se hace es fijar `FontFamily.SansSerif` **explícitamente** en vez de dejar
+`Default`, para que ninguna plataforma elija por su cuenta una serifa o una condensada. Si algún día
+se decide empaquetar una, entra por el parámetro `family` de la transformación y no toca nada más.
+
+**La monoespaciada del valor de un código no se negocia ni en este modo.** Ese dato se coteja
+carácter a carácter contra una etiqueta impresa, y en proporcional `1`, `l` e `I` se parecen: hacerlo
+"más legible" como prosa lo haría menos legible como dato. Sí crece y sí gana espaciado. Ese estilo
+no es un rol de Material, así que viaja por `LocalCodeValueStyle` — un `CompositionLocal` provisto
+por el tema — y no como una constante importada, que es lo que era antes. Con la constante, las dos
+pantallas que pintan códigos se habrían quedado con la versión sin ajustar sin que nada fallara.
+
+El interruptor se llama "modo dislexia" porque es lo que va a buscar quien lo necesita; la línea de
+ayuda dice qué hace de verdad, sin prometer una fuente mágica.
 
 #### Tema claro/oscuro elegido por el usuario
 

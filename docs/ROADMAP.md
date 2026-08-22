@@ -393,6 +393,15 @@ sea explícita.
       campo se habría abierto vacío y guardar habría borrado lo que hubiera. Es el mismo defecto que
       el `REPLACE` de Room, en otro sitio
 
+- [x] **Modo dislexia**, en Ajustes → Accesibilidad. Ajusta la escala tipográfica entera: más espacio
+      entre letras —lo único con evidencia sólida detrás, Zorzi et al. PNAS 2012—, más interlínea y
+      más tamaño, que se **suma** al del sistema en vez de sustituirlo. **No empaqueta una fuente
+      "para dislexia" a propósito:** los estudios controlados sobre OpenDyslexic y Dyslexie no
+      encuentran mejora frente a una sans-serif bien espaciada, así que se aplica directamente lo que
+      sí funciona en lugar de pagar 300 KB por peso por una promesa que la evidencia no sostiene. El
+      valor de un código sigue monoespaciado incluso aquí: se coteja carácter a carácter contra una
+      etiqueta impresa, y hacerlo más legible como prosa lo haría menos legible como dato
+
 **Lo que hace falta antes de publicar de verdad**
 
 - [ ] **Una pantalla de "qué hay de nuevo"** o, como mínimo, no estrenar funciones en silencio. La

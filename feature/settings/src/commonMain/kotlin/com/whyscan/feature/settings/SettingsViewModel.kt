@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * Ajustes de la app: aspecto, idioma y modo avanzado.
+ * Ajustes de la app: aspecto, accesibilidad, idioma y modo avanzado.
  *
  * No tiene efectos de una sola vez —ni `SharedFlow` ni snackbars— y no es un olvido: aquí todo
  * cambio *es* su propio feedback, porque el tema y el idioma se ven en la propia pantalla en cuanto
@@ -42,6 +42,7 @@ class SettingsViewModel(
             is SettingsAction.SetThemeMode -> setThemeMode(action.mode)
             is SettingsAction.SetLanguage -> setLanguage(action.language)
             is SettingsAction.SetAdvancedMode -> setAdvancedMode(action.enabled)
+            is SettingsAction.SetDyslexiaFriendly -> setDyslexiaFriendly(action.enabled)
         }
     }
 
@@ -61,5 +62,9 @@ class SettingsViewModel(
 
     private fun setAdvancedMode(enabled: Boolean) {
         viewModelScope.launch { preferences.setAdvancedMode(enabled) }
+    }
+
+    private fun setDyslexiaFriendly(enabled: Boolean) {
+        viewModelScope.launch { preferences.setDyslexiaFriendly(enabled) }
     }
 }
