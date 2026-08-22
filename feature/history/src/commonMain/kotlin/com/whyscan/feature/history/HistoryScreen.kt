@@ -209,7 +209,7 @@ private fun DayHeader(date: LocalDate, today: LocalDate) {
         today.minus(1, DateTimeUnit.DAY) -> stringResource(Res.string.history_yesterday)
         else -> stringResource(
             Res.string.history_date,
-            date.dayOfMonth,
+            date.day,
             stringResource(date.month.nameResource()),
             date.year,
         )

@@ -147,7 +147,11 @@ class MlKitCameraXEngine(
         return BarcodeScanning.getClient(options)
     }
 
-    @OptIn(ExperimentalGetImage::class)
+    // Anotación directa y no `@OptIn`: `ExperimentalGetImage` no está marcada con
+    // `@RequiresOptIn`, así que envolverla en `@OptIn` no hacía nada — y el compilador lo
+    // decía en cada build. Es una anotación de CameraX que se aplica al miembro que usa
+    // `ImageProxy.image`, que es exactamente lo que hace esta función.
+    @ExperimentalGetImage
     private fun analyze(
         imageProxy: ImageProxy,
         scanner: BarcodeScanner,

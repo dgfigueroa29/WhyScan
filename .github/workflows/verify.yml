@@ -42,6 +42,20 @@ jobs:
       - name: Detekt
         run: ./gradlew detekt
 
+      # D24: declarar una versión no la impone. Si otro punto del grafo pide una superior, Gradle
+      # resuelve la mayor para todo el classpath y lo escrito en el catálogo pasa a ser una
+      # sugerencia. Costó una tanda entera: `kotlinx-datetime` fijado en 0.6.2 y resuelto en 0.7+,
+      # donde el tipo que se usaba sobrevive solo como typealias — compilaba y reventaba al
+      # ejecutar. Esto lo dice antes, y falla solo cuando lo sustituido es **nuestra** declaración.
+      - name: Versiones declaradas contra versiones resueltas
+        run: |
+          # Sin `--quiet`: el informe se imprime a nivel `lifecycle` y `--quiet` lo silenciaría,
+          # dejando un archivo vacío. Sin caché de configuración porque `dependencies` no es
+          # compatible con ella, y aquí es mejor decirlo que descubrirlo.
+          ./gradlew --no-configuration-cache :composeApp:dependencies > dependencias.txt
+          ./gradlew --no-configuration-cache :androidApp:dependencies >> dependencias.txt
+          python3 tools/check_resolved_versions.py dependencias.txt
+
       # Sin rutas de proyecto a propósito: Gradle ejecuta la tarea en **todos** los módulos que la
       # tengan. La lista escrita a mano que había aquí antes ya se había quedado corta —los tests de
       # `:core:designsystem` y `:engines:zxing-java` existían y no los corría nadie—, y un test que

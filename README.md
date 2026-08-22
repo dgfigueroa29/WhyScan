@@ -312,6 +312,13 @@ tenga el idioma que falta.
 Lo ejecuta también CI, como primer paso y antes incluso de instalar Java. Eso no es solo rapidez: es
 lo que impide que estas comprobaciones se desincronicen en silencio de lo que detekt exige de verdad.
 
+**`tools/check_resolved_versions.py` cruza lo declarado con lo resuelto.** Declarar una versión no la
+impone: si otro punto del grafo pide una superior, Gradle resuelve la mayor para todo el classpath y
+lo escrito en `libs.versions.toml` pasa a ser una sugerencia. Eso costó una tanda entera de CI
+—`kotlinx-datetime` fijado en 0.6.2, resuelto en 0.7+, donde el tipo que se usaba sobrevive solo como
+typealias: **compilaba y reventaba al ejecutar**—. El chequeo falla cuando lo sustituido es una
+versión nuestra e informa de los ascensos entre terceros, que son funcionamiento normal.
+
 ---
 
 ## Añadir un motor de escaneo

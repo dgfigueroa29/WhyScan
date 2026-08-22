@@ -4,11 +4,11 @@
 |---|---|
 | Proyecto | WhyScan |
 | Documento | Software Design Document (SDD) |
-| Versión | 1.15 |
+| Versión | 1.16 |
 | Estado | Vigente — **el proyecto compila y pasa CI** en Android (con R8), Escritorio y Web, y el framework de iOS **enlaza entero** desde el workflow manual `ios.yml`. Fases 1, 2, 4 y 5 cerradas salvo lo listado como pendiente; la 3 (iOS) escrita y despriorizada por falta de dispositivo, no de compilación. **La app arrancó por primera vez en un dispositivo real** en la versión anterior, y ese arranque encontró un defecto que ninguna comprobación automática podía ver (§10); esta versión convierte esa comprobación en un test y, con él, destapa un segundo defecto de meses en la persistencia (§11) |
 | Fecha | 2026-08-22 |
 | Autor | Equipo WhyScan |
-| Alcance de esta versión | La pantalla de **qué hay de nuevo** (§9.11) y las comprobaciones sin compilador en el repositorio y en CI, que salda D23. Antes: **modo dislexia**: la escala tipográfica entera se ajusta con lo que la investigación sobre lectura sí respalda —espaciado, interlínea y tamaño— y no con una fuente empaquetada (§9.9). Antes: anotar desde la pantalla de escaneo, con la nota viviendo en el historial y no en el escáner (§9.10), y el id de una detección ensanchado a 64 bits ahora que de él cuelga la nota (§6.1). Antes, en la misma fase: cierre de D18 y D22 —el grafo de Android y la migración pasan a tener test (§10, §11, §13.1)—, el historial agrupado por día, deshacer un borrado, búsqueda sin acentos y exportación a texto plano (§9.7); y antes, las notas del historial (ADR-0012), marca, tema, idiomas y el rediseño del escáner (ADR-0010, ADR-0011), y el renombrado a **WhyScan** (§1.1) |
+| Alcance de esta versión | Cierre de la deuda D17, D19 y D24: la API depreciada de iOS, una postura sobre los avisos del compilador tomada con el inventario delante, y un chequeo que cruza versiones declaradas contra resueltas. Antes: la pantalla de **qué hay de nuevo** (§9.11) y las comprobaciones sin compilador en el repositorio y en CI, que salda D23. Antes: **modo dislexia**: la escala tipográfica entera se ajusta con lo que la investigación sobre lectura sí respalda —espaciado, interlínea y tamaño— y no con una fuente empaquetada (§9.9). Antes: anotar desde la pantalla de escaneo, con la nota viviendo en el historial y no en el escáner (§9.10), y el id de una detección ensanchado a 64 bits ahora que de él cuelga la nota (§6.1). Antes, en la misma fase: cierre de D18 y D22 —el grafo de Android y la migración pasan a tener test (§10, §11, §13.1)—, el historial agrupado por día, deshacer un borrado, búsqueda sin acentos y exportación a texto plano (§9.7); y antes, las notas del historial (ADR-0012), marca, tema, idiomas y el rediseño del escáner (ADR-0010, ADR-0011), y el renombrado a **WhyScan** (§1.1) |
 
 ---
 
@@ -1163,6 +1163,7 @@ información que solo existía como posición o como color":
 | Modo dislexia | `commonTest` | Que **los quince roles** de la escala crezcan, ganen espaciado e interlínea y no conserven tracking negativo; que apagado no cambie absolutamente nada; y que el valor de un código siga siendo monoespaciado (§9.9) | kotlin-test |
 | Cuándo se anuncian las novedades | `commonTest` | Que a quien acaba de instalar **no** se le estrene nada, que a quien ya tenía la app sí, que no se repita, y que una revisión del futuro tampoco anuncie (§9.11) | kotlin-test |
 | Comprobaciones sin compilador | CI, primer paso | Paridad de catálogos entre idiomas, `Res.string.X` sin importar, claves huérfanas, `package` que no sigue a su carpeta, longitud de línea y orden de imports (`tools/checks.py`) | python3 |
+| Declarado contra resuelto | CI, tras detekt | Que ninguna versión escrita en `libs.versions.toml` quede sustituida por el grafo de dependencias (`tools/check_resolved_versions.py`, D24) | python3 + informe de Gradle |
 
 Objetivo de cobertura: **≥ 80 % en `:core:domain` y `:core:data`**; la UI no se persigue por
 cobertura sino por casos de estado representativos.
