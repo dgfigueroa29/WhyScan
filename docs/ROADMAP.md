@@ -384,10 +384,14 @@ sea explícita.
       para herramientas; lo que la gente hace con treinta códigos es pegarlos en un correo. No lleva
       guardado anti-fórmula **a propósito**, y hay un test que lo fija: esto no lo abre una hoja de
       cálculo, y una comilla delante rompería justo lo que el formato existe para dar
-
-**Pendiente**
-- [ ] **Anotar desde la pantalla de escaneo**, no solo desde el historial. El momento en que uno sabe
-      para qué es un código es justo cuando lo acaba de leer
+- [x] **Anotar desde la pantalla de escaneo**, no solo desde el historial. El momento en que uno sabe
+      para qué es un código es justo cuando lo acaba de leer; obligar a terminar de escanear, cambiar
+      de pantalla y reconocer la lectura entre las demás es pedirle al usuario que recuerde dentro de
+      un minuto lo que sabe ahora. **El escáner no guarda notas**: las lee del historial y las
+      escribe allí. Recordarlas en el estado de la pantalla parecía más simple y tenía un agujero —
+      `Detection.idOf` es determinista, así que releer un código ya anotado devuelve la misma fila, el
+      campo se habría abierto vacío y guardar habría borrado lo que hubiera. Es el mismo defecto que
+      el `REPLACE` de Room, en otro sitio
 
 **Lo que hace falta antes de publicar de verdad**
 

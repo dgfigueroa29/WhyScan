@@ -81,6 +81,7 @@ class KoinGraphTest {
 
         koin.get<ScanSettings>()
         koin.get<ScanSessions>()
+        koin.get<ScanHistory>()
         koin.get<ScannerEngineRepository>()
         koin.get<PermissionController>()
         koin.get<ImagePicker>()

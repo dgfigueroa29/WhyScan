@@ -113,7 +113,7 @@
     <string name="no_camera_title">No live camera here</string>
     <string name="no_camera_body">This device has no capture WhyScan can drive. You can still scan a picture or type a code by hand.</string>
 
-    <!-- Cámara pausada. No es un estado de carga: la app espera al usuario, no al revés. -->
+    <!-- Camera paused. Not a loading state: the app is waiting for the user, not the other way. -->
     <string name="paused_title">Camera paused</string>
     <string name="paused_body">Nothing is being captured right now. Resume when you are ready to scan again.</string>
     <string name="session_paused">Paused</string>
@@ -127,4 +127,17 @@
     <string name="results_clear">Clear</string>
     <string name="a11y_results_expand">Show every result</string>
     <string name="a11y_results_collapse">Show only the latest result</string>
+
+    <!-- Notes, written right after reading a code. Same wording as the history screen: it is the
+         same action, and calling it two things would suggest it does two things. -->
+    <string name="note_add">Add note</string>
+    <string name="note_edit">Edit note</string>
+    <string name="note_hint">What is this code for?</string>
+    <string name="note_save">Save</string>
+    <string name="note_cancel">Cancel</string>
+    <string name="a11y_note_add">Add a note to %1$s</string>
+    <string name="a11y_note_edit">Edit the note on %1$s</string>
+    <string name="a11y_note_value">Note on %1$s</string>
+    <string name="message_note_saved">Note saved</string>
+    <string name="message_note_removed">Note removed</string>
 </resources>

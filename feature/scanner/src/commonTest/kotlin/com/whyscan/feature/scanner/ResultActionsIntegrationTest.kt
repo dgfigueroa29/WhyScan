@@ -5,6 +5,7 @@ import com.whyscan.core.domain.scan.OpenKind
 import com.whyscan.core.domain.scan.ResultAction
 import com.whyscan.core.domain.usecase.DecodeImageUseCase
 import com.whyscan.core.domain.usecase.SaveDetectionUseCase
+import com.whyscan.core.domain.usecase.ScanHistory
 import com.whyscan.core.domain.usecase.ScanSessions
 import com.whyscan.core.domain.usecase.ScanSettings
 import com.whyscan.core.domain.usecase.SelectScannerEngineUseCase
@@ -45,6 +46,7 @@ class ResultActionsIntegrationTest {
     private fun viewModel(canShare: Boolean = true, succeeds: Boolean = true): ScannerViewModel {
         val engines = FakeEngineRepository(engines = listOf(FakeEngine(ScannerEngineId.ManualInput)))
         val preferences = FakePreferencesRepository()
+        val history = FakeHistoryRepository()
         platform = FakePlatformActions(canShare = canShare, succeeds = succeeds)
 
         val select = SelectScannerEngineUseCase(engines)
@@ -53,8 +55,9 @@ class ResultActionsIntegrationTest {
             sessions = ScanSessions(
                 startSession = StartScanSessionUseCase(engines, select),
                 decodeImage = DecodeImageUseCase(engines, select),
-                saveDetection = SaveDetectionUseCase(FakeHistoryRepository()),
+                saveDetection = SaveDetectionUseCase(history),
             ),
+            history = ScanHistory(history),
             engineRepository = engines,
             permissionController = FakePermissionController(),
             imagePicker = FakeImagePicker(),

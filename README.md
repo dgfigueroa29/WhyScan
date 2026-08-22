@@ -46,7 +46,7 @@ el comparador en paralelo y las latencias por lectura.
 | Idiomas inglés y español | ✅ los cuatro catálogos en `values/` (inglés, respaldo de cualquier idioma) y `values-es/`, con selector propio ([ADR-0011](docs/adr/ADR-0011-idioma-de-la-app-por-encima-del-sistema.md)) y `localeConfig` para el selector por app de Android 13+ |
 | Pantalla de escaneo | ✅ cámara a pantalla completa con el resultado en una hoja que la empuja, no que la tapa; la sesión arranca sola y se apaga al salir ([ADR-0010](docs/adr/ADR-0010-dos-disposiciones-de-la-pantalla-de-escaneo.md)) |
 | Lecturas repetidas | ✅ suprimidas en el dominio con ventana de dos segundos. Antes, tres segundos apuntando a un QR escribían noventa filas en el historial |
-| Notas en el historial | ✅ texto de referencia por lectura, con buscador que mira valor **y** nota ([ADR-0012](docs/adr/ADR-0012-la-nota-es-del-historial-no-de-la-deteccion.md)). La poda no se lleva lo anotado |
+| Notas en el historial | ✅ texto de referencia por lectura, escribible desde el historial **y** desde el escáner, con buscador que mira valor **y** nota ([ADR-0012](docs/adr/ADR-0012-la-nota-es-del-historial-no-de-la-deteccion.md)). La poda no se lleva lo anotado |
 | Historial agrupado por día | ✅ cabeceras pegajosas con "Hoy" y "Ayer", que es lo que una persona reconoce sin leer |
 | Borrado del historial | ✅ una lectura suelta **con deshacer**, o todo con confirmación que dice cuántas se pierden |
 | Exportación del historial | ✅ CSV, JSON y texto plano, guardado en las cuatro plataformas |
@@ -240,6 +240,13 @@ Cada lectura admite **una nota**: un texto de referencia que escribe el usuario.
 `7501234567893` es exacto y completamente inútil dentro de una lista de doscientas filas cuando lo
 que uno recuerda es "el del pedido de marzo". El buscador mira el valor **y** la nota, que es media
 razón de que la nota exista.
+
+Se escribe desde las dos pantallas, y no es duplicación: **el momento en que uno sabe para qué es un
+código es justo cuando lo acaba de leer**, así que la lectura recién hecha tiene su "Agregar nota" a
+mano en el escáner. Lo que no hace el escáner es guardarlas — las lee del historial y las escribe
+allí. Recordarlas en la pantalla habría sido más corto y habría abierto un agujero: el id de una
+detección es determinista, así que releer un código ya anotado devuelve la misma fila, el campo se
+habría abierto vacío y guardar habría borrado lo que hubiera.
 
 La nota vive en un tipo aparte (`HistoryEntry`) y **no** dentro de `Detection`
 ([ADR-0012](docs/adr/ADR-0012-la-nota-es-del-historial-no-de-la-deteccion.md)): `Detection` la

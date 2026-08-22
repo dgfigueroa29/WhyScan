@@ -30,6 +30,17 @@ sealed interface ScannerMessage {
     data object NoCodeInImage : ScannerMessage
 
     /**
+     * La nota quedó guardada, o se quitó la que había.
+     *
+     * Son dos mensajes y no uno porque vaciar el campo es cómo se borra una nota, y un "Nota
+     * guardada" tras haberla borrado diría lo contrario de lo que pasó. Son los mismos dos que usa
+     * el historial: la acción es la misma en las dos pantallas y no tiene por qué contarse distinto.
+     */
+    data object NoteSaved : ScannerMessage
+
+    data object NoteRemoved : ScannerMessage
+
+    /**
      * Texto que ya viene resuelto de fuera: el motivo que da el selector de imágenes del sistema o
      * el mensaje de una excepción del decodificador.
      *

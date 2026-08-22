@@ -121,4 +121,17 @@
     <string name="results_clear">Limpiar</string>
     <string name="a11y_results_expand">Ver todos los resultados</string>
     <string name="a11y_results_collapse">Ver solo el último resultado</string>
+
+    <!-- Notas, escritas justo después de leer un código. Mismas palabras que en el historial: es la
+         misma acción, y llamarla de dos maneras sugeriría que hace dos cosas. -->
+    <string name="note_add">Agregar nota</string>
+    <string name="note_edit">Editar nota</string>
+    <string name="note_hint">¿Para qué es este código?</string>
+    <string name="note_save">Guardar</string>
+    <string name="note_cancel">Cancelar</string>
+    <string name="a11y_note_add">Agregar una nota a %1$s</string>
+    <string name="a11y_note_edit">Editar la nota de %1$s</string>
+    <string name="a11y_note_value">Nota de %1$s</string>
+    <string name="message_note_saved">Nota guardada</string>
+    <string name="message_note_removed">Nota eliminada</string>
 </resources>

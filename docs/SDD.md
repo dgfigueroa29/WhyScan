@@ -4,11 +4,11 @@
 |---|---|
 | Proyecto | WhyScan |
 | Documento | Software Design Document (SDD) |
-| Versión | 1.11 |
+| Versión | 1.12 |
 | Estado | Vigente — **el proyecto compila y pasa CI** en Android (con R8), Escritorio y Web, y el framework de iOS **enlaza entero** desde el workflow manual `ios.yml`. Fases 1, 2, 4 y 5 cerradas salvo lo listado como pendiente; la 3 (iOS) escrita y despriorizada por falta de dispositivo, no de compilación. **La app arrancó por primera vez en un dispositivo real** en la versión anterior, y ese arranque encontró un defecto que ninguna comprobación automática podía ver (§10); esta versión convierte esa comprobación en un test y, con él, destapa un segundo defecto de meses en la persistencia (§11) |
 | Fecha | 2026-08-22 |
 | Autor | Equipo WhyScan |
-| Alcance de esta versión | Cierre de D18 y D22 —el grafo de Android y la migración pasan a tener test (§10, §11, §13.1)—, el historial agrupado por día, deshacer un borrado, búsqueda sin acentos y exportación a texto plano (§9.7). Antes, en la misma fase: las notas del historial (ADR-0012), marca, tema, idiomas y el rediseño del escáner (ADR-0010, ADR-0011), y el renombrado a **WhyScan** (§1.1) |
+| Alcance de esta versión | Anotar desde la pantalla de escaneo, con la nota viviendo en el historial y no en el escáner (§9.10). Antes, en la misma fase: cierre de D18 y D22 —el grafo de Android y la migración pasan a tener test (§10, §11, §13.1)—, el historial agrupado por día, deshacer un borrado, búsqueda sin acentos y exportación a texto plano (§9.7); y antes, las notas del historial (ADR-0012), marca, tema, idiomas y el rediseño del escáner (ADR-0010, ADR-0011), y el renombrado a **WhyScan** (§1.1) |
 
 ---
 
@@ -1143,6 +1143,7 @@ información que solo existía como posición o como color":
 | Agrupación por día | `commonTest` | Que el día dependa de la zona horaria y no del instante, con la zona por parámetro para que el test no dependa de dónde corre | kotlin-test, kotlinx-datetime |
 | **Grafo de Android** | `androidUnitTest` | Que el `platformModule` de Android resuelva, con un `Context` real en la JVM (`AndroidKoinGraphTest`, §10) | kotlin-test, Robolectric |
 | **Migración de la base** | `jvmTest` | Que una base v1 con filas dentro siga teniéndolas tras abrirla con el código v2 (`MigrationTest`, §11) | kotlin-test |
+| Notas desde el escáner | `commonTest` | Que la nota escrita al leer un código acabe en el historial, que reabrir el campo sobre un código ya anotado traiga lo que había —el agujero que justifica observar en vez de recordar— y que cerrar sin guardar no toque nada | kotlin-test |
 
 Objetivo de cobertura: **≥ 80 % en `:core:domain` y `:core:data`**; la UI no se persigue por
 cobertura sino por casos de estado representativos.
@@ -1750,6 +1751,35 @@ Ahora el spinner solo aparece mientras `SessionStatus.Starting`, que es cuando d
 marcha, y pausado tiene la misma forma que los otros dos estados que sustituyen al visor —icono,
 qué pasa, qué hacer—. La lección general es la de siempre con los `when`: **la rama `else` no es un
 caso, es el sitio donde se esconden los que no se enumeraron.**
+
+#### Anotar desde el escáner: quién es el dueño de la nota
+
+La nota se puede escribir desde las dos pantallas, y no es duplicación: **el momento en que uno sabe
+para qué es un código es justo cuando lo acaba de leer.** Obligar a terminar de escanear, cambiar de
+pantalla y reconocer la lectura entre las demás es pedirle al usuario que recuerde dentro de un
+minuto lo que sabe ahora.
+
+Lo que sí importa es que **el escáner no guarda notas**. Las lee del historial —`ScanHistory.observe()`
+reducido al mapa de las que tienen nota— y las escribe con `setNote`. La alternativa evidente,
+recordar en el estado del escáner lo que el usuario acaba de escribir, tiene un agujero que se ve al
+tirar del hilo del id: `Detection.idOf` es determinista, así que **releer el mismo código devuelve la
+misma fila**, ya anotada. Con las notas viviendo en el escáner, ese campo se abriría vacío y guardar
+borraría lo que hubiera sin que nadie lo pidiera. Es el mismo defecto que el `REPLACE` de Room (§11),
+en otro sitio.
+
+Dos consecuencias de esa decisión, las dos deliberadas:
+
+- **El ViewModel del escáner pasa a tener siete colaboradores** en vez de seis, y el séptimo es
+  `ScanHistory`. No contradice que guardar sea de `ScanSessions`: guardar una lectura es un hecho del
+  motor y anotarla es una acción del usuario, que es exactamente la línea por la que están separados.
+- **La observación lleva `distinctUntilChanged` sobre el mapa ya reducido**, no sobre el historial. El
+  historial emite en cada lectura guardada —treinta veces en un minuto de escaneo continuo— y sin ese
+  filtro cada emisión recompondría la hoja de resultados sin que ninguna nota hubiera cambiado.
+
+El campo va en un diálogo, que es lo único de esa pantalla que sí tapa la cámara. Escribir una nota
+es lo contrario de escanear en serie —el usuario ha parado a pensar—, y un campo embutido en la hoja
+haría saltar el tamaño del visor cada vez que se abre el teclado. Guardar con el campo vacío quita la
+nota: por eso el botón de confirmar no se deshabilita nunca, o no habría forma de quitarla.
 
 ---
 

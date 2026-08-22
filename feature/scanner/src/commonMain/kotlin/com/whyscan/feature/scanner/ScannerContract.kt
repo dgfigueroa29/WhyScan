@@ -36,6 +36,18 @@ data class ScannerState(
     val canShare: Boolean = false,
     /** Hay una imagen decodificándose (RF-07). Puede tardar: bloquea el botón y muestra progreso. */
     val isDecodingImage: Boolean = false,
+    /**
+     * Las notas del historial, por id de lectura. Solo están las que **tienen** nota.
+     *
+     * La pantalla de escaneo las necesita por una razón concreta y no por completitud: sin ellas, el
+     * campo de anotar se abriría vacío sobre un código que ya estaba anotado, y guardar borraría lo
+     * que hubiera. El escáner no guarda notas en su propio estado — las lee de donde viven.
+     */
+    val notes: Map<String, String> = emptyMap(),
+    /** La lectura cuyo campo de nota está abierto, si hay alguno. */
+    val noteTargetId: String? = null,
+    /** Lo que hay escrito en ese campo ahora mismo. */
+    val noteDraft: String = "",
     val error: ScanError? = null,
 ) {
     val usableEngines: List<EngineStatus> get() = catalog.filter { it.isUsable }
@@ -92,6 +104,9 @@ data class ScannerState(
 
     /** La lectura más reciente, que es la que la hoja de resultados destaca. */
     val latestDetection: Detection? get() = detections.firstOrNull()
+
+    /** La nota que ya tiene una lectura, o `null` si no tiene. */
+    fun noteOf(detectionId: String): String? = notes[detectionId]
 }
 
 sealed interface ScannerAction {
@@ -140,6 +155,24 @@ sealed interface ScannerAction {
     data class SetZoom(val ratio: Float) : ScannerAction
     data object RequestCameraPermission : ScannerAction
     data object DismissError : ScannerAction
+
+    /**
+     * Abrir el campo de nota sobre una lectura recién hecha.
+     *
+     * Anotar ya se podía desde el historial, y aun así hacía falta aquí: **el momento en que uno
+     * sabe para qué es un código es justo cuando lo acaba de leer**. Obligar a terminar de escanear,
+     * cambiar de pantalla y reconocer la lectura entre las demás es pedirle al usuario que recuerde
+     * lo que sabía hace diez segundos.
+     */
+    data class EditNote(val detectionId: String) : ScannerAction
+
+    data class NoteDraftChanged(val value: String) : ScannerAction
+
+    /** Guardar lo escrito. Con el campo vacío borra la nota, que es como se quita una. */
+    data object SaveNote : ScannerAction
+
+    /** Cerrar el campo sin guardar. */
+    data object DismissNote : ScannerAction
 }
 
 /**

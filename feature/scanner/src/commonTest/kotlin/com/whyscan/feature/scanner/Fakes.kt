@@ -111,6 +111,9 @@ class FakeHistoryRepository : ScanHistoryRepository {
 
     val saved: List<Detection> get() = state.value.map { it.detection }
 
+    /** La nota que quedó guardada para una lectura, para afirmar sobre el almacén y no sobre la UI. */
+    fun noteOf(detectionId: String): String? = state.value.firstOrNull { it.id == detectionId }?.note
+
     override fun observeHistory(): Flow<List<HistoryEntry>> = state.asStateFlow()
 
     override suspend fun save(detection: Detection) {

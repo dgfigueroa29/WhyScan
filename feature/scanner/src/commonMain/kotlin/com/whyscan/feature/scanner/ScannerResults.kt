@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -48,6 +49,9 @@ import com.whyscan.core.designsystem.Spacing
 import com.whyscan.core.domain.scan.ResultActionsFactory
 import com.whyscan.core.model.Detection
 import com.whyscan.feature.scanner.resources.Res
+import com.whyscan.feature.scanner.resources.a11y_note_add
+import com.whyscan.feature.scanner.resources.a11y_note_edit
+import com.whyscan.feature.scanner.resources.a11y_note_value
 import com.whyscan.feature.scanner.resources.a11y_results_collapse
 import com.whyscan.feature.scanner.resources.a11y_results_expand
 import com.whyscan.feature.scanner.resources.action_scan_from_image
@@ -55,6 +59,11 @@ import com.whyscan.feature.scanner.resources.action_submit
 import com.whyscan.feature.scanner.resources.detection_latency
 import com.whyscan.feature.scanner.resources.detection_meta
 import com.whyscan.feature.scanner.resources.manual_input_label
+import com.whyscan.feature.scanner.resources.note_add
+import com.whyscan.feature.scanner.resources.note_cancel
+import com.whyscan.feature.scanner.resources.note_edit
+import com.whyscan.feature.scanner.resources.note_hint
+import com.whyscan.feature.scanner.resources.note_save
 import com.whyscan.feature.scanner.resources.results_clear
 import com.whyscan.feature.scanner.resources.results_hint_body
 import com.whyscan.feature.scanner.resources.results_hint_title
@@ -102,6 +111,51 @@ internal fun ResultsSheet(
             }
         }
     }
+}
+
+/**
+ * El campo de nota, en un diálogo.
+ *
+ * Es lo único de esta pantalla que sí tapa la cámara, y a propósito: escribir una nota es lo
+ * contrario de escanear en serie —el usuario ha parado a pensar qué es ese código— y un campo
+ * embutido en la hoja empujaría el visor a saltar de tamaño con cada apertura del teclado.
+ *
+ * Lo monta [ScannerContent] y no la hoja de resultados, porque las tarjetas con el botón de anotar
+ * salen en las **dos** disposiciones: colgarlo de la hoja dejaba el banco de pruebas abriendo un
+ * diálogo que no existía.
+ */
+@Composable
+internal fun NoteDialog(state: ScannerState, onAction: (ScannerAction) -> Unit) {
+    val editing = state.noteOf(state.noteTargetId.orEmpty()) != null
+
+    AlertDialog(
+        onDismissRequest = { onAction(ScannerAction.DismissNote) },
+        title = {
+            Text(
+                stringResource(if (editing) Res.string.note_edit else Res.string.note_add),
+            )
+        },
+        text = {
+            OutlinedTextField(
+                value = state.noteDraft,
+                onValueChange = { onAction(ScannerAction.NoteDraftChanged(it)) },
+                placeholder = { Text(stringResource(Res.string.note_hint)) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        confirmButton = {
+            // Sin `enabled`: guardar con el campo vacío es cómo se borra una nota que ya existía, y
+            // desactivar el botón dejaría al usuario sin forma de quitarla.
+            TextButton(onClick = { onAction(ScannerAction.SaveNote) }) {
+                Text(stringResource(Res.string.note_save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { onAction(ScannerAction.DismissNote) }) {
+                Text(stringResource(Res.string.note_cancel))
+            }
+        },
+    )
 }
 
 /**
@@ -168,6 +222,7 @@ private fun DetectedResults(
         canShare = state.canShare,
         advancedMode = advancedMode,
         highlighted = true,
+        note = state.noteOf(latest.id),
         onAction = onAction,
     )
 
@@ -215,6 +270,7 @@ private fun DetectedResults(
                     canShare = state.canShare,
                     advancedMode = advancedMode,
                     highlighted = false,
+                    note = state.noteOf(detection.id),
                     onAction = onAction,
                 )
             }
@@ -231,6 +287,8 @@ private fun DetectedResults(
  * @param highlighted la lectura recién llegada. Se pinta sobre el contenedor primario para que se
  *   distinga de las anteriores sin depender de la posición — quien usa un lector de pantalla no ve
  *   que está arriba del todo, y por eso además se anuncia como región viva.
+ * @param note la nota que ya tenga esa lectura en el historial, si tiene. Llega de fuera y no se
+ *   guarda aquí: la tarjeta muestra lo que hay, y quien manda es el historial.
  */
 @Composable
 internal fun DetectionCard(
@@ -238,6 +296,7 @@ internal fun DetectionCard(
     canShare: Boolean,
     advancedMode: Boolean,
     highlighted: Boolean,
+    note: String?,
     onAction: (ScannerAction) -> Unit,
 ) {
     val actions = ResultActionsFactory.actionsFor(detection.barcode, canShare)
@@ -297,6 +356,25 @@ internal fun DetectionCard(
                 },
             )
 
+            // La nota va **entre** el valor y las acciones, y no debajo de los botones: es lo que
+            // le da sentido a un código que el usuario ya no recuerda, así que se lee antes de
+            // decidir qué hacer con él.
+            if (note != null) {
+                val spokenNote = stringResource(Res.string.a11y_note_value, detection.barcode.rawValue)
+                Text(
+                    text = note,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = NOTE_MAX_LINES,
+                    overflow = TextOverflow.Ellipsis,
+                    color = if (highlighted) {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
+                    modifier = Modifier.semantics { contentDescription = spokenNote },
+                )
+            }
+
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 actions.forEachIndexed { index, action ->
                     // Con varios resultados en pantalla, todos los botones se llaman igual. La
@@ -315,6 +393,23 @@ internal fun DetectionCard(
                         TextButton(onClick = onClick, modifier = semantics) { Text(label) }
                     }
                 }
+            }
+
+            // Anotar va en su propia fila y no junto a las demás acciones. La de arriba ya puede
+            // llevar tres botones —abrir, copiar, compartir— y un cuarto se sale de la pantalla en
+            // cuanto el idioma alarga una etiqueta. Además no es la misma clase de cosa: las de
+            // arriba hacen algo con el código, y esta escribe sobre él.
+            val spokenNoteAction = stringResource(
+                if (note == null) Res.string.a11y_note_add else Res.string.a11y_note_edit,
+                detection.barcode.rawValue,
+            )
+            TextButton(
+                onClick = { onAction(ScannerAction.EditNote(detection.id)) },
+                modifier = Modifier.semantics { contentDescription = spokenNoteAction },
+            ) {
+                Text(
+                    stringResource(if (note == null) Res.string.note_add else Res.string.note_edit),
+                )
             }
         }
     }
@@ -348,5 +443,11 @@ internal fun ManualEntryField(state: ScannerState, onAction: (ScannerAction) -> 
 }
 
 private const val CODE_VALUE_MAX_LINES = 3
+
+/**
+ * La nota se recorta antes que el valor. Es texto libre y aquí solo tiene que recordarle al
+ * usuario qué es ese código; el texto entero está en el historial, que es donde se lee.
+ */
+private const val NOTE_MAX_LINES = 2
 
 private val OLDER_RESULTS_MAX_HEIGHT = Spacing.xxl * 5

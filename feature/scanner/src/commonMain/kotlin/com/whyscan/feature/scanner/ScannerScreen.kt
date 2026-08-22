@@ -30,6 +30,8 @@ import com.whyscan.feature.scanner.resources.message_copy_failed
 import com.whyscan.feature.scanner.resources.message_engine_switched
 import com.whyscan.feature.scanner.resources.message_manual_input_unavailable
 import com.whyscan.feature.scanner.resources.message_no_code_in_image
+import com.whyscan.feature.scanner.resources.message_note_removed
+import com.whyscan.feature.scanner.resources.message_note_saved
 import com.whyscan.feature.scanner.resources.message_open_failed
 import com.whyscan.feature.scanner.resources.message_share_failed
 import org.jetbrains.compose.resources.getString
@@ -102,6 +104,12 @@ fun ScannerContent(
         WorkbenchLayout(state, onAction, previewEngine, modifier)
     } else {
         ScannerLayout(state, onAction, previewEngine, modifier)
+    }
+
+    // Aquí y no dentro de una de las dos disposiciones: el botón de anotar sale en las tarjetas de
+    // resultado, y esas aparecen en las dos.
+    if (state.noteTargetId != null) {
+        NoteDialog(state, onAction)
     }
 }
 
@@ -191,6 +199,7 @@ private fun WorkbenchLayout(
                     canShare = state.canShare,
                     advancedMode = true,
                     highlighted = detection.id == state.latestDetection?.id,
+                    note = state.noteOf(detection.id),
                     onAction = onAction,
                 )
             }
@@ -229,6 +238,8 @@ private suspend fun resolve(message: ScannerMessage): String = when (message) {
     ScannerMessage.ShareFailed -> getString(Res.string.message_share_failed)
     ScannerMessage.OpenFailed -> getString(Res.string.message_open_failed)
     ScannerMessage.NoCodeInImage -> getString(Res.string.message_no_code_in_image)
+    ScannerMessage.NoteSaved -> getString(Res.string.message_note_saved)
+    ScannerMessage.NoteRemoved -> getString(Res.string.message_note_removed)
     is ScannerMessage.Raw -> message.text
 }
 

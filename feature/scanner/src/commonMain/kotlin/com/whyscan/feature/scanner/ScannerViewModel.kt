@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.whyscan.core.domain.repository.ScannerEngineRepository
 import com.whyscan.core.domain.scan.ResultAction
+import com.whyscan.core.domain.usecase.ScanHistory
 import com.whyscan.core.domain.usecase.ScanSessions
 import com.whyscan.core.domain.usecase.ScanSettings
 import com.whyscan.core.model.BarcodeFormat
@@ -24,6 +25,8 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -37,7 +40,11 @@ import kotlinx.coroutines.launch
  * ### Por qué sigue teniendo supresiones
  * La deuda D16 se saldó agrupando: los ajustes en [ScanSettings], la sesión y el guardado en
  * [ScanSessions], y las acciones sobre el resultado en [ResultActionRunner]. De **doce
- * dependencias quedan seis**, y `LongParameterList` ya no hace falta silenciarla.
+ * dependencias quedan siete**, y `LongParameterList` ya no hace falta silenciarla.
+ *
+ * La séptima es [ScanHistory], y entró con las notas. No contradice que guardar sea de
+ * [ScanSessions]: guardar una lectura es un hecho del motor y anotarla es una acción del usuario,
+ * que es exactamente la línea por la que están separados esos dos colaboradores.
  *
  * `TooManyFunctions` sobrevive, y es un dato honesto: esta pantalla tiene catorce acciones de
  * usuario y cada una necesita su función. Partirla por partir movería el recuento a otro archivo
@@ -48,6 +55,7 @@ import kotlinx.coroutines.launch
 class ScannerViewModel(
     private val settings: ScanSettings,
     private val sessions: ScanSessions,
+    private val history: ScanHistory,
     private val engineRepository: ScannerEngineRepository,
     private val permissionController: PermissionController,
     private val imagePicker: ImagePicker,
@@ -70,6 +78,7 @@ class ScannerViewModel(
     init {
         observeCatalogChanges()
         observePreferenceChanges()
+        observeNotes()
     }
 
     /**
@@ -101,6 +110,10 @@ class ScannerViewModel(
             is ScannerAction.SetZoom -> setZoom(action.ratio)
             ScannerAction.RequestCameraPermission -> requestCameraPermission()
             ScannerAction.DismissError -> _state.update { it.copy(error = null) }
+            is ScannerAction.EditNote -> editNote(action.detectionId)
+            is ScannerAction.NoteDraftChanged -> _state.update { it.copy(noteDraft = action.value) }
+            ScannerAction.SaveNote -> saveNote()
+            ScannerAction.DismissNote -> dismissNote()
         }
     }
 
@@ -164,8 +177,62 @@ class ScannerViewModel(
         }
     }
 
+    /**
+     * Las notas del historial, para que el escáner pueda mostrarlas y editarlas sin inventárselas.
+     *
+     * Se observa el historial entero y se reduce al mapa de las que tienen nota, con
+     * `distinctUntilChanged` **sobre el mapa ya reducido**: el historial emite en cada lectura
+     * guardada —treinta veces en una sesión continua de un minuto— y sin ese filtro cada una
+     * recompondría la hoja de resultados sin que ninguna nota hubiera cambiado.
+     *
+     * La alternativa era guardarlas en el estado del escáner según se escriben. Se descartó porque
+     * abre un agujero real: al releer un código ya anotado el id es el mismo, el campo se abriría
+     * vacío y guardar se llevaría por delante la nota que había.
+     */
+    private fun observeNotes() {
+        viewModelScope.launch {
+            history.observe()
+                .map { entries ->
+                    entries.mapNotNull { entry -> entry.note?.let { entry.id to it } }.toMap()
+                }
+                .distinctUntilChanged()
+                .collect { notes -> _state.update { it.copy(notes = notes) } }
+        }
+    }
+
     private fun refresh() {
         viewModelScope.launch { engineRepository.refresh() }
+    }
+
+    /** Abre el campo con lo que la lectura ya tuviera escrito, para editarlo y no para sustituirlo. */
+    private fun editNote(detectionId: String) {
+        _state.update {
+            it.copy(noteTargetId = detectionId, noteDraft = it.noteOf(detectionId).orEmpty())
+        }
+    }
+
+    private fun dismissNote() {
+        _state.update { it.copy(noteTargetId = null, noteDraft = "") }
+    }
+
+    /**
+     * Guarda la nota y cierra el campo.
+     *
+     * No rechaza el texto vacío: vaciar el campo **es** cómo se quita una nota, y
+     * [ScanHistory.setNote] normaliza los blancos a `null` en un solo sitio para las tres
+     * plataformas. El estado del escáner no toca su propio mapa de notas — lo actualiza la emisión
+     * del historial, que es la única fuente.
+     */
+    private fun saveNote() {
+        val detectionId = _state.value.noteTargetId ?: return
+        val note = _state.value.noteDraft
+
+        dismissNote()
+        viewModelScope.launch {
+            history.setNote(detectionId, note)
+            val message = if (note.isBlank()) ScannerMessage.NoteRemoved else ScannerMessage.NoteSaved
+            _effects.emit(ScannerEffect.ShowMessage(message))
+        }
     }
 
     private fun selectEngine(id: ScannerEngineId?) {

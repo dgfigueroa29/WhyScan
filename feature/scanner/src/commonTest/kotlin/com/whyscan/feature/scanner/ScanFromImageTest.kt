@@ -3,6 +3,7 @@ package com.whyscan.feature.scanner
 import app.cash.turbine.test
 import com.whyscan.core.domain.usecase.DecodeImageUseCase
 import com.whyscan.core.domain.usecase.SaveDetectionUseCase
+import com.whyscan.core.domain.usecase.ScanHistory
 import com.whyscan.core.domain.usecase.ScanSessions
 import com.whyscan.core.domain.usecase.ScanSettings
 import com.whyscan.core.domain.usecase.SelectScannerEngineUseCase
@@ -66,6 +67,7 @@ class ScanFromImageTest {
                 decodeImage = DecodeImageUseCase(engines, select),
                 saveDetection = SaveDetectionUseCase(history),
             ),
+            history = ScanHistory(history),
             engineRepository = engines,
             permissionController = FakePermissionController(),
             imagePicker = FakeImagePicker(picked),
