@@ -30,6 +30,15 @@ data class AppPreferences(
      * alfanuméricas que no forman palabras.
      */
     val dyslexiaFriendly: Boolean = false,
+    /**
+     * La última tanda de novedades que el usuario ya vio.
+     *
+     * `null` significa **nunca se ha escrito**, y no es lo mismo que cero: distingue a quien acaba
+     * de instalar la app —que no tiene nada que estrenar, porque para él todo es nuevo— de quien ya
+     * la tenía y se merece que se le cuente qué cambió. Es la única forma de que una pantalla de
+     * novedades no salte en el primer arranque, que es justo cuando más estorba.
+     */
+    val lastSeenNewsRevision: Int? = null,
 )
 
 /**
@@ -85,4 +94,5 @@ interface AppPreferencesRepository {
     suspend fun setLanguage(language: AppLanguage)
     suspend fun setAdvancedMode(enabled: Boolean)
     suspend fun setDyslexiaFriendly(enabled: Boolean)
+    suspend fun setLastSeenNewsRevision(revision: Int)
 }

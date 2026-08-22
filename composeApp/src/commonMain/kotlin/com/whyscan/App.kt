@@ -31,7 +31,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -44,6 +47,8 @@ import com.whyscan.feature.history.HistoryScreen
 import com.whyscan.feature.scanner.ScannerScreen
 import com.whyscan.feature.scanner.comparison.ComparisonScreen
 import com.whyscan.feature.settings.SettingsScreen
+import com.whyscan.feature.settings.WhatsNew
+import com.whyscan.feature.settings.WhatsNewDialog
 import com.whyscan.navigation.Destination
 import com.whyscan.navigation.Navigator
 import com.whyscan.resources.Res
@@ -51,6 +56,7 @@ import com.whyscan.resources.destination_comparison
 import com.whyscan.resources.destination_history
 import com.whyscan.resources.destination_scanner
 import com.whyscan.resources.destination_settings
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.KoinContext
 import org.koin.compose.koinInject
@@ -94,8 +100,58 @@ fun App(
                 easierReading = preferences.dyslexiaFriendly,
             ) {
                 AppScaffold(navigator = navigator, advancedMode = preferences.advancedMode)
+
+                WhatsNewOnUpdate(preferencesRepository)
             }
         }
+    }
+}
+
+/**
+ * Enseña las novedades una sola vez tras una actualización.
+ *
+ * ## Las dos ramas hacen cosas distintas, y las dos importan
+ *
+ * Si hay algo que contar, se muestra el diálogo y la revisión se marca **al cerrarlo**: marcarla al
+ * abrirlo dejaría sin novedades a quien cierre la app antes de leerlas.
+ *
+ * Si no lo hay porque el usuario **acaba de instalar** —la revisión vista es `null`—, se marca en
+ * silencio y no se enseña nada. A quien abre la app por primera vez no se le estrena nada: para él
+ * todo es nuevo, y un diálogo entre él y lo que vino a hacer es puro estorbo. Sin esa marca, el
+ * diálogo le saltaría en la siguiente actualización contándole cosas que para él siempre estuvieron.
+ *
+ * ## Por qué pide el repositorio y no el valor ya observado
+ *
+ * Porque leerlo del estado observado era una **carrera**, y de las que solo se ven en un dispositivo.
+ * `collectAsStateWithLifecycle` necesita un valor inicial y ese valor es `AppPreferences()`, con la
+ * revisión a `null`: durante la primera composición, un usuario que sí tenía novedades pendientes
+ * parece recién instalado, y esta función le marcaría todo como visto antes de que llegara su valor
+ * de disco. `current()` devuelve el valor ya leído, sin ese hueco.
+ *
+ * Va dentro del tema para que el diálogo se pinte con los colores y la tipografía que toquen, modo
+ * dislexia incluido.
+ */
+@Composable
+private fun WhatsNewOnUpdate(preferences: AppPreferencesRepository) {
+    var showing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        val lastSeen = preferences.current().lastSeenNewsRevision
+        if (WhatsNew.shouldAnnounce(lastSeen)) {
+            showing = true
+        } else if (lastSeen == null) {
+            preferences.setLastSeenNewsRevision(WhatsNew.REVISION)
+        }
+    }
+
+    if (showing) {
+        WhatsNewDialog(
+            onDismiss = {
+                showing = false
+                scope.launch { preferences.setLastSeenNewsRevision(WhatsNew.REVISION) }
+            },
+        )
     }
 }
 

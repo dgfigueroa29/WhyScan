@@ -23,7 +23,25 @@
     <string name="settings_advanced_mode">Banco de motores</string>
     <string name="settings_advanced_mode_hint">Devuelve el catálogo de motores, la comparación en paralelo y las latencias de cada lectura. Apagado por defecto: escanear un código no debería obligar a elegir un decodificador.</string>
 
+    <!-- Novedades. Una entrada por cosa que cambia cómo se comporta una pantalla, no por commit:
+         esto existe para que se descubran, y una lista de arreglos entierra las dos que importan. -->
+    <string name="news_title">Qué hay de nuevo</string>
+    <string name="news_dismiss">Entendido</string>
+    <string name="news_notes_title">Notas en tus lecturas</string>
+    <string name="news_notes_body">Agregá un texto de referencia a cualquier lectura, desde el historial o justo después de leer un código. Una tirada de dígitos es exacta e inútil; "factura de marzo" no es ninguna de las dos cosas.</string>
+    <string name="news_search_title">Búsqueda que ignora los acentos</string>
+    <string name="news_search_body">Mira el valor leído y también tu nota, y encuentra "Factúra" cuando escribís "factura".</string>
+    <string name="news_groups_title">Historial agrupado por día</string>
+    <string name="news_groups_body">Cabeceras pegajosas que dicen "Hoy" y "Ayer", que es lo que uno recuerda de verdad de una lectura que no anotó.</string>
+    <string name="news_undo_title">Deshacer un borrado</string>
+    <string name="news_undo_body">Borrar una lectura ya no pregunta: ofrece deshacer, y devuelve la fila a su sitio por fecha y con su nota.</string>
+    <string name="news_export_title">Exportar a texto plano</string>
+    <string name="news_export_body">Una lectura por línea, sin cabecera y sin comillas. CSV y JSON son para herramientas; esto es para pegar en un correo.</string>
+    <string name="news_dyslexia_title">Modo dislexia</string>
+    <string name="news_dyslexia_body">En Ajustes → Accesibilidad. Texto más grande, más espacio entre letras y más aire entre líneas.</string>
+
     <string name="settings_about">Acerca de</string>
+    <string name="settings_whats_new">Qué hay de nuevo</string>
     <string name="settings_privacy">Sin cuenta, sin rastreo y sin red. WhyScan no pide permiso de internet, así que lo que escaneás no puede salir del dispositivo.</string>
 
     <!-- Accesibilidad (RNF-05): las opciones de tema e idioma son chips cuya etiqueta sola no dice

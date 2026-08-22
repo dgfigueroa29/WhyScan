@@ -4,11 +4,11 @@
 |---|---|
 | Proyecto | WhyScan |
 | Documento | Software Design Document (SDD) |
-| Versión | 1.14 |
+| Versión | 1.15 |
 | Estado | Vigente — **el proyecto compila y pasa CI** en Android (con R8), Escritorio y Web, y el framework de iOS **enlaza entero** desde el workflow manual `ios.yml`. Fases 1, 2, 4 y 5 cerradas salvo lo listado como pendiente; la 3 (iOS) escrita y despriorizada por falta de dispositivo, no de compilación. **La app arrancó por primera vez en un dispositivo real** en la versión anterior, y ese arranque encontró un defecto que ninguna comprobación automática podía ver (§10); esta versión convierte esa comprobación en un test y, con él, destapa un segundo defecto de meses en la persistencia (§11) |
 | Fecha | 2026-08-22 |
 | Autor | Equipo WhyScan |
-| Alcance de esta versión | **Modo dislexia**: la escala tipográfica entera se ajusta con lo que la investigación sobre lectura sí respalda —espaciado, interlínea y tamaño— y no con una fuente empaquetada (§9.9). Antes: anotar desde la pantalla de escaneo, con la nota viviendo en el historial y no en el escáner (§9.10), y el id de una detección ensanchado a 64 bits ahora que de él cuelga la nota (§6.1). Antes, en la misma fase: cierre de D18 y D22 —el grafo de Android y la migración pasan a tener test (§10, §11, §13.1)—, el historial agrupado por día, deshacer un borrado, búsqueda sin acentos y exportación a texto plano (§9.7); y antes, las notas del historial (ADR-0012), marca, tema, idiomas y el rediseño del escáner (ADR-0010, ADR-0011), y el renombrado a **WhyScan** (§1.1) |
+| Alcance de esta versión | La pantalla de **qué hay de nuevo** (§9.11) y las comprobaciones sin compilador en el repositorio y en CI, que salda D23. Antes: **modo dislexia**: la escala tipográfica entera se ajusta con lo que la investigación sobre lectura sí respalda —espaciado, interlínea y tamaño— y no con una fuente empaquetada (§9.9). Antes: anotar desde la pantalla de escaneo, con la nota viviendo en el historial y no en el escáner (§9.10), y el id de una detección ensanchado a 64 bits ahora que de él cuelga la nota (§6.1). Antes, en la misma fase: cierre de D18 y D22 —el grafo de Android y la migración pasan a tener test (§10, §11, §13.1)—, el historial agrupado por día, deshacer un borrado, búsqueda sin acentos y exportación a texto plano (§9.7); y antes, las notas del historial (ADR-0012), marca, tema, idiomas y el rediseño del escáner (ADR-0010, ADR-0011), y el renombrado a **WhyScan** (§1.1) |
 
 ---
 
@@ -1161,6 +1161,8 @@ información que solo existía como posición o como color":
 | Notas desde el escáner | `commonTest` | Que la nota escrita al leer un código acabe en el historial, que reabrir el campo sobre un código ya anotado traiga lo que había —el agujero que justifica observar en vez de recordar— y que cerrar sin guardar no toque nada | kotlin-test |
 | Id de una detección | `commonTest` | Que la misma lectura dé el mismo id, que cambiar motor, instante o valor lo cambie, y que dos valores que colisionan en `hashCode()` —`"Aa"` y `"BB"`— den ids distintos (§6.1) | kotlin-test |
 | Modo dislexia | `commonTest` | Que **los quince roles** de la escala crezcan, ganen espaciado e interlínea y no conserven tracking negativo; que apagado no cambie absolutamente nada; y que el valor de un código siga siendo monoespaciado (§9.9) | kotlin-test |
+| Cuándo se anuncian las novedades | `commonTest` | Que a quien acaba de instalar **no** se le estrene nada, que a quien ya tenía la app sí, que no se repita, y que una revisión del futuro tampoco anuncie (§9.11) | kotlin-test |
+| Comprobaciones sin compilador | CI, primer paso | Paridad de catálogos entre idiomas, `Res.string.X` sin importar, claves huérfanas, `package` que no sigue a su carpeta, longitud de línea y orden de imports (`tools/checks.py`) | python3 |
 
 Objetivo de cobertura: **≥ 80 % en `:core:domain` y `:core:data`**; la UI no se persigue por
 cobertura sino por casos de estado representativos.
@@ -1827,6 +1829,51 @@ El campo va en un diálogo, que es lo único de esa pantalla que sí tapa la cá
 es lo contrario de escanear en serie —el usuario ha parado a pensar—, y un campo embutido en la hoja
 haría saltar el tamaño del visor cada vez que se abre el teclado. Guardar con el campo vacío quita la
 nota: por eso el botón de confirmar no se deshabilita nunca, o no habría forma de quitarla.
+
+---
+
+### 9.11 Qué hay de nuevo
+
+Una función que nadie encuentra es una función que no está. La nota, el buscador y la agrupación por
+día no añaden un botón en la pantalla principal: **cambian lo que hace una pantalla que el usuario ya
+creía conocer**, que es la clase de cambio que pasa desapercibida. Estrenarlas en silencio es la
+forma más cara de hacer trabajo, porque se paga entero y no lo usa nadie.
+
+El diálogo sale **una vez tras una actualización** y queda accesible desde Ajustes → Acerca de. Las
+dos cosas hacen falta: el automático porque un enlace en Ajustes que nadie visita es silencio con
+otro nombre, y el permanente porque quien lo cierra sin leerlo también se merece poder volver.
+
+#### Una revisión propia, no `versionName`
+
+`versionName` sube por arreglos que no le importan a nadie, y lo que decide si hay algo que contar es
+si han pasado **cosas contables** desde la última vez. `WhatsNew.REVISION` sube solo al añadir
+entradas. Además vive en `commonMain`, mientras que `versionName` solo existe en el módulo de
+Android.
+
+#### La regla es una función pura, y por eso tiene test
+
+```kotlin
+fun shouldAnnounce(lastSeenRevision: Int?): Boolean =
+    lastSeenRevision != null && lastSeenRevision < REVISION
+```
+
+`null` significa **nunca se ha escrito**, y no es lo mismo que cero: distingue a quien acaba de
+instalar la app —que no tiene nada que estrenar, porque para él todo es nuevo— de quien ya la tenía.
+En el primer arranque se marca la revisión en silencio y no se enseña nada; sin esa marca, el diálogo
+saltaría en la siguiente actualización contándole cosas que para él siempre estuvieron ahí.
+
+La revisión se marca **al cerrar** el diálogo y no al abrirlo: marcarla al abrirlo dejaría sin
+novedades a quien cierre la app antes de leerlas.
+
+#### La carrera que apareció al escribirlo
+
+La primera versión leía la revisión del estado ya observado, y era una carrera de las que solo se ven
+en un dispositivo. `collectAsStateWithLifecycle` necesita un valor inicial, y ese valor es
+`AppPreferences()` con la revisión a `null`: durante la primera composición **un usuario con
+novedades pendientes parece recién instalado**, así que se le habrían marcado como vistas antes de
+que llegara su valor de disco. Se resuelve pidiendo el valor con `current()`, que devuelve el ya
+leído y no tiene ese hueco. Es el mismo patrón que la carrera del catálogo en §9.10: un valor inicial
+de conveniencia usado como si fuera un dato.
 
 ---
 

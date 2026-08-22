@@ -404,8 +404,18 @@ sea explícita.
 
 **Lo que hace falta antes de publicar de verdad**
 
-- [ ] **Una pantalla de "qué hay de nuevo"** o, como mínimo, no estrenar funciones en silencio. La
-      nota y el buscador no se descubren solos
+- [x] **Qué hay de nuevo.** Una función que nadie encuentra es una función que no está: la nota, el
+      buscador y la agrupación por día no añaden un botón, cambian lo que hace una pantalla que el
+      usuario ya creía conocer. El diálogo sale **una sola vez tras una actualización** y queda
+      accesible desde Ajustes → Acerca de, porque quien lo cierra sin leerlo también se merece
+      poder volver. Lo que decide si hay algo que contar es una **revisión propia** y no
+      `versionName`: esa sube por arreglos que no le importan a nadie, y además solo existe en el
+      módulo de Android. **A quien acaba de instalar no se le estrena nada** —para él todo es
+      nuevo—, y ese caso es una función pura con su test, no una condición suelta dentro de un
+      `LaunchedEffect`. Escribiendo la primera versión apareció una carrera de las que solo se ven
+      en un dispositivo: leer la revisión del estado observado la daba por `null` durante la primera
+      composición, así que a un usuario con novedades pendientes se le habrían marcado como vistas
+      antes de que llegara su valor de disco
 - [ ] **Baseline Profile.** Es la optimización con mejor relación resultado/esfuerzo en Android y
       encaja mal con lo que este proyecto puede hacer sin dispositivo, así que conviene decidirlo con
       datos del punto anterior y no antes

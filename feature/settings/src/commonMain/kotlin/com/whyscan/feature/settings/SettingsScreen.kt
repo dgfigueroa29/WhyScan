@@ -20,12 +20,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.whyscan.core.designsystem.Spacing
 import com.whyscan.core.designsystem.WhyScanMark
@@ -52,6 +57,7 @@ import com.whyscan.feature.settings.resources.settings_theme_dark
 import com.whyscan.feature.settings.resources.settings_theme_hint
 import com.whyscan.feature.settings.resources.settings_theme_light
 import com.whyscan.feature.settings.resources.settings_theme_system
+import com.whyscan.feature.settings.resources.settings_whats_new
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -69,6 +75,12 @@ fun SettingsContent(
     onAction: (SettingsAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var showWhatsNew by remember { mutableStateOf(false) }
+
+    if (showWhatsNew) {
+        WhatsNewDialog(onDismiss = { showWhatsNew = false })
+    }
+
     LazyColumn(
         modifier = modifier.fillMaxSize().padding(horizontal = Spacing.md),
         verticalArrangement = Arrangement.spacedBy(Spacing.md),
@@ -114,6 +126,15 @@ fun SettingsContent(
 
         item {
             SettingsSection(stringResource(Res.string.settings_about)) {
+                // Las novedades siguen accesibles después de haberlas cerrado. El diálogo automático
+                // se ve una vez y quien lo descarta sin leerlo se queda sin saber qué cambió.
+                TextButton(
+                    onClick = { showWhatsNew = true },
+                    contentPadding = PaddingValues(0.dp),
+                ) {
+                    Text(stringResource(Res.string.settings_whats_new))
+                }
+
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
                     verticalAlignment = Alignment.CenterVertically,

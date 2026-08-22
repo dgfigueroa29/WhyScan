@@ -145,4 +145,8 @@ private class FakeAppPreferencesRepository : AppPreferencesRepository {
     override suspend fun setDyslexiaFriendly(enabled: Boolean) {
         state.update { it.copy(dyslexiaFriendly = enabled) }
     }
+
+    override suspend fun setLastSeenNewsRevision(revision: Int) {
+        state.update { it.copy(lastSeenNewsRevision = revision) }
+    }
 }
