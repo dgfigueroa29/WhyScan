@@ -33,6 +33,7 @@ import com.whyscan.feature.scanner.resources.message_no_code_in_image
 import com.whyscan.feature.scanner.resources.message_note_removed
 import com.whyscan.feature.scanner.resources.message_note_saved
 import com.whyscan.feature.scanner.resources.message_open_failed
+import com.whyscan.feature.scanner.resources.message_operation_failed
 import com.whyscan.feature.scanner.resources.message_share_failed
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
@@ -238,6 +239,7 @@ private suspend fun resolve(message: ScannerMessage): String = when (message) {
     ScannerMessage.ShareFailed -> getString(Res.string.message_share_failed)
     ScannerMessage.OpenFailed -> getString(Res.string.message_open_failed)
     ScannerMessage.NoCodeInImage -> getString(Res.string.message_no_code_in_image)
+    ScannerMessage.OperationFailed -> getString(Res.string.message_operation_failed)
     ScannerMessage.NoteSaved -> getString(Res.string.message_note_saved)
     ScannerMessage.NoteRemoved -> getString(Res.string.message_note_removed)
     is ScannerMessage.Raw -> message.text

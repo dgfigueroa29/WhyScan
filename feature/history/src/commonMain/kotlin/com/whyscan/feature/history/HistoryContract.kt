@@ -20,6 +20,15 @@ data class HistoryState(
     val isExporting: Boolean = false,
     /** Está pidiendo confirmación para vaciar el historial entero. */
     val isConfirmingClear: Boolean = false,
+    /**
+     * El historial no se pudo leer: disco lleno, base corrupta, permisos del sistema de archivos.
+     *
+     * Existe para no mentir. Sin esto, un fallo de lectura dejaba la lista vacía y la pantalla decía
+     * "todavía no escaneaste nada", que es exactamente lo contrario de lo que pasa: **hay datos y no
+     * se pudieron leer**. Es el mismo defecto que llevó a distinguir el vacío del filtrado, en un
+     * caso peor — aquel confundía dos vacíos, este da por perdido lo que puede seguir ahí.
+     */
+    val loadFailed: Boolean = false,
 ) {
     /**
      * Lo que se ve: filtro de motor y búsqueda, en ese orden.
@@ -37,7 +46,7 @@ data class HistoryState(
     val presentEngines: List<ScannerEngineId>
         get() = entries.map { it.detection.engineId }.distinct().sortedBy { it.id }
 
-    val isEmpty: Boolean get() = !isLoading && entries.isEmpty()
+    val isEmpty: Boolean get() = !isLoading && !loadFailed && entries.isEmpty()
 
     /** Hay historial, pero el filtro o la búsqueda no dejan nada. Es un vacío distinto del otro. */
     val isFilteredEmpty: Boolean get() = !isLoading && entries.isNotEmpty() && visible.isEmpty()

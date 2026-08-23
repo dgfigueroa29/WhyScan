@@ -70,6 +70,8 @@
     <string name="message_exported">Historial exportado</string>
     <string name="message_exported_to">Guardado en %1$s</string>
     <string name="message_nothing_to_export">No hay nada que exportar</string>
+    <string name="history_load_failed">No se pudo leer el historial. Tus lecturas pueden seguir ahí: probá cerrando y abriendo la app.</string>
+    <string name="message_operation_failed">No se pudo guardar. Puede que al dispositivo le falte espacio.</string>
     <string name="message_note_saved">Nota guardada</string>
     <string name="message_note_removed">Nota eliminada</string>
     <string name="message_entry_deleted">Lectura eliminada</string>

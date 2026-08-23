@@ -79,6 +79,7 @@
     <string name="message_copy_failed">Could not copy to the clipboard</string>
     <string name="message_share_failed">Could not open the share sheet</string>
     <string name="message_open_failed">No app can open this</string>
+    <string name="message_operation_failed">That scan could not be saved. The device may be out of space.</string>
     <string name="message_no_code_in_image">No code found in that image</string>
 
     <!-- Engine comparison (G5) -->

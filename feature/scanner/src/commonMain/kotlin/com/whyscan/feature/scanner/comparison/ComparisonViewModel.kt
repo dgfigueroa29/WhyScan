@@ -2,12 +2,14 @@ package com.whyscan.feature.scanner.comparison
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.whyscan.core.domain.concurrency.launchCatching
 import com.whyscan.core.domain.repository.ScanPreferencesRepository
 import com.whyscan.core.domain.scan.EngineScoreboard
 import com.whyscan.core.domain.usecase.ComparisonPlan
 import com.whyscan.core.domain.usecase.StartComparisonUseCase
 import com.whyscan.core.model.ScanRequest
 import com.whyscan.core.scanner.ScanEvent
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,8 +35,22 @@ class ComparisonViewModel(
     private var sessionJob: Job? = null
 
     init {
-        viewModelScope.launch { refreshPlan() }
+        launchSafely { refreshPlan() }
     }
+
+    /**
+     * Como `viewModelScope.launch`, pero un fallo detiene la comparación en vez de matar la app.
+     *
+     * Aquí el `onFailure` no emite mensaje y sí toca el estado: esta pantalla es diagnóstico de modo
+     * avanzado y lo honesto ante un fallo es que **la comparación deje de decir que está corriendo**.
+     * El campo `error` del estado no vale para esto: es para los errores que reporta un motor, que
+     * son un tipo del dominio y no una excepción de entrada/salida.
+     */
+    private fun launchSafely(block: suspend CoroutineScope.() -> Unit) =
+        viewModelScope.launchCatching(
+            onFailure = { _state.update { it.copy(isRunning = false) } },
+            block = block,
+        )
 
     fun onAction(action: ComparisonAction) {
         when (action) {
@@ -72,11 +88,11 @@ class ComparisonViewModel(
         sessionJob?.cancel()
         _state.update { it.copy(isRunning = true, scoreboard = EngineScoreboard.Empty, error = null) }
 
-        sessionJob = viewModelScope.launch {
+        sessionJob = launchSafely {
             refreshPlan()
             if (_state.value.notEnoughEngines) {
                 _state.update { it.copy(isRunning = false) }
-                return@launch
+                return@launchSafely
             }
             startComparison(buildRequest()).collect(::reduce)
         }

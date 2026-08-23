@@ -50,6 +50,7 @@ import com.whyscan.feature.history.resources.history_export_csv
 import com.whyscan.feature.history.resources.history_export_json
 import com.whyscan.feature.history.resources.history_export_text
 import com.whyscan.feature.history.resources.history_filter_all
+import com.whyscan.feature.history.resources.history_load_failed
 import com.whyscan.feature.history.resources.history_no_matches
 import com.whyscan.feature.history.resources.history_search
 import com.whyscan.feature.history.resources.history_search_clear
@@ -64,6 +65,7 @@ import com.whyscan.feature.history.resources.message_note_removed
 import com.whyscan.feature.history.resources.message_note_saved
 import com.whyscan.feature.history.resources.message_nothing_to_export
 import com.whyscan.feature.history.resources.message_open_failed
+import com.whyscan.feature.history.resources.message_operation_failed
 import com.whyscan.feature.history.resources.message_share_failed
 import com.whyscan.feature.history.resources.message_undo
 import com.whyscan.feature.history.resources.month_1
@@ -146,6 +148,10 @@ fun HistoryContent(
         state.isLoading -> Centered(modifier) { CircularProgressIndicator() }
 
         state.isEmpty -> Centered(modifier) { EmptyMessage(stringResource(Res.string.history_empty)) }
+
+        // No se pudo leer, que no es lo mismo que no haber nada. Decir "todavía no escaneaste nada"
+        // sobre un historial que existe y no se pudo abrir es dar por perdido lo que sigue ahí.
+        state.loadFailed -> Centered(modifier) { EmptyMessage(stringResource(Res.string.history_load_failed)) }
 
         else -> Column(modifier = modifier.fillMaxSize().padding(Spacing.md)) {
             SearchField(query = state.query, onAction = onAction)
@@ -403,6 +409,7 @@ private suspend fun resolve(message: HistoryMessage): String = when (message) {
     HistoryMessage.ShareFailed -> getString(Res.string.message_share_failed)
     HistoryMessage.OpenFailed -> getString(Res.string.message_open_failed)
     HistoryMessage.NothingToExport -> getString(Res.string.message_nothing_to_export)
+    HistoryMessage.OperationFailed -> getString(Res.string.message_operation_failed)
     HistoryMessage.NoteSaved -> getString(Res.string.message_note_saved)
     HistoryMessage.NoteRemoved -> getString(Res.string.message_note_removed)
     HistoryMessage.EntryDeleted -> getString(Res.string.message_entry_deleted)

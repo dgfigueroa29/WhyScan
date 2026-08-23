@@ -458,12 +458,21 @@ salió, ordenado por lo que costaría equivocarse.
 
 **Pendiente, por orden de impacto**
 
-- [ ] **Treinta `viewModelScope.launch` sin una sola red de seguridad.** Cero
-      `CoroutineExceptionHandler`, dos `runCatching` en todo `feature/*/commonMain`. Una excepción
-      de Room —disco lleno, `SQLITE_FULL`, base corrupta— sube por el `launch` y **mata la app**. Se
-      combina mal con que `fallbackToDestructiveMigrationOnDowngrade` no cubre corrupción: base
-      corrupta → excepción al abrir → **crash permanente en el arranque** que el usuario no puede
-      deshacer sin borrar los datos. Es el peor modo de fallo que existe y este proyecto ya vivió uno
+- [x] **Treinta `viewModelScope.launch` sin una sola red de seguridad.** `viewModelScope` es
+      `SupervisorJob() + Dispatchers.Main.immediate`, y el supervisor solo evita que un hijo que
+      falla cancele a sus hermanos: la excepción **sigue subiendo** hasta el manejador por defecto
+      del hilo, que mata el proceso. Y como Room abre el archivo de forma perezosa —en la primera
+      consulta, no al construir la base— esa primera consulta ocurre siempre dentro de una
+      corrutina: **una base corrupta era un cierre en el arranque** que el usuario no podía deshacer
+      sin borrar los datos de la app. Lo cierra `launchCatching`, con dos decisiones que son la
+      mitad del valor: **la `CancellationException` se relanza** —tragarla rompe la concurrencia
+      estructurada y convertiría cada salida de pantalla en un error delante del usuario— y **se
+      captura `Exception` y no `Throwable`**, porque un `OutOfMemoryError` dice que el proceso ya no
+      está en condiciones de seguir. No es un `CoroutineExceptionHandler` en el ámbito a propósito:
+      eso capturaría también los errores de programación y los volvería un mensajito, que con un CI
+      que no ejecuta la app los haría invisibles para siempre. Aquí cada sitio se acoge a mano.
+      El historial gana además un estado `loadFailed`, porque un fallo de lectura dejaba la lista
+      vacía y la pantalla decía "todavía no escaneaste nada" sobre un historial que sí existe
 - [ ] **El objetivo de cobertura no lo mide nada.** El SDD §13.1 dice "≥ 80 % en `:core:domain` y
       `:core:data`" y no hay Kover ni JaCoCo: 51 ficheros de test para ~19.000 líneas y **nadie sabe
       el número**. O se instrumenta o se borra la frase; un objetivo sin medición no disciplina nada

@@ -12,6 +12,16 @@ sealed interface HistoryMessage {
 
     data object Copied : HistoryMessage
 
+    /**
+     * Algo que toca disco falló: la base, el archivo de la exportación.
+     *
+     * Un solo mensaje para todas esas causas, y a propósito. Al usuario no le sirve distinguir
+     * `SQLITE_FULL` de un permiso denegado —no puede hacer nada distinto con esa información— y lo
+     * que sí le sirve es enterarse de que **su acción no se guardó**, que es justo lo que antes no
+     * pasaba: la app se cerraba.
+     */
+    data object OperationFailed : HistoryMessage
+
     data object CopyFailed : HistoryMessage
 
     data object ShareFailed : HistoryMessage

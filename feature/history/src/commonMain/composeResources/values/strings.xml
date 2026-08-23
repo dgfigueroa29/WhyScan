@@ -71,6 +71,8 @@
     <string name="message_exported">History exported</string>
     <string name="message_exported_to">Saved to %1$s</string>
     <string name="message_nothing_to_export">There is nothing to export</string>
+    <string name="history_load_failed">The history could not be read. Your scans may still be there — try reopening the app.</string>
+    <string name="message_operation_failed">That could not be saved. The device may be out of space.</string>
     <string name="message_note_saved">Note saved</string>
     <string name="message_note_removed">Note removed</string>
     <string name="message_entry_deleted">Scan deleted</string>

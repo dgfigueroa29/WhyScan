@@ -2,6 +2,7 @@ package com.whyscan.feature.history
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.whyscan.core.domain.concurrency.launchCatching
 import com.whyscan.core.domain.export.ExportFormat
 import com.whyscan.core.domain.export.HistoryExporter
 import com.whyscan.core.domain.scan.ResultAction
@@ -11,12 +12,14 @@ import com.whyscan.core.model.ScannerEngineId
 import com.whyscan.core.platform.FileSaver
 import com.whyscan.core.platform.PlatformActions
 import com.whyscan.core.platform.SaveFileResult
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -50,11 +53,30 @@ class HistoryViewModel(
 
     init {
         viewModelScope.launch {
-            history.observe().collect { entries ->
-                _state.update { it.copy(entries = entries, isLoading = false) }
-            }
+            history.observe()
+                // `catch` sobre el flujo y no un `try` alrededor del `collect`, que es lo que
+                // parece equivalente y no lo es: `catch` solo intercepta lo que falla **aguas
+                // arriba**, así que un fallo al leer la base se trata y un fallo del propio
+                // `update` sigue subiendo, que es lo correcto — ese sería un defecto nuestro.
+                .catch { _state.update { state -> state.copy(isLoading = false, loadFailed = true) } }
+                .collect { entries ->
+                    _state.update { it.copy(entries = entries, isLoading = false, loadFailed = false) }
+                }
         }
     }
+
+    /**
+     * Como `viewModelScope.launch`, pero un fallo se le cuenta al usuario en vez de matar la app.
+     *
+     * Todo lo que hay debajo de este ViewModel toca disco: la base del historial y el archivo de la
+     * exportación. Antes, una excepción de Room —disco lleno, base corrupta— subía por el `launch`
+     * hasta el manejador por defecto del hilo y cerraba el proceso. Ver `launchCatching`.
+     */
+    private fun launchSafely(block: suspend CoroutineScope.() -> Unit) =
+        viewModelScope.launchCatching(
+            onFailure = { _effects.emit(HistoryEffect.ShowMessage(HistoryMessage.OperationFailed)) },
+            block = block,
+        )
 
     fun onAction(action: HistoryAction) {
         when (action) {
@@ -83,7 +105,7 @@ class HistoryViewModel(
      * pegarlo en otro lado. Sin esto, el historial solo servía para mirar.
      */
     private fun runResultAction(action: ResultAction, text: String) {
-        viewModelScope.launch {
+        launchSafely {
             val (succeeded, failure) = when (action) {
                 ResultAction.Copy ->
                     platformActions.copyToClipboard(text) to HistoryMessage.CopyFailed
@@ -119,7 +141,7 @@ class HistoryViewModel(
     private fun setNote(detectionId: String, note: String) {
         _state.update { it.copy(editingNoteFor = null) }
 
-        viewModelScope.launch {
+        launchSafely {
             history.setNote(detectionId, note)
 
             val message = if (HistoryEntry.normalizeNote(note) == null) {
@@ -142,7 +164,7 @@ class HistoryViewModel(
         val entry = _state.value.entries.firstOrNull { it.id == detectionId } ?: return
         lastDeleted = entry
 
-        viewModelScope.launch {
+        launchSafely {
             history.delete(detectionId)
             _effects.emit(HistoryEffect.ShowMessage(HistoryMessage.EntryDeleted, undoable = true))
         }
@@ -159,7 +181,7 @@ class HistoryViewModel(
         val entry = lastDeleted ?: return
         lastDeleted = null
 
-        viewModelScope.launch { history.restore(entry) }
+        launchSafely { history.restore(entry) }
     }
 
     /**
@@ -179,7 +201,7 @@ class HistoryViewModel(
 
         _state.update { it.copy(isExporting = true) }
 
-        viewModelScope.launch {
+        launchSafely {
             try {
                 val result = fileSaver.save(
                     suggestedName = HistoryExporter.fileName(format),
@@ -204,6 +226,6 @@ class HistoryViewModel(
     /** Solo se llega aquí tras confirmar: ver la nota de `HistoryAction.ConfirmClear`. */
     private fun clear() {
         _state.update { it.copy(isConfirmingClear = false) }
-        viewModelScope.launch { history.clear() }
+        launchSafely { history.clear() }
     }
 }
