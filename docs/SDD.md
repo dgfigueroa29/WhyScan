@@ -1201,6 +1201,7 @@ información que solo existía como posición o como color":
 | Cobertura | CI, tras los tests | Que `:core:domain` y `:core:data` no bajen del 80 % de líneas, y **por dónde** cuando bajan (`tools/coverage.py` sobre los informes de Kover) | Kover + python3 |
 | Escapado de los destinos | `commonTest` | Que una dirección con `?cc=…&body=…` dentro no componga un correo ajeno, que un asunto no cuele parámetros, que una `#` no parta un `tel:` y que el `+` internacional y los acentos sobrevivan (§9.5) | kotlin-test |
 | Dependencias | CI, en cada PR | Que lo que añade un PR no traiga vulnerabilidades conocidas de severidad alta (`dependencies.yml`), sobre el grafo que `dependency-submission` publica desde `main` | dependency-review-action |
+| **Composición de la raíz** | `desktopTest` | Que `App()` **se componga** sobre el grafo real —no que resuelva, que es lo que ya cubre `KoinGraphTest`— y que sin modo avanzado el comparador no esté en la barra (`AppCompositionTest`, §10) | compose.uiTest |
 
 Objetivo de cobertura: **≥ 80 % de líneas en `:core:domain` y `:core:data`**; la UI no se persigue
 por cobertura sino por casos de estado representativos.
@@ -1239,6 +1240,14 @@ el grafo. Es un caso distinto del de la cámara — ahí hace falta hardware, aq
 y el `platformModule` de escritorio —y en su primera ejecución destapó el driver de la base de datos
 que nunca se aplicaba (§11)—; `AndroidKoinGraphTest` cubre el de Android, que es donde estaba el
 defecto original.
+
+**Y que el grafo resuelva no es que la app se pinte.** Queda una familia de fallos con el mismo
+final —un `CompositionLocal` que falta, un `stringResource` cuya clave se borró de un catálogo, un
+`remember` que lanza— que ningún test de grafo puede ver. `AppCompositionTest` monta `App()` con
+`runComposeUiTest`, en la JVM y sin emulador, sobre el grafo real de escritorio. Arranca en Ajustes
+y no en el escáner: montar el escáner pediría cámara, y mezclar lo que necesita hardware con lo que
+no lo convertiría en un test que no se ejecuta nunca. El hueco de que ningún test lea un código con
+una cámara de verdad sigue abierto en el ROADMAP, y esto no lo cierra ni lo disimula.
 
 **El segundo obligó a matizar D6, y el matiz merece quedar escrito.** "No hay tests instrumentados"
 se leía como "nada que diga Android", y no era eso: el argumento era que sin emulador en CI, un test

@@ -485,9 +485,15 @@ salió, ordenado por lo que costaría equivocarse.
       solo test pese a guardar dos decisiones que solo vivían en comentarios —los enums por su `id`
       estable, y `null` distinto de cero en `lastSeenNewsRevision`—, y las dos se rompen sin que
       compile nada mal. Resultado: `:core:data` de 60,8 % a **83,7 %**, y `--min 80` exigido en CI
-- [ ] **Nada compone la raíz.** `KoinGraphTest` cubre que el grafo resuelva, pero sigue sin haber
-      nada que monte `App()`. `runComposeUiTest` corre en la JVM sin emulador y cerraría la mitad de
-      D18 que quedó abierta
+- [x] ~~**Nada compone la raíz.**~~ `AppCompositionTest` monta `App()` con `runComposeUiTest`, en la
+      JVM y sin emulador, sobre el grafo **real** de escritorio: un doble ahí comprobaría que Compose
+      sabe pintar dobles. Cierra la familia de fallos que `KoinGraphTest` no ve —un
+      `CompositionLocal` que falta, un `stringResource` cuya clave se borró, un `remember` que
+      lanza—, todos con el mismo final que el defecto original de D18: compila, pasa lint, pasa R8 y
+      revienta al abrir la app. Arranca en Ajustes y no en el escáner porque montar el escáner
+      pediría cámara, y un test que exige hardware es un test que no corre en cada PR. Fija además
+      que sin modo avanzado el comparador **no** esté en la barra, que hasta ahora solo se sostenía
+      en `destinationsFor`
 - [x] ~~**Nada vigila las dependencias.**~~ Dependabot semanal sobre el catálogo de versiones y sobre
       las propias actions —que son código de terceros corriendo con el token del repositorio—, y
       `dependency-review-action` en cada PR. Va agrupado y con pocos PR abiertos a la vez a
