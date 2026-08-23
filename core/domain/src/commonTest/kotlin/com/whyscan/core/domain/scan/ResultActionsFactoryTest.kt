@@ -91,6 +91,67 @@ class ResultActionsFactoryTest {
     }
 
     @Test
+    fun `una direccion no puede colar parametros propios en el mailto`() {
+        // El caso que justifica escapar. En un lector de códigos el atacante controla el contenido
+        // entero y la víctima solo apunta la cámara: sin codificar, esto compone un correo con
+        // copia y cuerpo puestos por quien imprimió el QR, a nombre de quien lo leyó.
+        val action = openAction(
+            barcode(
+                value = "x",
+                type = BarcodeValueType.Email(
+                    address = "a@b.com?cc=atacante@x.com&body=Mandame la clave",
+                    subject = null,
+                ),
+            ),
+        )
+
+        val uri = action?.uri.orEmpty()
+        assertTrue("?cc=" !in uri, "la dirección coló un parámetro: $uri")
+        assertTrue("&body=" !in uri, "la dirección coló un cuerpo: $uri")
+        assertTrue(uri.startsWith("mailto:a@b.com%3F"), "se perdió la dirección real: $uri")
+    }
+
+    @Test
+    fun `un asunto tampoco puede colar parametros propios`() {
+        val action = openAction(
+            barcode(
+                value = "x",
+                type = BarcodeValueType.Email(address = "a@b.com", subject = "Hola&cc=atacante@x.com"),
+            ),
+        )
+
+        assertEquals("mailto:a@b.com?subject=Hola%26cc%3Datacante%40x.com", action?.uri)
+    }
+
+    @Test
+    fun `un asunto con acentos sobrevive entero`() {
+        // Codificado byte a byte sobre UTF-8, que es lo que pide RFC 3986: la eñe son dos bytes.
+        val action = openAction(
+            barcode("x", BarcodeValueType.Email(address = "a@b.com", subject = "Año")),
+        )
+
+        assertEquals("mailto:a@b.com?subject=A%C3%B1o", action?.uri)
+    }
+
+    @Test
+    fun `una almohadilla en un telefono no parte el URI`() {
+        // Sin codificar, el `#` es el separador de fragmento: lo que se marcaría no sería lo que el
+        // usuario está leyendo en la pantalla.
+        val action = openAction(barcode("x", BarcodeValueType.Phone("600111222#666")))
+
+        assertEquals("tel:600111222%23666", action?.uri)
+    }
+
+    @Test
+    fun `un telefono conserva lo que un marcador necesita`() {
+        // El `+` internacional y los separadores visuales se dejan tal cual: codificarlos no aporta
+        // seguridad y `%2B` confunde a algunos marcadores.
+        val action = openAction(barcode("x", BarcodeValueType.Phone("+34 (600) 111-222")))
+
+        assertEquals("tel:+34%20(600)%20111-222", action?.uri)
+    }
+
+    @Test
     fun `un texto plano solo se copia o comparte`() {
         val actions = ResultActionsFactory.actionsFor(
             barcode("hola", BarcodeValueType.Text("hola")),

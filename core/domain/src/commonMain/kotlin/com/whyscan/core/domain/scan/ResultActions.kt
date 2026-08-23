@@ -98,17 +98,26 @@ object ResultActionsFactory {
     private fun openActionFor(value: BarcodeValueType): ResultAction.Open? = when (value) {
         is BarcodeValueType.Url -> ResultAction.Open(value.url, OpenKind.Link)
 
+        // Todo lo que viene del código se codifica antes de entrar en el URI (ver `percentEncode`).
+        // Concatenar crudo dejaba que una dirección con `?cc=…&body=…` dentro compusiera un correo
+        // entero —destinatarios y texto— a nombre de quien solo apuntó la cámara.
         is BarcodeValueType.Email -> ResultAction.Open(
             uri = buildString {
-                append("mailto:${value.address}")
-                value.subject?.let { append("?subject=$it") }
+                append("mailto:${percentEncode(value.address, alsoKeep = "@")}")
+                value.subject?.let { append("?subject=${percentEncode(it)}") }
             },
             kind = OpenKind.Email,
         )
 
-        is BarcodeValueType.Phone -> ResultAction.Open("tel:${value.number}", OpenKind.Phone)
+        is BarcodeValueType.Phone -> ResultAction.Open(
+            uri = "tel:${percentEncode(value.number, alsoKeep = PHONE_KEEP)}",
+            kind = OpenKind.Phone,
+        )
 
-        is BarcodeValueType.Sms -> ResultAction.Open("sms:${value.number}", OpenKind.Sms)
+        is BarcodeValueType.Sms -> ResultAction.Open(
+            uri = "sms:${percentEncode(value.number, alsoKeep = PHONE_KEEP)}",
+            kind = OpenKind.Sms,
+        )
 
         is BarcodeValueType.GeoPoint -> ResultAction.Open(
             uri = "geo:${value.latitude},${value.longitude}",
@@ -123,3 +132,13 @@ object ResultActionsFactory {
         else -> null
     }
 }
+
+/**
+ * Lo que un teléfono legítimo necesita y por eso no se codifica.
+ *
+ * El `+` inicial es el prefijo internacional de RFC 3966 y algunos marcadores no entienden `%2B`;
+ * los paréntesis, guiones y puntos son separadores visuales que la gente escribe. Fuera de esta
+ * lista va todo codificado, `#` incluido: sin codificar, un `#` corta el URI y convierte el resto
+ * del número en un fragmento, así que lo que se marcaría no sería lo que el usuario está leyendo.
+ */
+private const val PHONE_KEEP = "+-.()"

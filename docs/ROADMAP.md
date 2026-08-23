@@ -484,16 +484,23 @@ salió, ordenado por lo que costaría equivocarse.
       se borraron. La otra mitad sí era un hueco: `SettingsAppPreferencesRepository` no tenía un
       solo test pese a guardar dos decisiones que solo vivían en comentarios —los enums por su `id`
       estable, y `null` distinto de cero en `lastSeenNewsRevision`—, y las dos se rompen sin que
-      compile nada mal
+      compile nada mal. Resultado: `:core:data` de 60,8 % a **83,7 %**, y `--min 80` exigido en CI
 - [ ] **Nada compone la raíz.** `KoinGraphTest` cubre que el grafo resuelva, pero sigue sin haber
       nada que monte `App()`. `runComposeUiTest` corre en la JVM sin emulador y cerraría la mitad de
       D18 que quedó abierta
-- [ ] **Nada vigila las dependencias.** Sin `INTERNET` la superficie es pequeña, pero ML Kit,
-      CameraX, ZXing y el detector del navegador **parsean entrada no confiable**: imágenes y códigos
-      que trae un desconocido. Dependabot y `dependency-review-action` en los PR
-- [ ] **`mailto:` se concatena sin escapar.** `"mailto:${address}?subject=${subject}"` deja inyectar
-      parámetros desde un QR ajeno. En Android acaba en un compositor que el usuario ve antes de
-      enviar, así que es asistencia a phishing y no ejecución — pero es una línea de escape
+- [x] ~~**Nada vigila las dependencias.**~~ Dependabot semanal sobre el catálogo de versiones y sobre
+      las propias actions —que son código de terceros corriendo con el token del repositorio—, y
+      `dependency-review-action` en cada PR. Va agrupado y con pocos PR abiertos a la vez a
+      propósito: un Dependabot que abre quince el lunes se ignora en la tercera semana, y entonces
+      no vigila nada. Con `gradle/actions/dependency-submission` en `main`, sin lo cual GitHub no
+      sabe leer un proyecto Gradle y la revisión pasaría siempre en verde sin mirar una línea
+- [x] ~~**`mailto:` se concatena sin escapar.**~~ Y no era solo el `mailto:`: `tel:` y `sms:`
+      concatenaban igual. Todo lo que viene del código pasa ahora por `percentEncode`, que conserva
+      lo que un destino legítimo necesita —la `@` del buzón, el `+` internacional, los separadores
+      visuales de un número— y codifica lo demás sobre UTF-8. Cierra dos cosas: una dirección con
+      `?cc=…&body=…` dentro componía un correo entero a nombre de quien solo apuntó la cámara, y una
+      `#` en un teléfono partía el URI en un fragmento, así que lo que se marcaba no era lo que el
+      usuario estaba leyendo
 
 **Mirado y correcto, para no volver a gastar escrutinio ahí**
 

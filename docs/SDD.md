@@ -1199,6 +1199,8 @@ información que solo existía como posición o como color":
 | Declarado contra resuelto | CI, tras detekt | Que ninguna versión escrita en `libs.versions.toml` quede sustituida por el grafo de dependencias (`tools/check_resolved_versions.py`, D24) | python3 + informe de Gradle |
 | Preferencias de app | `commonTest` | Que tema, idioma y modo dislexia sobrevivan a reabrir; que los enums se guarden por su **`id` estable** y no por su nombre de Kotlin; que un id retirado vuelva al valor por defecto en vez de romper el arranque; y que **haber visto la tanda cero no sea lo mismo que no haber visto ninguna** | kotlin-test, turbine, multiplatform-settings-test |
 | Cobertura | CI, tras los tests | Que `:core:domain` y `:core:data` no bajen del 80 % de líneas, y **por dónde** cuando bajan (`tools/coverage.py` sobre los informes de Kover) | Kover + python3 |
+| Escapado de los destinos | `commonTest` | Que una dirección con `?cc=…&body=…` dentro no componga un correo ajeno, que un asunto no cuele parámetros, que una `#` no parta un `tel:` y que el `+` internacional y los acentos sobrevivan (§9.5) | kotlin-test |
+| Dependencias | CI, en cada PR | Que lo que añade un PR no traiga vulnerabilidades conocidas de severidad alta (`dependencies.yml`), sobre el grafo que `dependency-submission` publica desde `main` | dependency-review-action |
 
 Objetivo de cobertura: **≥ 80 % de líneas en `:core:domain` y `:core:data`**; la UI no se persigue
 por cobertura sino por casos de estado representativos.
@@ -1214,7 +1216,8 @@ mide no dice cuándo se incumple, así que se incumple sin que nadie se entere. 
 módulo de Koin declaraba desde que Room y el almacén de `Settings` las sustituyeron (deudas D1 y D3,
 cerradas hace tiempo). Escribirles tests habría subido el número sin proteger nada; se borraron. La
 otra mitad sí era un hueco de verdad —`SettingsAppPreferencesRepository` no tenía un solo test pese a
-guardar dos decisiones documentadas en comentarios— y ahí sí se escribieron.
+guardar dos decisiones documentadas en comentarios— y ahí sí se escribieron. Con las dos cosas,
+`:core:data` quedó en **83,7 %** (128/153 líneas) y el umbral pasó a exigirse de verdad.
 
 **Se mide por módulo, y eso deja una sombra que conviene conocer.** El informe de `:core:domain`
 cuenta solo lo que ejecutan **sus** tests, así que la lógica de `ThemeMode` y `AppLanguage` aparece
@@ -1512,6 +1515,19 @@ a ningún sitio: elegir un buscador sería una decisión de producto disfrazada 
 
 Copiar tampoco usa el valor crudo cuando hay algo mejor: `shareableText` de un QR de WiFi devuelve
 `Red: X · Clave: Y`, porque pegarle a alguien `WIFI:T:WPA;S:…;;` no le sirve de nada.
+
+**Todo lo que entra en uno de esos esquemas va codificado en porcentaje** (`percentEncode`), y esto
+no es formalismo. En un lector de códigos el atacante controla el contenido entero y la víctima solo
+apunta la cámara: concatenando crudo, una dirección que contuviera `a@b.com?cc=…&body=…` producía un
+`mailto:` con destinatarios y cuerpo puestos por quien imprimió el código, y una `#` dentro de un
+teléfono partía el URI en un fragmento, de modo que lo que se marcaba no era lo que el usuario estaba
+leyendo en pantalla. No llega a ser ejecución de nada —el URI acaba en un compositor o en un marcador
+que el usuario ve antes de confirmar— pero sí es asistencia a phishing, y cuesta una línea por campo.
+
+Se conserva lo que un destino legítimo necesita —la `@` que separa buzón de dominio, el `+`
+internacional de RFC 3966, los separadores visuales de un número— y se codifica todo lo demás, byte
+a byte sobre UTF-8 para que un asunto con acentos llegue entero. El criterio es ese y no el
+contrario: se permite lo que hace falta, no se prohíbe lo que se recuerda.
 
 `PlatformActions` es **una sola interfaz**, no tres segregadas como las capacidades de los motores
 (§7.2). La diferencia es real: un motor puede implementar unas capacidades y otras no, y la UI
