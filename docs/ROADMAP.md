@@ -473,9 +473,18 @@ salió, ordenado por lo que costaría equivocarse.
       que no ejecuta la app los haría invisibles para siempre. Aquí cada sitio se acoge a mano.
       El historial gana además un estado `loadFailed`, porque un fallo de lectura dejaba la lista
       vacía y la pantalla decía "todavía no escaneaste nada" sobre un historial que sí existe
-- [ ] **El objetivo de cobertura no lo mide nada.** El SDD §13.1 dice "≥ 80 % en `:core:domain` y
-      `:core:data`" y no hay Kover ni JaCoCo: 51 ficheros de test para ~19.000 líneas y **nadie sabe
-      el número**. O se instrumenta o se borra la frase; un objetivo sin medición no disciplina nada
+- [x] ~~**El objetivo de cobertura no lo mide nada.**~~ El SDD §13.1 decía "≥ 80 % en `:core:domain`
+      y `:core:data`" sobre 51 ficheros de test y **nadie sabía el número**. Kover mide los dos
+      módulos y `tools/coverage.py` exige el umbral en CI, listando además **qué paquetes están
+      peor** —lo único que Kover no dice, y la pregunta útil cuando la cobertura baja—.
+      **Lo que encontró la primera medición no fue falta de tests:** `:core:domain` dio 89,0 % y
+      `:core:data` 60,8 %, y la razón del segundo era `InMemoryRepositories.kt`, dos clases que
+      ningún módulo de Koin declaraba desde que Room y el almacén de `Settings` las sustituyeron
+      (D1 y D3, cerradas hace tiempo). Escribirles tests habría subido el número sin proteger nada;
+      se borraron. La otra mitad sí era un hueco: `SettingsAppPreferencesRepository` no tenía un
+      solo test pese a guardar dos decisiones que solo vivían en comentarios —los enums por su `id`
+      estable, y `null` distinto de cero en `lastSeenNewsRevision`—, y las dos se rompen sin que
+      compile nada mal
 - [ ] **Nada compone la raíz.** `KoinGraphTest` cubre que el grafo resuelva, pero sigue sin haber
       nada que monte `App()`. `runComposeUiTest` corre en la JVM sin emulador y cerraría la mitad de
       D18 que quedó abierta

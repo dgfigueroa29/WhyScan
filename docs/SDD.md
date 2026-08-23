@@ -974,9 +974,10 @@ código en el mismo milisegundo reemplazaba la fila y **se llevaba la nota por d
 
 Pasa a `IGNORE`. Una fila en conflicto es por construcción la misma lectura, con los mismos campos de
 máquina; lo único que pudo cambiar es lo que escribió el usuario. Ignorar el alta es igual de
-idempotente y no destruye nada. Es además lo que ya hacía `InMemoryScanHistoryRepository`, que
-comprobaba el id antes de añadir: las tres implementaciones coinciden ahora en la misma regla, que es
-la condición para que los historiales de las cuatro plataformas sigan siendo comparables.
+idempotente y no destruye nada. Es además lo que ya hacía el almacén en memoria que había antes, que
+comprobaba el id antes de añadir: las dos implementaciones que quedan —Room y la de `Settings` de
+Web— coinciden ahora en la misma regla, que es la condición para que los historiales de las cuatro
+plataformas sigan siendo comparables.
 
 ### La poda distingue lo que el usuario anotó
 
@@ -1196,9 +1197,29 @@ información que solo existía como posición o como color":
 | Cuándo se anuncian las novedades | `commonTest` | Que a quien acaba de instalar **no** se le estrene nada, que a quien ya tenía la app sí, que no se repita, y que una revisión del futuro tampoco anuncie (§9.11) | kotlin-test |
 | Comprobaciones sin compilador | CI, primer paso | Paridad de catálogos entre idiomas, `Res.string.X` sin importar, claves huérfanas, `package` que no sigue a su carpeta, longitud de línea y orden de imports (`tools/checks.py`) | python3 |
 | Declarado contra resuelto | CI, tras detekt | Que ninguna versión escrita en `libs.versions.toml` quede sustituida por el grafo de dependencias (`tools/check_resolved_versions.py`, D24) | python3 + informe de Gradle |
+| Preferencias de app | `commonTest` | Que tema, idioma y modo dislexia sobrevivan a reabrir; que los enums se guarden por su **`id` estable** y no por su nombre de Kotlin; que un id retirado vuelva al valor por defecto en vez de romper el arranque; y que **haber visto la tanda cero no sea lo mismo que no haber visto ninguna** | kotlin-test, turbine, multiplatform-settings-test |
+| Cobertura | CI, tras los tests | Que `:core:domain` y `:core:data` no bajen del 80 % de líneas, y **por dónde** cuando bajan (`tools/coverage.py` sobre los informes de Kover) | Kover + python3 |
 
-Objetivo de cobertura: **≥ 80 % en `:core:domain` y `:core:data`**; la UI no se persigue por
-cobertura sino por casos de estado representativos.
+Objetivo de cobertura: **≥ 80 % de líneas en `:core:domain` y `:core:data`**; la UI no se persigue
+por cobertura sino por casos de estado representativos.
+
+**Ese objetivo no lo medía nada hasta la Ronda 5, y por eso valía poco.** Estaba escrito aquí desde
+el principio sobre cincuenta y un ficheros de test, y nadie sabía el número: un objetivo que no se
+mide no dice cuándo se incumple, así que se incumple sin que nadie se entere. Kover lo mide ahora, y
+`tools/coverage.py` añade lo único que Kover no da — **qué paquetes están peor**, que es la pregunta
+útil cuando la cobertura baja.
+
+**Lo que encontró la primera medición no fue falta de tests.** `:core:domain` salió en 89,0 % y
+`:core:data` en 60,8 %, y la razón del segundo era `InMemoryRepositories.kt`: dos clases que ningún
+módulo de Koin declaraba desde que Room y el almacén de `Settings` las sustituyeron (deudas D1 y D3,
+cerradas hace tiempo). Escribirles tests habría subido el número sin proteger nada; se borraron. La
+otra mitad sí era un hueco de verdad —`SettingsAppPreferencesRepository` no tenía un solo test pese a
+guardar dos decisiones documentadas en comentarios— y ahí sí se escribieron.
+
+**Se mide por módulo, y eso deja una sombra que conviene conocer.** El informe de `:core:domain`
+cuenta solo lo que ejecutan **sus** tests, así que la lógica de `ThemeMode` y `AppLanguage` aparece
+casi descubierta aunque `:feature:settings` la ejercite de sobra. El número no es una nota: es una
+alarma para paquetes enteros sin tocar, y como tal hay que leerlo.
 
 **No hay tests instrumentados, y es una decisión, no una omisión.** No va a haber emulador en CI, así
 que un test que exija dispositivo es un test que nunca se ejecuta: no aporta seguridad y sí una falsa

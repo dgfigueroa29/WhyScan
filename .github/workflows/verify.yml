@@ -75,13 +75,17 @@ jobs:
       # número. Un objetivo que no se mide no dice cuándo se incumple, así que se incumple sin que
       # nadie se entere.
       #
-      # Esta primera pasada va **sin `--min` a propósito**: no se puede defender un umbral que no se
-      # ha medido nunca. Primero el número, después la regla — que puede acabar siendo subir tests o
-      # puede acabar siendo corregir la frase del SDD, y esa decisión necesita el dato delante.
+      # La primera medición dio 89,0 % en `:core:domain` y 60,8 % en `:core:data`, y lo que encontró
+      # en el segundo no fue falta de tests sino **código muerto**: `InMemoryRepositories.kt`, dos
+      # clases que ningún módulo de Koin declaraba desde que Room y `Settings` las sustituyeron. La
+      # respuesta correcta ahí era borrarlas, no escribirles tests: un test sobre código que nadie
+      # usa sube el número y no protege nada.
+      #
+      # Ya con el dato delante, el umbral del SDD §13.1 se exige de verdad.
       - name: Cobertura de dominio y datos
         run: |
           ./gradlew :core:domain:koverXmlReport :core:data:koverXmlReport
-          python3 tools/coverage.py core/domain core/data
+          python3 tools/coverage.py core/domain core/data --min 80
 
       - name: Publicar informes
         if: always()
