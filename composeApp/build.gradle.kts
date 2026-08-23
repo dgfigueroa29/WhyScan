@@ -82,6 +82,17 @@ kotlin {
 
         val desktopMain by getting
 
+        // La otra mitad de D18: `KoinGraphTest` comprueba que el grafo resuelva, pero nadie
+        // **componía** la raíz. `runComposeUiTest` corre en la JVM y sin emulador, así que cumple la
+        // regla de este proyecto —todo lo que se comprueba se ejecuta en cada PR— igual que
+        // Robolectric en el lado de Android.
+        val desktopTest by getting {
+            dependencies {
+                implementation(compose.uiTest)
+                implementation(compose.desktop.currentOs)
+            }
+        }
+
         androidMain.dependencies {
             // Los motores de Android se enlazan SOLO aquí: el binario de iOS, Desktop y Web no
             // debe cargar ML Kit ni Play Services (RNF-06).
