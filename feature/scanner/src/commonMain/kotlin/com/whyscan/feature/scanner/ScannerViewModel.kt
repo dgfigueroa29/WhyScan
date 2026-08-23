@@ -432,7 +432,7 @@ class ScannerViewModel(
      */
     private fun toggleTorch() {
         launchSafely {
-            val control = cameraControlOfActiveEngine() ?: return@launch
+            val control = cameraControlOfActiveEngine() ?: return@launchSafely
 
             val enabled = !_state.value.torchEnabled
             control.setTorch(enabled)
@@ -442,7 +442,7 @@ class ScannerViewModel(
 
     private fun setZoom(ratio: Float) {
         launchSafely {
-            val control = cameraControlOfActiveEngine() ?: return@launch
+            val control = cameraControlOfActiveEngine() ?: return@launchSafely
             control.setZoomRatio(ratio)
             _state.update { it.copy(zoomRatio = ratio) }
         }

@@ -121,6 +121,7 @@ def check_kotlin_file(path: str) -> None:
                 break
 
     check_unused_imports(path, text, imports)
+    check_labels_resolve(path, text)
 
     # El `package` tiene que coincidir con la ruta bajo `kotlin/`. El compilador no lo exige, pero
     # un paquete que no sigue a su carpeta convierte cualquier búsqueda por ruta en una trampa — y
@@ -183,6 +184,24 @@ def check_unused_imports(path: str, text: str, imports: list[str]) -> None:
             continue
         if not re.search(rf"\b{re.escape(simple)}\b", body):
             report(path, f"import sin usar: {imported}")
+
+
+def check_labels_resolve(path: str, text: str) -> None:
+    """`return@algo` donde `algo` no es ninguna lambda del archivo.
+
+    Es un error de compilación —`Unresolved label`— y aun así se puede ver sin compilador: basta con
+    que el nombre de la etiqueta aparezca como una llamada en alguna parte del archivo.
+
+    Existe por un caso concreto. Al meter la red de seguridad se sustituyeron los
+    `viewModelScope.launch` por `launchSafely` con un reemplazo mecánico, y dos `return@launch`
+    quedaron apuntando a una lambda que ya no se llamaba así. La sustitución era correcta en todo lo
+    demás, que es lo que la hizo fácil de dar por buena.
+    """
+    for label in set(re.findall(r"return@(\w+)", text)):
+        # La etiqueta puede venir de una llamada —`launch {`— o de una etiqueta explícita —`bucle@`—.
+        if re.search(rf"\b{re.escape(label)}\s*(?:\(|\{{|@)", text.replace(f"return@{label}", "")):
+            continue
+        report(path, f"la etiqueta '{label}' de un return@ no corresponde a ninguna lambda del archivo")
 
 
 def check_privacy_guarantee() -> None:
