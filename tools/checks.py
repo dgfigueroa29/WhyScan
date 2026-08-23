@@ -53,6 +53,18 @@ MAX_LINE = 120
 # Directorios que no son código nuestro.
 SKIP_DIRS = {".git", "build", ".gradle", ".idea", ".kotlin", "node_modules"}
 
+# Operadores y convenciones que Kotlin resuelve por sintaxis, sin nombrarlos: `by` llama a
+# `getValue`/`setValue`, `a[b] = c` llama a `set`, `a(b)` a `invoke`. Buscar su nombre en el cuerpo
+# no encuentra nada y el import es imprescindible.
+OPERATORS = {
+    "getValue", "setValue", "provideDelegate",
+    "get", "set", "invoke", "contains", "iterator", "compareTo", "equals",
+    "plus", "minus", "times", "div", "rem", "rangeTo", "rangeUntil",
+    "plusAssign", "minusAssign", "timesAssign", "divAssign", "remAssign",
+    "inc", "dec", "unaryPlus", "unaryMinus", "not",
+    "component1", "component2", "component3", "component4", "component5",
+}
+
 problems: list[str] = []
 
 
@@ -108,6 +120,8 @@ def check_kotlin_file(path: str) -> None:
                 report(path, f"orden de imports: se esperaba '{want}' donde está '{got}'")
                 break
 
+    check_unused_imports(path, text, imports)
+
     # El `package` tiene que coincidir con la ruta bajo `kotlin/`. El compilador no lo exige, pero
     # un paquete que no sigue a su carpeta convierte cualquier búsqueda por ruta en una trampa — y
     # es exactamente lo que deja atrás un renombrado hecho a medias.
@@ -116,6 +130,59 @@ def check_kotlin_file(path: str) -> None:
         on_disk = os.path.dirname(path.split("/kotlin/", 1)[1]).replace("/", ".")
         if declared.group(1) != on_disk:
             report(path, f"package {declared.group(1)} no coincide con la ruta {on_disk}")
+
+
+def strip_string_literals(text: str) -> str:
+    """Vacía las cadenas conservando lo interpolado, que es código de verdad."""
+    def interpolations(match: re.Match[str]) -> str:
+        return " " + " ".join(re.findall(r"\$\{([^}]*)\}", match.group(0))) + " "
+
+    text = re.sub(r'"""(?:.|\n)*?"""', interpolations, text)
+    return re.sub(r'"(?:\\.|[^"\\\n])*"', interpolations, text)
+
+
+def check_unused_imports(path: str, text: str, imports: list[str]) -> None:
+    """Imports que no usa nadie. Es `NoUnusedImports` de ktlint, adelantado unos minutos.
+
+    Buscar el nombre simple como palabra cubre más de lo que parece: una función de extensión
+    importada **sí** aparece en la llamada (`.catch { }`), y una anotación de opt-in también
+    (`@OptIn(ExperimentalTime::class)`).
+
+    Lo que no cubre son los **operadores**, y esa lección salió cara en el sitio adecuado: la primera
+    versión de esta comprobación dio quince hallazgos y los quince eran falsos positivos. `getValue`
+    y `setValue` los usa `by` sin nombrarlos, y `set` lo usa `settings[clave] = valor`. Kotlin los
+    resuelve **por sintaxis**, así que su nombre no aparece en ninguna parte del cuerpo.
+
+    Por eso está [OPERATORS], y por eso el resto de reglas que dependen del árbol sintáctico siguen
+    fuera de este archivo: una comprobación que falla donde detekt aprueba es peor que no tenerla.
+    """
+    # Los comentarios **no** cuentan como uso: nombrar un tipo en un KDoc no lo utiliza, y esa fue
+    # la segunda lección de esta comprobación — la primera versión daba por usado un import que solo
+    # aparecía entre comillas invertidas en la documentación del propio archivo.
+    #
+    # Lo que sí cuenta es un enlace `[Algo]` de KDoc, porque ese enlace se rompe si el import se va.
+    linked = set(re.findall(r"\[(\w+)", text))
+    body = "\n".join(line for line in text.split("\n") if not line.startswith("import "))
+
+    # Las cadenas se vacían **antes** que los comentarios, y de las cadenas se conserva lo que hay
+    # dentro de `${...}`. Las dos cosas son arreglos de falsos positivos reales:
+    #
+    #  - Quitar `//…` primero se come el resto de la línea en cualquier `"https://ejemplo.com"`, y
+    #    con él los usos que vinieran después. Este proyecto está lleno de URLs de prueba.
+    #  - Una plantilla de cadena **contiene código**: en `"${stringResource(Res.string.x)}"` el uso
+    #    está dentro de las llaves. Borrar la cadena entera lo borraba con ella.
+    body = strip_string_literals(body)
+    body = re.sub(r"/\*.*?\*/", " ", body, flags=re.S)
+    body = re.sub(r"//.*", " ", body)
+
+    for imported in imports:
+        if " as " in imported or imported.endswith(".*"):
+            continue
+        simple = imported.rsplit(".", 1)[-1]
+        if simple in OPERATORS or simple in linked:
+            continue
+        if not re.search(rf"\b{re.escape(simple)}\b", body):
+            report(path, f"import sin usar: {imported}")
 
 
 def check_privacy_guarantee() -> None:
