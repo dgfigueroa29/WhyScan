@@ -1,3 +1,10 @@
+// `compose.uiTest` está marcado como experimental y sin esto el script **no compila**: no es un
+// aviso, es un error, y Gradle lo reporta junto a las deprecaciones de los demás accessors de
+// `compose.*`, que sí son solo avisos. Se acepta a conciencia por lo mismo que
+// `-Xexpect-actual-classes` en el convention plugin: la anotación dice que la API puede cambiar,
+// no que haya un problema en este código.
+@file:OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
+
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 
