@@ -107,6 +107,10 @@ robolectric = "4.16"
 
 # Quality
 detekt = "1.23.8"
+# Mide la cobertura de `:core:domain` y `:core:data`, que es donde el SDD §13.1 pone un objetivo.
+# Solo esos dos: la cobertura de la UI no dice nada útil y perseguirla empuja a escribir tests que
+# recorren líneas sin comprobar nada.
+kover = "0.9.1"
 
 # Fase 2+ — declarados aquí para que el catálogo sea la única fuente de versiones
 playServicesCodeScanner = "16.1.0"
@@ -181,5 +185,6 @@ composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMul
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 androidLibrary = { id = "com.android.library", version.ref = "agp" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 room = { id = "androidx.room", version.ref = "room" }

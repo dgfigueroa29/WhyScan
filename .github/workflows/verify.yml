@@ -70,6 +70,19 @@ jobs:
       - name: Tests de JVM del grafo de Android
         run: ./gradlew :composeApp:testDebugUnitTest
 
+      # El SDD §13.1 promete "≥ 80 % en `:core:domain` y `:core:data`" desde hace tiempo y hasta
+      # ahora **no había nada que lo midiera**: cincuenta y un ficheros de test y nadie sabía el
+      # número. Un objetivo que no se mide no dice cuándo se incumple, así que se incumple sin que
+      # nadie se entere.
+      #
+      # Esta primera pasada va **sin `--min` a propósito**: no se puede defender un umbral que no se
+      # ha medido nunca. Primero el número, después la regla — que puede acabar siendo subir tests o
+      # puede acabar siendo corregir la frase del SDD, y esa decisión necesita el dato delante.
+      - name: Cobertura de dominio y datos
+        run: |
+          ./gradlew :core:domain:koverXmlReport :core:data:koverXmlReport
+          python3 tools/coverage.py core/domain core/data
+
       - name: Publicar informes
         if: always()
         uses: actions/upload-artifact@v4
@@ -78,6 +91,7 @@ jobs:
           path: |
             **/build/reports/detekt/**
             **/build/reports/tests/**
+            **/build/reports/kover/**
           if-no-files-found: ignore
 
   android:
