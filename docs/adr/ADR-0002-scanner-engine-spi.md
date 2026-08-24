@@ -48,11 +48,13 @@ Definir un **SPI** (`BarcodeScannerEngine`) con tres piezas:
 ## Consecuencias
 
 **Positivas**
+
 - La política de selección y fallback es lógica pura sobre datos → testeable en `commonTest` sin
   cámara ni dispositivo.
 - Los motores son sustituibles y eliminables; ninguno es estructural.
 
 **Negativas y su gestión**
+
 - Más indirección: leer el código requiere entender el SPI antes que cualquier motor concreto.
   Mitigado con este ADR y §7 del SDD como lectura obligatoria de onboarding.
 - Un motor puede **declarar capacidades falsas**. Mitigado con la suite de contrato
@@ -62,9 +64,9 @@ Definir un **SPI** (`BarcodeScannerEngine`) con tres piezas:
 
 ## Alternativas descartadas
 
-| Alternativa | Motivo |
-|---|---|
-| `when (engineId)` en el ViewModel | Cada motor nuevo toca UI + dominio; imposible testear sin dispositivo |
-| Una interfaz "gorda" con todos los métodos | Obliga a `UnsupportedOperationException`; contrato deshonesto |
-| Un motor único con adaptadores internos | Impide comparar motores, que es el objetivo del producto |
-| Herencia (`AbstractScannerEngine`) | El fallback y la telemetría se componen mejor como decoradores |
+| Alternativa                                | Motivo                                                                |
+|--------------------------------------------|-----------------------------------------------------------------------|
+| `when (engineId)` en el ViewModel          | Cada motor nuevo toca UI + dominio; imposible testear sin dispositivo |
+| Una interfaz "gorda" con todos los métodos | Obliga a `UnsupportedOperationException`; contrato deshonesto         |
+| Un motor único con adaptadores internos    | Impide comparar motores, que es el objetivo del producto              |
+| Herencia (`AbstractScannerEngine`)         | El fallback y la telemetría se componen mejor como decoradores        |

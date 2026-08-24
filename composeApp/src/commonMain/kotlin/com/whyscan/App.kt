@@ -1,0 +1,291 @@
+package com.whyscan
+
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.whyscan.core.designsystem.LocalSnackbarHostState
+import com.whyscan.core.designsystem.ProvideAppLanguage
+import com.whyscan.core.designsystem.WhyScanTheme
+import com.whyscan.core.domain.repository.AppPreferences
+import com.whyscan.core.domain.repository.AppPreferencesRepository
+import com.whyscan.feature.history.HistoryScreen
+import com.whyscan.feature.scanner.ScannerScreen
+import com.whyscan.feature.scanner.comparison.ComparisonScreen
+import com.whyscan.feature.settings.SettingsScreen
+import com.whyscan.feature.settings.WhatsNew
+import com.whyscan.feature.settings.WhatsNewDialog
+import com.whyscan.navigation.Destination
+import com.whyscan.navigation.Navigator
+import com.whyscan.resources.Res
+import com.whyscan.resources.destination_comparison
+import com.whyscan.resources.destination_history
+import com.whyscan.resources.destination_scanner
+import com.whyscan.resources.destination_settings
+import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.KoinContext
+import org.koin.compose.koinInject
+
+/**
+ * Raíz de la app, compartida por Android, iOS, Desktop y Web.
+ *
+ * No arranca Koin: eso lo hace `initKoin()` desde cada punto de entrada, porque Android necesita
+ * entregar su `Context` antes de que exista cualquier composable. Aquí solo se consume el grafo ya
+ * montado.
+ *
+ * El [Navigator] se recibe por parámetro para que Android pueda cederle el botón atrás del sistema
+ * y para que la navegación sea testeable sin Compose (ADR-0005).
+ *
+ * @param onDarkThemeResolved lo llama la app cada vez que cambia el claro/oscuro **ya resuelto**.
+ *   Existe porque las barras del sistema no las pinta Compose: en Android, con `enableEdgeToEdge`,
+ *   los iconos de la barra de estado siguen al tema del *sistema*, así que un usuario con el
+ *   teléfono en claro y la app forzada a oscuro se quedaba con iconos oscuros sobre fondo oscuro.
+ *   Las plataformas que no tienen barras que ajustar no pasan nada y no se enteran.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun App(
+    navigator: Navigator = remember { Navigator() },
+    onDarkThemeResolved: (Boolean) -> Unit = {},
+) {
+    KoinContext {
+        val preferencesRepository = koinInject<AppPreferencesRepository>()
+        val preferences by preferencesRepository.observePreferences()
+            .collectAsStateWithLifecycle(AppPreferences())
+
+        val darkTheme = preferences.themeMode.isDark(isSystemInDarkTheme())
+        LaunchedEffect(darkTheme) { onDarkThemeResolved(darkTheme) }
+
+        // El idioma envuelve al tema y no al revés: cambiar de idioma recompone el subárbol entero
+        // (ver `ProvideAppLanguage`), y no hay motivo para volver a construir el `ColorScheme` por
+        // eso. Al revés sí lo habría.
+        ProvideAppLanguage(preferences.language.tag) {
+            WhyScanTheme(
+                darkTheme = darkTheme,
+                easierReading = preferences.dyslexiaFriendly,
+            ) {
+                AppScaffold(navigator = navigator, advancedMode = preferences.advancedMode)
+
+                WhatsNewOnUpdate(preferencesRepository)
+            }
+        }
+    }
+}
+
+/**
+ * Enseña las novedades una sola vez tras una actualización.
+ *
+ * ## Las dos ramas hacen cosas distintas, y las dos importan
+ *
+ * Si hay algo que contar, se muestra el diálogo y la revisión se marca **al cerrarlo**: marcarla al
+ * abrirlo dejaría sin novedades a quien cierre la app antes de leerlas.
+ *
+ * Si no lo hay porque el usuario **acaba de instalar** —la revisión vista es `null`—, se marca en
+ * silencio y no se enseña nada. A quien abre la app por primera vez no se le estrena nada: para él
+ * todo es nuevo, y un diálogo entre él y lo que vino a hacer es puro estorbo. Sin esa marca, el
+ * diálogo le saltaría en la siguiente actualización contándole cosas que para él siempre estuvieron.
+ *
+ * ## Por qué pide el repositorio y no el valor ya observado
+ *
+ * Porque leerlo del estado observado era una **carrera**, y de las que solo se ven en un dispositivo.
+ * `collectAsStateWithLifecycle` necesita un valor inicial y ese valor es `AppPreferences()`, con la
+ * revisión a `null`: durante la primera composición, un usuario que sí tenía novedades pendientes
+ * parece recién instalado, y esta función le marcaría todo como visto antes de que llegara su valor
+ * de disco. `current()` devuelve el valor ya leído, sin ese hueco.
+ *
+ * Va dentro del tema para que el diálogo se pinte con los colores y la tipografía que toquen, modo
+ * dislexia incluido.
+ */
+@Composable
+private fun WhatsNewOnUpdate(preferences: AppPreferencesRepository) {
+    var showing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        val lastSeen = preferences.current().lastSeenNewsRevision
+        if (WhatsNew.shouldAnnounce(lastSeen)) {
+            showing = true
+        } else if (lastSeen == null) {
+            preferences.setLastSeenNewsRevision(WhatsNew.REVISION)
+        }
+    }
+
+    if (showing) {
+        WhatsNewDialog(
+            onDismiss = {
+                showing = false
+                scope.launch { preferences.setLastSeenNewsRevision(WhatsNew.REVISION) }
+            },
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AppScaffold(navigator: Navigator, advancedMode: Boolean) {
+    val backstack by navigator.backstack.collectAsStateWithLifecycle()
+    val destinations = destinationsFor(advancedMode)
+    val current = backstack.last()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Apagar el modo avanzado con el comparador en pantalla dejaba al usuario en un destino que ya
+    // no aparece en ninguna barra. Se poda el backstack entero y no solo la pantalla actual: si el
+    // comparador quedara enterrado más abajo, el botón atrás acabaría volviendo a él.
+    LaunchedEffect(destinations) { navigator.pruneTo(destinations) }
+
+    Scaffold(
+        topBar = {
+            // El escáner no lleva barra de título, y no es por ahorrar píxeles: una barra que dice
+            // "Escanear" encima de un visor de cámara no añade ninguna información que el visor no
+            // esté dando ya, y se come la altura que necesita lo único que importa en esa pantalla.
+            // El ítem activo de la barra inferior dice dónde está el usuario.
+            //
+            // El `Scaffold` sigue aportando los insets de la barra de estado en su `padding`, así
+            // que quitarla no mete la cámara debajo del reloj.
+            if (current != Destination.Scanner) {
+                TopAppBar(
+                    title = { Text(current.title()) },
+                    // El contenedor de la barra iguala al del `NavigationBar` de abajo: con el color
+                    // por defecto, la superior salía del tono de `surface` y la inferior de
+                    // `surfaceContainer`, y la pantalla quedaba enmarcada por dos grises distintos.
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                    ),
+                )
+            }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        bottomBar = {
+            NavigationBar {
+                destinations.forEach { destination ->
+                    NavigationBarItem(
+                        selected = current == destination,
+                        onClick = { navigator.navigateTo(destination) },
+                        // El icono estaba vacío (`icon = {}`), que es lo que dejaba la barra como
+                        // una fila de etiquetas sueltas sin el indicador de píldora de Material 3:
+                        // ese indicador se dibuja **alrededor del icono**, así que sin icono no
+                        // había nada que resaltara el destino activo.
+                        icon = {
+                            Icon(
+                                imageVector = destination.icon(),
+                                // La etiqueta va justo debajo y dice lo mismo. Describir también el
+                                // icono haría que el lector de pantalla leyera cada ítem dos veces.
+                                contentDescription = null,
+                            )
+                        },
+                        label = { Text(destination.title()) },
+                    )
+                }
+            }
+        },
+    ) { padding ->
+        CompositionLocalProvider(LocalSnackbarHostState provides snackbarHostState) {
+            AnimatedContent(
+                targetState = current,
+                transitionSpec = { fadeThrough() },
+                modifier = Modifier.fillMaxSize().padding(padding),
+                label = "destino",
+            ) { destination ->
+                Column(modifier = Modifier.fillMaxSize()) {
+                    when (destination) {
+                        Destination.Scanner -> ScannerScreen(advancedMode = advancedMode)
+                        Destination.Comparison -> ComparisonScreen()
+                        Destination.History -> HistoryScreen(advancedMode = advancedMode)
+                        Destination.Settings -> SettingsScreen()
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Transición entre destinos: *fade through* de Material 3.
+ *
+ * **Fundido y no deslizamiento**, y no es una cuestión de gusto. Un deslizamiento comunica jerarquía
+ * —de dónde vengo y a dónde vuelvo— y aquí no la hay: los cuatro destinos son hermanos y se alcanzan
+ * desde la misma barra, en cualquier orden. Deslizar contaría una relación entre pantallas que no
+ * existe, y obligaría además a decidir la dirección a partir del índice en la barra, que es
+ * exactamente el tipo de detalle que se rompe al reordenar los ítems o al ocultar el comparador.
+ *
+ * Los tiempos son los de la especificación y están escogidos para que **no se solapen**: lo que sale
+ * se va en 90 ms y lo que entra empieza justo después. Solapar dos pantallas a media opacidad da
+ * unos milisegundos de puré visual, y sobre un visor de cámara se nota más que en ningún otro sitio.
+ *
+ * El `scaleIn` arranca en 0,92 y no en 0: es un matiz de que el contenido "llega", no una entrada
+ * con voluntad propia. Una animación que se nota es una animación que estorba a la tercera vez.
+ */
+private fun fadeThrough(): ContentTransform =
+    fadeIn(tween(durationMillis = ENTER_MILLIS, delayMillis = EXIT_MILLIS)) +
+        scaleIn(
+            animationSpec = tween(durationMillis = ENTER_MILLIS, delayMillis = EXIT_MILLIS),
+            initialScale = ENTER_SCALE,
+        ) togetherWith fadeOut(tween(durationMillis = EXIT_MILLIS))
+
+/** Lo que tarda en irse la pantalla saliente. */
+private const val EXIT_MILLIS = 90
+
+/** Lo que tarda en llegar la entrante, empezando cuando la otra ya se fue del todo. */
+private const val ENTER_MILLIS = 220
+
+private const val ENTER_SCALE = 0.92f
+
+/**
+ * Qué destinos se ofrecen.
+ *
+ * Comparar motores solo aparece en modo avanzado: es la pantalla más específica de todas —un banco
+ * de pruebas dentro del producto— y ocupaba un cuarto de la barra de navegación para alguien que
+ * abre la app a leer un QR.
+ */
+private fun destinationsFor(advancedMode: Boolean): List<Destination> =
+    Destination.all.filter { it != Destination.Comparison || advancedMode }
+
+@Composable
+private fun Destination.title(): String = when (this) {
+    Destination.Scanner -> stringResource(Res.string.destination_scanner)
+    Destination.Comparison -> stringResource(Res.string.destination_comparison)
+    Destination.History -> stringResource(Res.string.destination_history)
+    Destination.Settings -> stringResource(Res.string.destination_settings)
+}
+
+private fun Destination.icon(): ImageVector = when (this) {
+    Destination.Scanner -> Icons.Filled.QrCodeScanner
+    Destination.Comparison -> Icons.Filled.Speed
+    Destination.History -> Icons.Filled.History
+    Destination.Settings -> Icons.Filled.Settings
+}

@@ -27,27 +27,29 @@ Usar **Koin 4.x** como contenedor de DI en todos los módulos multiplataforma.
 ## Consecuencias
 
 **Positivas**
+
 - Un único grafo de dependencias para las cuatro plataformas.
 - Sustituir implementaciones en tests es trivial (`loadKoinModules` con dobles).
 
 **Negativas y su gestión**
+
 - **Koin resuelve en tiempo de ejecución**, no en compilación: una dependencia faltante es un
   crash, no un error de compilación. Es la desventaja real frente a Hilt y se mitigaría con:
-  - un test que ejecute `verify()` sobre cada módulo y falle en CI si falta cualquier binding
-    — **nunca se implementó**, ver la revisión de abajo;
-  - **constructor injection obligatoria** — prohibido `by inject()` dentro de clases de dominio o
-    datos; solo se permite en el punto de entrada de la UI. Esta sí se cumple.
+    - un test que ejecute `verify()` sobre cada módulo y falle en CI si falta cualquier binding
+      — **nunca se implementó**, ver la revisión de abajo;
+    - **constructor injection obligatoria** — prohibido `by inject()` dentro de clases de dominio o
+      datos; solo se permite en el punto de entrada de la UI. Esta sí se cumple.
 - El equipo debe aprender Koin. Coste bajo: la superficie de API que usamos es pequeña
   (`module {}`, `single`, `factory`, `viewModelOf`).
 
 ## Alternativas descartadas
 
-| Alternativa | Motivo |
-|---|---|
-| Hilt | No es multiplataforma. Punto final |
-| kotlin-inject / kotlin-inject-anvil | Verificación en compilación, pero KSP en todos los targets encarece el build y la comunidad es menor |
-| Inyección manual (composition root a mano) | Viable al inicio, insostenible al crecer el grafo con 8 motores y varias features |
-| Metro / Dagger KMP | Demasiado recientes para apostar las fundaciones del proyecto |
+| Alternativa                                | Motivo                                                                                               |
+|--------------------------------------------|------------------------------------------------------------------------------------------------------|
+| Hilt                                       | No es multiplataforma. Punto final                                                                   |
+| kotlin-inject / kotlin-inject-anvil        | Verificación en compilación, pero KSP en todos los targets encarece el build y la comunidad es menor |
+| Inyección manual (composition root a mano) | Viable al inicio, insostenible al crecer el grafo con 8 motores y varias features                    |
+| Metro / Dagger KMP                         | Demasiado recientes para apostar las fundaciones del proyecto                                        |
 
 ## Nota de revisión
 
@@ -61,9 +63,11 @@ de cada capa y ninguna clase de dominio o datos conoce a Koin.
 riesgo que decía cubrir se materializó exactamente como estaba anunciado.
 
 El primer arranque de la app en un dispositivo real murió con
-`NoDefinitionFoundException: No definition found for type 'java.util.concurrent.Executor'`. La causa:
+`NoDefinitionFoundException: No definition found for type 'java.util.concurrent.Executor'`. La
+causa:
 `platformModule` de Android declaraba `single<ExecutorService> { … }` mientras los tres motores de
-cámara piden un `Executor` en su constructor. **Koin indexa cada definición por el tipo con el que se
+cámara piden un `Executor` en su constructor. **Koin indexa cada definición por el tipo con el que
+se
 declara y resuelve por igualdad exacta: no recorre supertipos.** `ExecutorService` es un `Executor`
 para el compilador y no para el contenedor.
 
@@ -81,7 +85,8 @@ Tres cosas que conviene separar:
 
 Queda como deuda **D18** con la forma que sí funciona: `verify()` de `koin-test`, que recorre por
 reflexión los constructores de cada definición y comprueba que cada parámetro tenga quien lo
-satisfaga, **sin instanciar nada**. Al no instanciar, no necesita `Context` real ni emulador, así que
+satisfaga, **sin instanciar nada**. Al no instanciar, no necesita `Context` real ni emulador, así
+que
 corre como test JVM y no choca con la decisión de no tener tests instrumentados (D6).
 
 La regla de estilo que se deriva y aplica desde ya: **declarar el tipo que se consume, no el que

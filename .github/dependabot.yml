@@ -1,0 +1,60 @@
+version: 2
+
+# Por qué esto existe en una app sin permiso de red.
+#
+# WhyScan no declara `INTERNET`, así que la superficie clásica —una librería que llama a casa— no
+# aplica. Lo que sí aplica, y es lo que importa aquí, es que ML Kit, CameraX, ZXing y el detector del
+# navegador **parsean entrada no confiable**: imágenes y códigos que trae un desconocido y que la
+# víctima solo tiene que enfocar. Un desbordamiento en un decodificador de imágenes no necesita red
+# para ser un problema.
+#
+# Configuración conservadora a propósito: agrupado y con pocos PR abiertos a la vez. Un Dependabot
+# que abre quince pull requests el lunes se ignora en la tercera semana, y entonces no vigila nada.
+updates:
+
+  - package-ecosystem: gradle
+    # Basta con la raíz: Dependabot lee `gradle/libs.versions.toml`, que en este proyecto es la
+    # única fuente de versiones — ningún módulo declara la suya (ver SDD §14).
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      # Kotlin, Compose y AGP se mueven juntos y por versiones compatibles entre sí: separarlos
+      # produce PR que no compilan por su cuenta y que hay que cerrar a mano.
+      kotlin-y-compose:
+        patterns:
+          - "org.jetbrains.kotlin*"
+          - "org.jetbrains.compose*"
+          - "androidx.compose*"
+          - "com.android.tools.build*"
+          - "com.google.devtools.ksp*"
+      androidx:
+        patterns:
+          - "androidx.*"
+        exclude-patterns:
+          - "androidx.compose*"
+      motores:
+        patterns:
+          - "com.google.mlkit*"
+          - "com.google.android.gms*"
+          - "com.google.zxing*"
+          - "io.github.zxing-cpp*"
+    commit-message:
+      prefix: "chore"
+
+  # Las propias actions del CI son código de terceros que corre con el token del repositorio, y se
+  # olvidan con más facilidad todavía que las dependencias.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    groups:
+      actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "chore"

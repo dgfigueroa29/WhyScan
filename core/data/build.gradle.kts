@@ -1,11 +1,13 @@
 plugins {
-    id("testscanner.kmp.library")
+    id("whyscan.kmp.library")
     // Para el historial persistente de Web: se guarda como JSON en el almacén de la plataforma.
     alias(libs.plugins.kotlinSerialization)
+    // Ver `:core:domain`: el objetivo de cobertura del SDD §13.1 cubre estos dos módulos.
+    alias(libs.plugins.kover)
 }
 
 android {
-    namespace = "com.testscanner.core.data"
+    namespace = "com.whyscan.core.data"
 }
 
 kotlin {

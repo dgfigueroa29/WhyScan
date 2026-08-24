@@ -1,0 +1,140 @@
+package com.whyscan.feature.scanner.comparison
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.whyscan.core.domain.concurrency.launchCatching
+import com.whyscan.core.domain.repository.ScanPreferencesRepository
+import com.whyscan.core.domain.scan.EngineScoreboard
+import com.whyscan.core.domain.usecase.ComparisonPlan
+import com.whyscan.core.domain.usecase.StartComparisonUseCase
+import com.whyscan.core.model.ScanRequest
+import com.whyscan.core.scanner.ScanEvent
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+
+/**
+ * Ejecuta varios motores a la vez sobre la misma petición y va acumulando el marcador.
+ *
+ * Cierra el objetivo G5: responder con datos del dispositivo real a "¿qué motor funciona mejor para
+ * este código?". La comparación siempre corre en modo continuo — con una sola detección no hay nada
+ * que comparar.
+ */
+class ComparisonViewModel(
+    private val startComparison: StartComparisonUseCase,
+    private val preferencesRepository: ScanPreferencesRepository,
+) : ViewModel() {
+
+    private val _state = MutableStateFlow(ComparisonState())
+    val state: StateFlow<ComparisonState> = _state.asStateFlow()
+
+    private var sessionJob: Job? = null
+
+    init {
+        launchSafely { refreshPlan() }
+    }
+
+    /**
+     * Como `viewModelScope.launch`, pero un fallo detiene la comparación en vez de matar la app.
+     *
+     * Aquí el `onFailure` no emite mensaje y sí toca el estado: esta pantalla es diagnóstico de modo
+     * avanzado y lo honesto ante un fallo es que **la comparación deje de decir que está corriendo**.
+     * El campo `error` del estado no vale para esto: es para los errores que reporta un motor, que
+     * son un tipo del dominio y no una excepción de entrada/salida.
+     */
+    private fun launchSafely(block: suspend CoroutineScope.() -> Unit) =
+        viewModelScope.launchCatching(
+            onFailure = { _state.update { it.copy(isRunning = false) } },
+            block = block,
+        )
+
+    fun onAction(action: ComparisonAction) {
+        when (action) {
+            ComparisonAction.Start -> start()
+            ComparisonAction.Stop -> stop()
+            ComparisonAction.Reset -> reset()
+        }
+    }
+
+    /**
+     * La petición de comparación **no** exige escaneo continuo ni múltiples códigos, aunque sería
+     * lo intuitivo.
+     *
+     * Exigirlos filtraría por capacidades y dejaría fuera precisamente al Google Code Scanner, que
+     * es one-shot y a la vez el motor más interesante de contrastar. Basta con pedir la misma
+     * fuente y los mismos formatos: cada motor aporta lo que sabe, el que termina antes deja de
+     * emitir, y el marcador refleja esa diferencia — que es justamente el dato que se busca.
+     */
+    private suspend fun buildRequest(): ScanRequest =
+        ScanRequest(formats = preferencesRepository.current().formats)
+
+    private suspend fun refreshPlan() {
+        when (val plan = startComparison.plan(buildRequest())) {
+            is ComparisonPlan.Ready -> _state.update {
+                it.copy(participants = plan.participants, notEnoughEngines = false)
+            }
+
+            is ComparisonPlan.NotEnoughEngines -> _state.update {
+                it.copy(participants = plan.available, notEnoughEngines = true)
+            }
+        }
+    }
+
+    private fun start() {
+        sessionJob?.cancel()
+        _state.update { it.copy(isRunning = true, scoreboard = EngineScoreboard.Empty, error = null) }
+
+        sessionJob = launchSafely {
+            refreshPlan()
+            if (_state.value.notEnoughEngines) {
+                _state.update { it.copy(isRunning = false) }
+                return@launchSafely
+            }
+            startComparison(buildRequest()).collect(::reduce)
+        }
+    }
+
+    private fun stop() {
+        sessionJob?.cancel()
+        sessionJob = null
+        _state.update { it.copy(isRunning = false) }
+    }
+
+    private fun reset() {
+        stop()
+        _state.update { it.copy(scoreboard = EngineScoreboard.Empty, error = null) }
+    }
+
+    /**
+     * Todos los eventos alimentan el marcador, incluidos los frames analizados y los fallos: desde
+     * que [ScanEvent] lleva el motor, el marcador sabe a quién atribuir cada uno sin adivinar.
+     *
+     * Un fallo se refleja además en el estado para que la UI lo muestre, pero solo detiene la
+     * comparación si es fatal: que un motor se caiga no invalida lo que midieron los demás.
+     */
+    private fun reduce(event: ScanEvent) {
+        _state.update { state ->
+            val scoreboard = state.scoreboard.reduce(event)
+
+            when (event) {
+                is ScanEvent.Failed -> state.copy(
+                    scoreboard = scoreboard,
+                    error = event.error,
+                    isRunning = if (event.error.isFatal) false else state.isRunning,
+                )
+
+                is ScanEvent.SessionEnded -> state.copy(scoreboard = scoreboard, isRunning = false)
+
+                else -> state.copy(scoreboard = scoreboard)
+            }
+        }
+    }
+
+    override fun onCleared() {
+        sessionJob?.cancel()
+        super.onCleared()
+    }
+}

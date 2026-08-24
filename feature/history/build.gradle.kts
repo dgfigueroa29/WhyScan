@@ -1,14 +1,14 @@
 plugins {
-    id("testscanner.kmp.compose")
+    id("whyscan.kmp.compose")
 }
 
 android {
-    namespace = "com.testscanner.feature.history"
+    namespace = "com.whyscan.feature.history"
 }
 
 compose.resources {
     publicResClass = true
-    packageOfResClass = "com.testscanner.feature.history.resources"
+    packageOfResClass = "com.whyscan.feature.history.resources"
     generateResClass = always
 }
 
@@ -20,6 +20,10 @@ kotlin {
             api(project(":core:designsystem"))
 
             implementation(compose.components.resources)
+
+            // Agrupar por día exige saber en qué día cayó un instante, y eso es zona horaria y
+            // calendario. Ver la nota del catálogo de versiones.
+            implementation(libs.kotlinx.datetime)
 
             implementation(libs.lifecycle.viewmodel)
             implementation(libs.lifecycle.viewmodel.compose)

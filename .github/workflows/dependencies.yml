@@ -1,0 +1,53 @@
+name: Dependencies
+
+# Qué vigila esto y por qué no está en `verify.yml`.
+#
+# `verify.yml` decide si un cambio entra: compila, analiza y ejecuta tests. Esto mira otra cosa —qué
+# se está trayendo el proyecto y con qué vulnerabilidades conocidas— y tiene un ciclo distinto: el
+# grafo se publica al integrar en `main`, y la comparación ocurre en cada pull request contra ese
+# grafo ya publicado. Mezclarlos haría que un job dependiera del otro sin necesidad.
+#
+# `dependency-submission` hace falta porque GitHub **no sabe leer un proyecto Gradle por su cuenta**:
+# sin enviarle el grafo resuelto, la revisión de dependencias no vería una sola línea y pasaría
+# siempre en verde, que es la peor forma de tener una comprobación.
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  # Solo en `main`: es el grafo de referencia contra el que se comparan los pull requests.
+  submit:
+    name: Publicar el grafo de dependencias
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/dependency-submission@v4
+
+  review:
+    name: Revisar lo que añade el pull request
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/dependency-review-action@v4
+        with:
+          # Falla por vulnerabilidades altas o críticas. Por debajo de eso avisa y no bloquea: una
+          # comprobación que se salta a mano cada semana deja de leerse, y entonces tampoco protege
+          # de las altas.
+          fail-on-severity: high
+          comment-summary-in-pr: on-failure

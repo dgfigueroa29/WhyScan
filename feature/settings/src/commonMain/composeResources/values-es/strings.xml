@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Textos de Ajustes. Solo lo ven los dispositivos en español; el respaldo está en `values/`. -->
+<?xml version="1.0" encoding="utf-8"?><!-- Textos de Ajustes. Solo lo ven los dispositivos en español; el respaldo está en `values/`. -->
 <resources>
     <string name="settings_appearance">Aspecto</string>
     <string name="settings_theme">Tema</string>
@@ -13,12 +12,36 @@
     <string name="settings_language_english">English</string>
     <string name="settings_language_spanish">Español</string>
 
+    <!-- Accesibilidad. El interruptor se llama "modo dislexia" porque es lo que va a buscar quien
+         lo necesita; la explicación dice qué hace de verdad, que no es una fuente mágica. -->
+    <string name="settings_accessibility">Accesibilidad</string>
+    <string name="settings_dyslexia_mode">Modo dislexia</string>
+    <string name="settings_dyslexia_mode_hint">Texto más grande, más espacio entre letras y más aire entre líneas: los ajustes que la investigación sobre lectura sí respalda. Se suma al tamaño de fuente del sistema, no lo reemplaza.</string>
+
     <string name="settings_advanced">Avanzado</string>
     <string name="settings_advanced_mode">Banco de motores</string>
     <string name="settings_advanced_mode_hint">Devuelve el catálogo de motores, la comparación en paralelo y las latencias de cada lectura. Apagado por defecto: escanear un código no debería obligar a elegir un decodificador.</string>
 
+    <!-- Novedades. Una entrada por cosa que cambia cómo se comporta una pantalla, no por commit:
+         esto existe para que se descubran, y una lista de arreglos entierra las dos que importan. -->
+    <string name="news_title">Qué hay de nuevo</string>
+    <string name="news_dismiss">Entendido</string>
+    <string name="news_notes_title">Notas en tus lecturas</string>
+    <string name="news_notes_body">Agregá un texto de referencia a cualquier lectura, desde el historial o justo después de leer un código. Una tirada de dígitos es exacta e inútil; "factura de marzo" no es ninguna de las dos cosas.</string>
+    <string name="news_search_title">Búsqueda que ignora los acentos</string>
+    <string name="news_search_body">Mira el valor leído y también tu nota, y encuentra "Factúra" cuando escribís "factura".</string>
+    <string name="news_groups_title">Historial agrupado por día</string>
+    <string name="news_groups_body">Cabeceras pegajosas que dicen "Hoy" y "Ayer", que es lo que uno recuerda de verdad de una lectura que no anotó.</string>
+    <string name="news_undo_title">Deshacer un borrado</string>
+    <string name="news_undo_body">Borrar una lectura ya no pregunta: ofrece deshacer, y devuelve la fila a su sitio por fecha y con su nota.</string>
+    <string name="news_export_title">Exportar a texto plano</string>
+    <string name="news_export_body">Una lectura por línea, sin cabecera y sin comillas. CSV y JSON son para herramientas; esto es para pegar en un correo.</string>
+    <string name="news_dyslexia_title">Modo dislexia</string>
+    <string name="news_dyslexia_body">En Ajustes → Accesibilidad. Texto más grande, más espacio entre letras y más aire entre líneas.</string>
+
     <string name="settings_about">Acerca de</string>
-    <string name="settings_privacy">Sin cuenta, sin rastreo y sin red. Scanly no pide permiso de internet, así que lo que escaneás no puede salir del dispositivo.</string>
+    <string name="settings_whats_new">Qué hay de nuevo</string>
+    <string name="settings_privacy">Sin cuenta, sin rastreo y sin red. WhyScan no pide permiso de internet y la copia de seguridad del sistema está desactivada, así que lo que escaneás se queda en este dispositivo: solo sale si vos lo exportás.</string>
 
     <!-- Accesibilidad (RNF-05): las opciones de tema e idioma son chips cuya etiqueta sola no dice
          qué ajustan. "Oscuro" por sí mismo podría ser cualquier cosa. -->

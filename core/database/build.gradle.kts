@@ -1,4 +1,4 @@
-// No usa `testscanner.kmp.library`: Room KMP **no soporta wasmJs**, así que este módulo declara
+// No usa `whyscan.kmp.library`: Room KMP **no soporta wasmJs**, así que este módulo declara
 // tres targets en lugar de cuatro. Es una limitación real de la librería, no una decisión de
 // diseño, y está registrada en el SDD §11: en Web el historial sigue siendo en memoria.
 plugins {
@@ -50,11 +50,25 @@ dependencies {
 }
 
 android {
-    namespace = "com.testscanner.core.database"
+    namespace = "com.whyscan.core.database"
     compileSdk = libs.versions.compileSdk.get().toInt()
     defaultConfig {
         minSdk = libs.versions.minSdk.get().toInt()
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
+
+    packaging {
+        resources {
+            excludes.add("META-INF/{AL2.0,LGPL2.1}")
+            excludes.add("META-INF/versions/9/previous-compilation-data.bin")
+            excludes.add("META-INF/*.kotlin_module")
+            excludes.add("**/META-INF/LICENSE*")
+            excludes.add("**/META-INF/NOTICE*")
+            excludes.add("**/META-INF/*.kotlin_module")
+            excludes.add("META-INF/MANIFEST.MF")
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

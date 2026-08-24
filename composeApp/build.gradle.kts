@@ -1,7 +1,14 @@
+// `compose.uiTest` está marcado como experimental y sin esto el script **no compila**: no es un
+// aviso, es un error, y Gradle lo reporta junto a las deprecaciones de los demás accessors de
+// `compose.*`, que sí son solo avisos. Se acepta a conciencia por lo mismo que
+// `-Xexpect-actual-classes` en el convention plugin: la anotación dice que la API puede cambiar,
+// no que haya un problema en este código.
+@file:OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
+
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 
-// Único módulo que NO usa `testscanner.kmp.compose`: necesita frameworks de iOS, un ejecutable de
+// Único módulo que NO usa `whyscan.kmp.compose`: necesita frameworks de iOS, un ejecutable de
 // Wasm y el target JVM nombrado "desktop" para el plugin de escritorio. Meter todo eso en un
 // convention plugin que solo usaría este módulo sería una abstracción de un solo cliente.
 plugins {
@@ -70,7 +77,28 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
         }
 
+        // Existe para una sola cosa: montar el `platformModule` de **Android** y comprobar que
+        // resuelve, que es la mitad de la deuda D18 que `desktopTest` no puede cubrir. Robolectric
+        // da un `Context` de verdad en la JVM, así que corre en el mismo job que el resto de tests
+        // y no contradice la decisión D6 —que descarta lo que exige un dispositivo, no todo lo que
+        // se llame "Android".
+        androidUnitTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.robolectric)
+        }
+
         val desktopMain by getting
+
+        // La otra mitad de D18: `KoinGraphTest` comprueba que el grafo resuelva, pero nadie
+        // **componía** la raíz. `runComposeUiTest` corre en la JVM y sin emulador, así que cumple la
+        // regla de este proyecto —todo lo que se comprueba se ejecuta en cada PR— igual que
+        // Robolectric en el lado de Android.
+        val desktopTest by getting {
+            dependencies {
+                implementation(compose.uiTest)
+                implementation(compose.desktop.currentOs)
+            }
+        }
 
         androidMain.dependencies {
             // Los motores de Android se enlazan SOLO aquí: el binario de iOS, Desktop y Web no
@@ -112,15 +140,33 @@ kotlin {
 
 compose.resources {
     publicResClass = true
-    packageOfResClass = "com.testscanner.resources"
+    packageOfResClass = "com.whyscan.resources"
     generateResClass = always
 }
 
 android {
-    namespace = "com.testscanner.shared"
+    namespace = "com.whyscan.shared"
     compileSdk = libs.versions.compileSdk.get().toInt()
     defaultConfig {
         minSdk = libs.versions.minSdk.get().toInt()
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    packaging {
+        resources {
+            excludes.add("META-INF/{AL2.0,LGPL2.1}")
+            excludes.add("META-INF/versions/9/previous-compilation-data.bin")
+            excludes.add("META-INF/*.kotlin_module")
+            excludes.add("**/META-INF/LICENSE*")
+            excludes.add("**/META-INF/NOTICE*")
+            excludes.add("**/META-INF/*.kotlin_module")
+            excludes.add("META-INF/MANIFEST.MF")
+        }
+    }
+
+    // Robolectric necesita el manifiesto y los recursos fusionados para levantar su `Application`.
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -130,10 +176,10 @@ android {
 
 compose.desktop {
     application {
-        mainClass = "com.testscanner.MainKt"
+        mainClass = "com.whyscan.MainKt"
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "Scanly"
+            packageName = "WhyScan"
             packageVersion = "1.0.0"
         }
     }

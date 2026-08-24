@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
   Scanner and comparison screen strings.
 
   This is `values/` with no qualifier, so it is the **fallback for every locale**: a phone set to
@@ -79,6 +78,7 @@
     <string name="message_copy_failed">Could not copy to the clipboard</string>
     <string name="message_share_failed">Could not open the share sheet</string>
     <string name="message_open_failed">No app can open this</string>
+    <string name="message_operation_failed">That scan could not be saved. The device may be out of space.</string>
     <string name="message_no_code_in_image">No code found in that image</string>
 
     <!-- Engine comparison (G5) -->
@@ -109,9 +109,13 @@
 
     <!-- Camera-first layout: the states that take over the viewfinder -->
     <string name="permission_title">Camera access</string>
-    <string name="permission_body">Scanly needs the camera to read codes. Frames are processed on the device and never leave it — the app has no internet permission at all.</string>
+    <string name="permission_body">WhyScan needs the camera to read codes. Frames are processed on the device and never leave it — the app has no internet permission at all.</string>
     <string name="no_camera_title">No live camera here</string>
-    <string name="no_camera_body">This device has no capture Scanly can drive. You can still scan a picture or type a code by hand.</string>
+    <string name="no_camera_body">This device has no capture WhyScan can drive. You can still scan a picture or type a code by hand.</string>
+
+    <!-- Camera paused. Not a loading state: the app is waiting for the user, not the other way. -->
+    <string name="paused_title">Camera paused</string>
+    <string name="paused_body">Nothing is being captured right now. Resume when you are ready to scan again.</string>
     <string name="session_paused">Paused</string>
     <string name="action_resume">Resume</string>
 
@@ -123,4 +127,17 @@
     <string name="results_clear">Clear</string>
     <string name="a11y_results_expand">Show every result</string>
     <string name="a11y_results_collapse">Show only the latest result</string>
+
+    <!-- Notes, written right after reading a code. Same wording as the history screen: it is the
+         same action, and calling it two things would suggest it does two things. -->
+    <string name="note_add">Add note</string>
+    <string name="note_edit">Edit note</string>
+    <string name="note_hint">What is this code for?</string>
+    <string name="note_save">Save</string>
+    <string name="note_cancel">Cancel</string>
+    <string name="a11y_note_add">Add a note to %1$s</string>
+    <string name="a11y_note_edit">Edit the note on %1$s</string>
+    <string name="a11y_note_value">Note on %1$s</string>
+    <string name="message_note_saved">Note saved</string>
+    <string name="message_note_removed">Note removed</string>
 </resources>

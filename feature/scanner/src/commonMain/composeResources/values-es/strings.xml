@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
   Textos de la pantalla de escaneo y de la de comparación (deuda D5).
 
   Los recursos de Compose son por módulo: cada feature tiene los suyos y no hay un fichero global
@@ -74,6 +73,7 @@
     <string name="message_copy_failed">No se pudo copiar al portapapeles</string>
     <string name="message_share_failed">No se pudo abrir la hoja de compartir</string>
     <string name="message_open_failed">Ninguna app puede abrir esto</string>
+    <string name="message_operation_failed">No se pudo guardar esa lectura. Puede que al dispositivo le falte espacio.</string>
     <string name="message_no_code_in_image">No se encontró ningún código en la imagen</string>
 
     <!-- Comparación de motores (G5) -->
@@ -103,9 +103,13 @@
 
     <!-- Disposición con la cámara primero: los estados que ocupan el visor -->
     <string name="permission_title">Acceso a la cámara</string>
-    <string name="permission_body">Scanly necesita la cámara para leer códigos. Los frames se procesan en el dispositivo y no salen de él: la app no pide permiso de internet.</string>
+    <string name="permission_body">WhyScan necesita la cámara para leer códigos. Los frames se procesan en el dispositivo y no salen de él: la app no pide permiso de internet.</string>
     <string name="no_camera_title">Sin cámara en vivo</string>
-    <string name="no_camera_body">Este dispositivo no tiene captura que Scanly pueda manejar. Igual podés escanear una imagen o escribir un código a mano.</string>
+    <string name="no_camera_body">Este dispositivo no tiene captura que WhyScan pueda manejar. Igual podés escanear una imagen o escribir un código a mano.</string>
+
+    <!-- Cámara pausada. No es un estado de carga: la app espera al usuario, no al revés. -->
+    <string name="paused_title">Cámara en pausa</string>
+    <string name="paused_body">Ahora mismo no se está capturando nada. Reanudá cuando quieras seguir escaneando.</string>
     <string name="session_paused">En pausa</string>
     <string name="action_resume">Reanudar</string>
 
@@ -117,4 +121,17 @@
     <string name="results_clear">Limpiar</string>
     <string name="a11y_results_expand">Ver todos los resultados</string>
     <string name="a11y_results_collapse">Ver solo el último resultado</string>
+
+    <!-- Notas, escritas justo después de leer un código. Mismas palabras que en el historial: es la
+         misma acción, y llamarla de dos maneras sugeriría que hace dos cosas. -->
+    <string name="note_add">Agregar nota</string>
+    <string name="note_edit">Editar nota</string>
+    <string name="note_hint">¿Para qué es este código?</string>
+    <string name="note_save">Guardar</string>
+    <string name="note_cancel">Cancelar</string>
+    <string name="a11y_note_add">Agregar una nota a %1$s</string>
+    <string name="a11y_note_edit">Editar la nota de %1$s</string>
+    <string name="a11y_note_value">Nota de %1$s</string>
+    <string name="message_note_saved">Nota guardada</string>
+    <string name="message_note_removed">Nota eliminada</string>
 </resources>
