@@ -20,12 +20,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.whyscan.core.designsystem.Spacing
 import com.whyscan.core.designsystem.WhyScanMark
@@ -35,10 +40,13 @@ import com.whyscan.feature.settings.resources.Res
 import com.whyscan.feature.settings.resources.a11y_language_option
 import com.whyscan.feature.settings.resources.a11y_theme_option
 import com.whyscan.feature.settings.resources.settings_about
+import com.whyscan.feature.settings.resources.settings_accessibility
 import com.whyscan.feature.settings.resources.settings_advanced
 import com.whyscan.feature.settings.resources.settings_advanced_mode
 import com.whyscan.feature.settings.resources.settings_advanced_mode_hint
 import com.whyscan.feature.settings.resources.settings_appearance
+import com.whyscan.feature.settings.resources.settings_dyslexia_mode
+import com.whyscan.feature.settings.resources.settings_dyslexia_mode_hint
 import com.whyscan.feature.settings.resources.settings_language
 import com.whyscan.feature.settings.resources.settings_language_english
 import com.whyscan.feature.settings.resources.settings_language_spanish
@@ -49,6 +57,7 @@ import com.whyscan.feature.settings.resources.settings_theme_dark
 import com.whyscan.feature.settings.resources.settings_theme_hint
 import com.whyscan.feature.settings.resources.settings_theme_light
 import com.whyscan.feature.settings.resources.settings_theme_system
+import com.whyscan.feature.settings.resources.settings_whats_new
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -66,6 +75,12 @@ fun SettingsContent(
     onAction: (SettingsAction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var showWhatsNew by remember { mutableStateOf(false) }
+
+    if (showWhatsNew) {
+        WhatsNewDialog(onDismiss = { showWhatsNew = false })
+    }
+
     LazyColumn(
         modifier = modifier.fillMaxSize().padding(horizontal = Spacing.md),
         verticalArrangement = Arrangement.spacedBy(Spacing.md),
@@ -88,36 +103,38 @@ fun SettingsContent(
         }
 
         item {
-            SettingsSection(stringResource(Res.string.settings_advanced)) {
-                // Etiqueta e interruptor se fusionan en un solo nodo de accesibilidad: por
-                // separado, un lector de pantalla enfoca el Switch y dice "activado" sin decir
-                // activado *qué*. Es el mismo criterio que en el escaneo continuo.
-                Row(
-                    modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = stringResource(Res.string.settings_advanced_mode),
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Switch(
-                        checked = state.preferences.advancedMode,
-                        onCheckedChange = { onAction(SettingsAction.SetAdvancedMode(it)) },
-                    )
-                }
+            SettingsSection(stringResource(Res.string.settings_accessibility)) {
+                SettingsSwitch(
+                    label = stringResource(Res.string.settings_dyslexia_mode),
+                    hint = stringResource(Res.string.settings_dyslexia_mode_hint),
+                    checked = state.preferences.dyslexiaFriendly,
+                    onCheckedChange = { onAction(SettingsAction.SetDyslexiaFriendly(it)) },
+                )
+            }
+        }
 
-                Text(
-                    text = stringResource(Res.string.settings_advanced_mode_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+        item {
+            SettingsSection(stringResource(Res.string.settings_advanced)) {
+                SettingsSwitch(
+                    label = stringResource(Res.string.settings_advanced_mode),
+                    hint = stringResource(Res.string.settings_advanced_mode_hint),
+                    checked = state.preferences.advancedMode,
+                    onCheckedChange = { onAction(SettingsAction.SetAdvancedMode(it)) },
                 )
             }
         }
 
         item {
             SettingsSection(stringResource(Res.string.settings_about)) {
+                // Las novedades siguen accesibles después de haberlas cerrado. El diálogo automático
+                // se ve una vez y quien lo descarta sin leerlo se queda sin saber qué cambió.
+                TextButton(
+                    onClick = { showWhatsNew = true },
+                    contentPadding = PaddingValues(0.dp),
+                ) {
+                    Text(stringResource(Res.string.settings_whats_new))
+                }
+
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
                     verticalAlignment = Alignment.CenterVertically,
@@ -139,6 +156,44 @@ fun SettingsContent(
             }
         }
     }
+}
+
+/**
+ * Un interruptor con su etiqueta y la línea que explica qué hace.
+ *
+ * Etiqueta e interruptor se fusionan en un solo nodo de accesibilidad: por separado, un lector de
+ * pantalla enfoca el `Switch` y dice "activado" sin decir activado *qué*. Es el mismo criterio que
+ * en el escaneo continuo.
+ *
+ * La explicación queda **fuera** de ese nodo a propósito. Dentro, el lector la leería entera cada
+ * vez que el foco pasa por el interruptor, incluso al volver a él por tercera vez para cambiarlo;
+ * fuera, sigue estando a un gesto y no se repite.
+ */
+@Composable
+private fun SettingsSwitch(
+    label: String,
+    hint: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f),
+        )
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
+
+    Text(
+        text = hint,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 @Composable

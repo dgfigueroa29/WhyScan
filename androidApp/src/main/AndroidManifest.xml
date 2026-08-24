@@ -19,24 +19,22 @@
         android:required="false" />
 
     <!--
-        `allowBackup="false"`, y no es una precaución genérica: lo que había era `true` —el valor por
-        defecto, puesto sin pensarlo— y **contradecía lo que la app le dice al usuario**.
+        Sin copia de seguridad del sistema, y es parte de la misma promesa que la ausencia de
+        `INTERNET`.
 
-        La pantalla de Ajustes afirma que "WhyScan no pide permiso de internet, así que lo que escaneás
-        no puede salir del dispositivo". Con Auto Backup activado eso es falso, y de la forma más
-        difícil de ver: quien sube los datos **no es la app**, es el sistema. El historial de Room
-        vive en `databases/` y las preferencias en `shared_prefs/`, que son dos de los directorios que
-        Auto Backup copia a Google Drive por defecto. No hace falta `INTERNET` para eso, porque la
-        transferencia la hace el servicio de copias del sistema desde fuera del proceso de la app.
+        Con `allowBackup="true"` —lo que había— Android subía `databases/` y `shared_prefs/` a la
+        cuenta de Drive del usuario. La app no pide permiso de internet, pero **el backup no lo hace
+        la app**: lo hace un proceso del sistema que no necesita ese permiso. Así que el historial
+        salía del dispositivo por una puerta que la garantía escrita en Ajustes no contemplaba, y en
+        ese historial va el `rawValue` literal de cada código: un QR de WiFi es
+        `WIFI:T:WPA;S:red;P:clave;;`, con la contraseña dentro.
 
-        Es decir: la garantía más fuerte de la auditoría de privacidad (RNF-03) —no declarar
-        `INTERNET`— no cubría este camino, y nadie lo había mirado. Sale al revisar qué queda por
-        hacer antes de publicar, que es exactamente el momento en el que hay que mirarlo: después de
-        la primera subida, cambiar esto significa cambiarle al usuario un comportamiento que ya tenía.
+        La bandera sola no basta desde Android 12: la transferencia directa entre dispositivos es un
+        canal aparte. Por eso además `dataExtractionRules`, que cierra los dos.
 
-        El coste está aceptado y dicho: el historial **no sobrevive a un cambio de teléfono**. Para un
-        registro local de lo que uno ha escaneado, perderlo al cambiar de móvil es una sorpresa más
-        pequeña que encontrárselo en Drive cuando la app promete que no puede salir de aquí.
+        El coste está aceptado y conviene tenerlo escrito: **al cambiar de teléfono se pierde el
+        historial**. En una app sin cuenta ni nube no hay a dónde restaurarlo. La exportación a CSV,
+        JSON o texto plano es la vía que sí existe, y es del usuario.
     -->
     <application
         android:name=".WhyScanApplication"
@@ -52,8 +50,8 @@
 
         <activity
             android:name=".MainActivity"
-            android:exported="true"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
+            android:exported="true"
             android:theme="@style/Theme.WhyScan">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

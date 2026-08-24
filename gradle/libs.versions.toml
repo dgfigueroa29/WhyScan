@@ -18,7 +18,7 @@
 # 8.13.2 al abrir el proyecto en Android Studio por primera vez. Gradle 8.14.5 cumple de sobra el
 # mínimo que AGP 8.13 pide, y el CI ensambla debug, pasa lint y ensambla release con R8 sobre esta
 # versión, así que se queda.
-kotlin = "2.3.20"
+kotlin = "2.4.10"
 agp = "8.13.2"
 composeMultiplatform = "1.11.1"
 jvmTarget = "17"
@@ -62,11 +62,27 @@ targetSdk = "36"
 
 # Kotlin ecosystem
 coroutines = "1.11.0"
+# La dependencia que §9.7 evitó a conciencia para no formatear una columna de un CSV. Con cabeceras
+# de fecha en el historial el cálculo cambia: agrupar por día exige saber en qué día cayó un instante,
+# y eso es una zona horaria y un calendario — no aritmética sobre milisegundos.
+# Se intentó fijar la 0.6.2 —donde `kotlinx.datetime.Instant` es una clase de verdad— y **no sirvió
+# de nada**: algo más del grafo pide una versión superior, Gradle resuelve la mayor para todo el
+# classpath, y el resultado fue lo peor de los dos mundos. Compilaba (en 0.7+ ese nombre sobrevive
+# como typealias, que el compilador acepta) y reventaba al ejecutar con
+# `ClassNotFoundException: kotlinx.datetime.Instant`, porque un typealias no es una clase.
+#
+# La lección: declarar una versión no la impone. Se declara la que de verdad se resuelve y se usa
+# `kotlin.time.Instant` de la stdlib, que es a donde se mudaron esos tipos.
+kotlinxDatetime = "0.8.0"
 serialization = "1.11.0"
 
 # AndroidX / Jetbrains multiplatform
 androidxActivityCompose = "1.13.0"
-androidxCoreKtx = "1.15.0"
+# 1.18.0 y no 1.15.0, que es lo que decía antes: el grafo ya resolvía 1.18.0 por otra vía, así
+# que lo declarado era una versión que no usaba nadie. Lo destapó `tools/check_resolved_versions.py`
+# en su primera ejecución, que es exactamente para lo que existe (deuda D24).
+#noinspection GradleDependency
+androidxCoreKtx = "1.18.0"
 # La que pide Koin 4.2.2; subirla más alto haría que Gradle resolviera por encima de lo que espera.
 #noinspection NewerVersionAvailable
 lifecycle = "2.9.6"
@@ -84,11 +100,11 @@ ksp = "2.3.10"
 
 # Test
 turbine = "1.2.1"
-# Robolectric simula el framework de Android sobre la JVM. Está aquí por una razón concreta y
-# acotada: el grafo de Koin de Android necesita un `Context` para resolverse, y eso no es lo mismo
-# que necesitar un dispositivo (ver `AndroidKoinGraphTest`). La 4.16 es la primera que simula la API
-# 36, pero para eso exige JDK 21 y el CI corre sobre 17, así que los tests fijan `sdk = 34`.
-robolectric = "4.16"
+# Robolectric: un `Context` de Android de verdad **en la JVM**, sin emulador. Es lo que permite que
+# `androidUnitTest` monte el grafo de Koin de Android, que es donde estaba el defecto D18. No
+# contradice la decisión D6 de no tener tests instrumentados: eso descarta lo que exige dispositivo,
+# y esto corre en el mismo job que el resto de tests.
+robolectric = "4.16.1"
 
 # Rendimiento
 #
@@ -106,6 +122,10 @@ junit = "4.13.2"
 
 # Quality
 detekt = "1.23.8"
+# Mide la cobertura de `:core:domain` y `:core:data`, que es donde el SDD §13.1 pone un objetivo.
+# Solo esos dos: la cobertura de la UI no dice nada útil y perseguirla empuja a escribir tests que
+# recorren líneas sin comprobar nada.
+kover = "0.9.9"
 
 # Fase 2+ — declarados aquí para que el catálogo sea la única fuente de versiones
 playServicesCodeScanner = "16.1.0"
@@ -123,6 +143,7 @@ kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-c
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
+kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidxActivityCompose" }
@@ -188,5 +209,6 @@ androidLibrary = { id = "com.android.library", version.ref = "agp" }
 androidTest = { id = "com.android.test", version.ref = "agp" }
 baselineProfile = { id = "androidx.baselineprofile", version.ref = "benchmark" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 room = { id = "androidx.room", version.ref = "room" }

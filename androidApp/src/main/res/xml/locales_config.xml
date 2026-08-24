@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
     Idiomas que WhyScan habla, declarados para el sistema.
 
     Esto es lo que enciende el **selector de idioma por app** de Android 13+: con `localeConfig`

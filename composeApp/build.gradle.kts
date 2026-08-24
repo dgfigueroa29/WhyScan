@@ -1,3 +1,10 @@
+// `compose.uiTest` está marcado como experimental y sin esto el script **no compila**: no es un
+// aviso, es un error, y Gradle lo reporta junto a las deprecaciones de los demás accessors de
+// `compose.*`, que sí son solo avisos. Se acepta a conciencia por lo mismo que
+// `-Xexpect-actual-classes` en el convention plugin: la anotación dice que la API puede cambiar,
+// no que haya un problema en este código.
+@file:OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
+
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 
@@ -56,9 +63,6 @@ kotlin {
 
             implementation(compose.runtime)
             implementation(compose.foundation)
-            // Llega de rebote con material3, pero `App.kt` usa `AnimatedContent` directamente y una
-            // dependencia que se usa a la cara se declara.
-            implementation(compose.animation)
             implementation(compose.material3)
             implementation(compose.components.resources)
 
@@ -73,42 +77,26 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
         }
 
-        // El grafo de Android necesita un `Context` y nada más; Robolectric lo aporta sin
-        // emulador. Ver `AndroidKoinGraphTest` — es la mitad que le faltaba a D18.
-        //
-        // `by getting` y no el accesor con nombre: `androidUnitTest` es el source set que crea
-        // `androidTarget()`, y pedirlo por nombre no depende de qué accesores de conveniencia traiga
-        // la versión de Kotlin que toque.
-        val androidUnitTest by getting {
-            dependencies {
-                implementation(libs.robolectric)
-                // `@RunWith` es de JUnit 4. Llega de rebote con Robolectric y con
-                // `kotlin-test-junit`, pero el código lo nombra a la cara.
-                implementation(libs.junit)
-            }
+        // Existe para una sola cosa: montar el `platformModule` de **Android** y comprobar que
+        // resuelve, que es la mitad de la deuda D18 que `desktopTest` no puede cubrir. Robolectric
+        // da un `Context` de verdad en la JVM, así que corre en el mismo job que el resto de tests
+        // y no contradice la decisión D6 —que descarta lo que exige un dispositivo, no todo lo que
+        // se llame "Android".
+        androidUnitTest.dependencies {
+            implementation(kotlin("test"))
+            implementation(libs.robolectric)
         }
 
         val desktopMain by getting
 
-        // Componer la raíz de la app de verdad (`AppCompositionTest`). Escritorio es la única de
-        // las cuatro plataformas donde eso se puede hacer en un test JVM normal, sin emulador ni
-        // navegador.
-        //
-        // Los dos artefactos de lifecycle se nombran aquí aunque ya estén en el classpath de
-        // ejecución: llegan como `implementation` de los módulos de feature, que no es transitivo
-        // para compilar, y el test los usa a la cara para proveer el `LifecycleOwner` y el
-        // `ViewModelStoreOwner` que en la app pone la plataforma.
+        // La otra mitad de D18: `KoinGraphTest` comprueba que el grafo resuelva, pero nadie
+        // **componía** la raíz. `runComposeUiTest` corre en la JVM y sin emulador, así que cumple la
+        // regla de este proyecto —todo lo que se comprueba se ejecuta en cada PR— igual que
+        // Robolectric en el lado de Android.
         val desktopTest by getting {
             dependencies {
-                // `compose.uiTest` está marcado como experimental por el propio plugin de Compose,
-                // y sin este `@OptIn` la **compilación del script** falla —no es un aviso—. Lo que
-                // hay detrás es `runComposeUiTest`, la API multiplataforma de test de composición:
-                // experimental en el sentido de que su firma puede cambiar, no en el de que no
-                // funcione.
-                @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
                 implementation(compose.uiTest)
-                implementation(libs.lifecycle.runtime.compose)
-                implementation(libs.lifecycle.viewmodel.compose)
+                implementation(compose.desktop.currentOs)
             }
         }
 
@@ -161,19 +149,28 @@ android {
     compileSdk = libs.versions.compileSdk.get().toInt()
     defaultConfig {
         minSdk = libs.versions.minSdk.get().toInt()
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    packaging {
+        resources {
+            excludes.add("META-INF/{AL2.0,LGPL2.1}")
+            excludes.add("META-INF/versions/9/previous-compilation-data.bin")
+            excludes.add("META-INF/*.kotlin_module")
+            excludes.add("**/META-INF/LICENSE*")
+            excludes.add("**/META-INF/NOTICE*")
+            excludes.add("**/META-INF/*.kotlin_module")
+            excludes.add("META-INF/MANIFEST.MF")
+        }
+    }
+
+    // Robolectric necesita el manifiesto y los recursos fusionados para levantar su `Application`.
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    testOptions {
-        unitTests {
-            // Robolectric monta el `Context` a partir del manifiesto y los recursos ya fusionados.
-            // Sin esto los tests no fallan: arrancan con un entorno vacío, que es peor — darían por
-            // bueno un grafo que en el teléfono no se parece al que se probó.
-            isIncludeAndroidResources = true
-        }
     }
 }
 

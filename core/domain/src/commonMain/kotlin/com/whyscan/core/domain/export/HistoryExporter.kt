@@ -1,6 +1,7 @@
 package com.whyscan.core.domain.export
 
 import com.whyscan.core.model.Detection
+import com.whyscan.core.model.HistoryEntry
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -8,12 +9,22 @@ import kotlinx.serialization.json.Json
 enum class ExportFormat(val extension: String, val mimeType: String) {
     Csv("csv", "text/csv"),
     Json("json", "application/json"),
+
+    /**
+     * Una lectura por línea, sin cabecera ni comillas.
+     *
+     * CSV y JSON son para herramientas; esto es para personas. Lo que la gente hace de verdad con
+     * treinta códigos escaneados es pegarlos en un correo, en un chat o en una celda, y para eso los
+     * otros dos formatos estorban: uno mete comillas y comas donde nadie las quiere y el otro es
+     * ilegible sin un visor.
+     */
+    Text("txt", "text/plain"),
 }
 
 /**
  * Convierte el historial en un archivo.
  *
- * Es lógica pura sobre [Detection], así que se prueba entera sin plataforma. Escribir el archivo —
+ * Es lógica pura sobre [HistoryEntry], así que se prueba entera sin plataforma. Escribir el archivo —
  * elegir carpeta, pedir permisos, abrir el diálogo del sistema — es cosa de `FileSaver` en
  * `:core:platform`; aquí solo se decide **qué** contiene.
  *
@@ -37,19 +48,23 @@ object HistoryExporter {
         "latency_ms",
         "value_type",
         "confidence",
+        // Última a propósito: quien tenga un script leyendo por posición no se rompe al añadirla.
+        "note",
     )
 
-    fun export(detections: List<Detection>, format: ExportFormat): String = when (format) {
-        ExportFormat.Csv -> toCsv(detections)
-        ExportFormat.Json -> toJson(detections)
+    fun export(entries: List<HistoryEntry>, format: ExportFormat): String = when (format) {
+        ExportFormat.Csv -> toCsv(entries)
+        ExportFormat.Json -> toJson(entries)
+        ExportFormat.Text -> toText(entries)
     }
 
     /** Nombre sugerido; el diálogo del sistema es quien resuelve colisiones. */
     fun fileName(format: ExportFormat): String = "historial-escaneos.${format.extension}"
 
-    private fun toCsv(detections: List<Detection>): String = buildString {
+    private fun toCsv(entries: List<HistoryEntry>): String = buildString {
         appendLine(COLUMNS.joinToString(SEPARATOR))
-        detections.forEach { detection ->
+        entries.forEach { entry ->
+            val detection = entry.detection
             appendLine(
                 listOf(
                     detection.barcode.rawValue,
@@ -59,16 +74,39 @@ object HistoryExporter {
                     detection.latencyMillis?.toString().orEmpty(),
                     detection.barcode.valueType.id,
                     detection.barcode.confidence?.toString().orEmpty(),
+                    // La nota pasa por `asCsvField` como todo lo demás, y no es una formalidad: es
+                    // texto libre que escribe una persona, así que puede empezar por `-` o `=` sin
+                    // ninguna mala intención y llevar comas y saltos de línea con toda naturalidad.
+                    entry.note.orEmpty(),
                 ).joinToString(SEPARATOR) { it.asCsvField() },
             )
         }
     }
 
+    /**
+     * Una lectura por línea: el valor, y la nota detrás cuando la hay.
+     *
+     * **Sin guardado anti-fórmula**, y es deliberado: esto no lo abre una hoja de cálculo, y meter
+     * una comilla delante de un valor que empieza por `-` rompería justo lo que este formato existe
+     * para dar — el valor tal cual, listo para pegar. Quien lo lleve a una hoja tiene el CSV, que sí
+     * lo protege. El formato dice para qué es y se comporta en consecuencia.
+     *
+     * Una nota con saltos de línea rompería el "una lectura por línea", así que se aplanan. Es lo
+     * único que se toca.
+     */
+    private fun toText(entries: List<HistoryEntry>): String = buildString {
+        entries.forEach { entry ->
+            append(entry.detection.barcode.rawValue)
+            entry.note?.let { append(NOTE_SEPARATOR).append(it.replace(NEWLINES, " ")) }
+            appendLine()
+        }
+    }
+
     // Con el serializador explícito y no con la variante `reified`: esa resuelve el serializador
     // por reflexión sobre la clase, que es justo lo que R8 puede dejar sin nombre en release.
-    private fun toJson(detections: List<Detection>): String = json.encodeToString(
+    private fun toJson(entries: List<HistoryEntry>): String = json.encodeToString(
         ExportedHistory.serializer(),
-        ExportedHistory(detections.map { it.toExported() }),
+        ExportedHistory(entries.map { it.toExported() }),
     )
 
     /**
@@ -90,17 +128,23 @@ object HistoryExporter {
         return if (needsQuotes) "\"${guarded.replace("\"", "\"\"")}\"" else guarded
     }
 
-    private fun Detection.toExported() = ExportedDetection(
-        value = barcode.rawValue,
-        format = barcode.format.id,
-        engine = engineId.id,
-        detectedAt = detectedAtMillis,
-        latencyMs = latencyMillis,
-        valueType = barcode.valueType.id,
-        confidence = barcode.confidence,
+    private fun HistoryEntry.toExported() = ExportedDetection(
+        value = detection.barcode.rawValue,
+        format = detection.barcode.format.id,
+        engine = detection.engineId.id,
+        detectedAt = detection.detectedAtMillis,
+        latencyMs = detection.latencyMillis,
+        valueType = detection.barcode.valueType.id,
+        confidence = detection.barcode.confidence,
+        note = note,
     )
 
     private const val SEPARATOR = ","
+
+    /** Separa el valor de la nota en el formato de texto. Legible y difícil de confundir con datos. */
+    private const val NOTE_SEPARATOR = "  —  "
+
+    private val NEWLINES = Regex("[\\r\\n]+")
 
     /** Caracteres con los que una hoja de cálculo interpreta la celda como fórmula. */
     private val FORMULA_STARTERS = setOf('=', '+', '-', '@', '\t', '\r')
@@ -143,4 +187,6 @@ private data class ExportedDetection(
     val latencyMs: Long?,
     val valueType: String,
     val confidence: Float?,
+    /** `null` cuando no hay nota. En JSON no hace falta neutralizar nada: ahí nada se ejecuta. */
+    val note: String?,
 )

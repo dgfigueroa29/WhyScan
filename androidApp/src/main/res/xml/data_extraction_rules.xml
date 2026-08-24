@@ -1,31 +1,30 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
-    Nada de esta app sale de este dispositivo, tampoco por el sistema.
+<?xml version="1.0" encoding="utf-8"?><!--
+  Nada de esta app sale del dispositivo por la vía del sistema.
 
-    Hace falta además de `allowBackup="false"` porque desde Android 12 ese atributo dejó de cubrirlo
-    todo: sigue apagando la copia en la nube, pero la **transferencia entre dispositivos** —la que
-    ocurre al configurar un teléfono nuevo desde el viejo— se gobierna desde aquí. Con solo el
-    atributo, el historial de escaneos viajaría igualmente en ese traspaso.
+  `android:allowBackup="false"` apaga la copia en la nube, pero **no basta desde Android 12**: la
+  transferencia directa entre dispositivos es un canal aparte y sigue activa aunque la copia esté
+  desactivada. Estas reglas cierran los dos.
 
-    Se excluye todo y no solo `database`. Excluir por dominios sueltos obliga a acertar con la lista
-    y a revisarla cada vez que se guarde algo nuevo; excluir `root` cubre lo que haya hoy y lo que
-    llegue mañana. Aquí no hay ningún dato que merezca la pena conservar entre teléfonos: el
-    historial es un registro local y las preferencias son tres interruptores.
+  Por qué importa aquí más que en otra app: el historial guarda el `rawValue` **literal** de cada
+  código, y un QR de WiFi es literalmente `WIFI:T:WPA;S:red;P:clave;;` — con la contraseña dentro.
+  También hay vCards con datos de contacto y las notas que escribe el usuario. La app no pide permiso
+  de `INTERNET`, y de ahí sale la garantía que se le cuenta al usuario en Ajustes; el backup del
+  sistema la rompía sin necesitar ese permiso, porque no lo hace la app sino un proceso del sistema.
+
+  `domain="root"` con `path="."` cubre todo el almacenamiento privado: `databases/`, `shared_prefs/`,
+  `files/` y `no_backup/`. Se excluye entero en lugar de enumerar rutas a propósito — una regla que
+  lista archivos se queda obsoleta el día que se añade uno, y en silencio.
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <exclude domain="root" />
-        <exclude domain="database" />
-        <exclude domain="sharedpref" />
-        <exclude domain="file" />
-        <exclude domain="external" />
+        <exclude
+            domain="root"
+            path="." />
     </cloud-backup>
 
     <device-transfer>
-        <exclude domain="root" />
-        <exclude domain="database" />
-        <exclude domain="sharedpref" />
-        <exclude domain="file" />
-        <exclude domain="external" />
+        <exclude
+            domain="root"
+            path="." />
     </device-transfer>
 </data-extraction-rules>

@@ -2,12 +2,13 @@ package com.whyscan
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ContentTransform
-import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -30,7 +31,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -43,6 +47,8 @@ import com.whyscan.feature.history.HistoryScreen
 import com.whyscan.feature.scanner.ScannerScreen
 import com.whyscan.feature.scanner.comparison.ComparisonScreen
 import com.whyscan.feature.settings.SettingsScreen
+import com.whyscan.feature.settings.WhatsNew
+import com.whyscan.feature.settings.WhatsNewDialog
 import com.whyscan.navigation.Destination
 import com.whyscan.navigation.Navigator
 import com.whyscan.resources.Res
@@ -50,6 +56,7 @@ import com.whyscan.resources.destination_comparison
 import com.whyscan.resources.destination_history
 import com.whyscan.resources.destination_scanner
 import com.whyscan.resources.destination_settings
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 
@@ -70,8 +77,7 @@ import org.koin.compose.koinInject
  * El aviso dice la verdad y se puede comprobar leyendo koin-compose: `koinInject` y `koinViewModel`
  * resuelven contra `LocalKoinScopeContext`, y ese `CompositionLocal` se declara con un **valor por
  * defecto** que es `KoinPlatform.getKoin().scopeRegistry.rootScope` — exactamente el mismo scope que
- * `KoinContext` proveía a mano. Sin proveedor, se cae en el valor por defecto y sale el mismo objeto;
- * con proveedor, se provee el mismo objeto. El envoltorio era una identidad.
+ * `KoinContext` proveía a mano. El envoltorio era una identidad.
  *
  * Lo que hacía que esto no se pudiera cerrar es que el valor por defecto se calcula **la primera vez
  * que alguien lo consume**, y eso solo ocurre componiendo. Ya no hace falta un dispositivo para
@@ -104,9 +110,62 @@ fun App(
     // (ver `ProvideAppLanguage`), y no hay motivo para volver a construir el `ColorScheme` por
     // eso. Al revés sí lo habría.
     ProvideAppLanguage(preferences.language.tag) {
-        WhyScanTheme(darkTheme = darkTheme) {
+        WhyScanTheme(
+            darkTheme = darkTheme,
+            easierReading = preferences.dyslexiaFriendly,
+        ) {
             AppScaffold(navigator = navigator, advancedMode = preferences.advancedMode)
+
+            WhatsNewOnUpdate(preferencesRepository)
         }
+    }
+}
+
+/**
+ * Enseña las novedades una sola vez tras una actualización.
+ *
+ * ## Las dos ramas hacen cosas distintas, y las dos importan
+ *
+ * Si hay algo que contar, se muestra el diálogo y la revisión se marca **al cerrarlo**: marcarla al
+ * abrirlo dejaría sin novedades a quien cierre la app antes de leerlas.
+ *
+ * Si no lo hay porque el usuario **acaba de instalar** —la revisión vista es `null`—, se marca en
+ * silencio y no se enseña nada. A quien abre la app por primera vez no se le estrena nada: para él
+ * todo es nuevo, y un diálogo entre él y lo que vino a hacer es puro estorbo. Sin esa marca, el
+ * diálogo le saltaría en la siguiente actualización contándole cosas que para él siempre estuvieron.
+ *
+ * ## Por qué pide el repositorio y no el valor ya observado
+ *
+ * Porque leerlo del estado observado era una **carrera**, y de las que solo se ven en un dispositivo.
+ * `collectAsStateWithLifecycle` necesita un valor inicial y ese valor es `AppPreferences()`, con la
+ * revisión a `null`: durante la primera composición, un usuario que sí tenía novedades pendientes
+ * parece recién instalado, y esta función le marcaría todo como visto antes de que llegara su valor
+ * de disco. `current()` devuelve el valor ya leído, sin ese hueco.
+ *
+ * Va dentro del tema para que el diálogo se pinte con los colores y la tipografía que toquen, modo
+ * dislexia incluido.
+ */
+@Composable
+private fun WhatsNewOnUpdate(preferences: AppPreferencesRepository) {
+    var showing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        val lastSeen = preferences.current().lastSeenNewsRevision
+        if (WhatsNew.shouldAnnounce(lastSeen)) {
+            showing = true
+        } else if (lastSeen == null) {
+            preferences.setLastSeenNewsRevision(WhatsNew.REVISION)
+        }
+    }
+
+    if (showing) {
+        WhatsNewDialog(
+            onDismiss = {
+                showing = false
+                scope.launch { preferences.setLastSeenNewsRevision(WhatsNew.REVISION) }
+            },
+        )
     }
 }
 
@@ -170,30 +229,19 @@ private fun AppScaffold(navigator: Navigator, advancedMode: Boolean) {
         },
     ) { padding ->
         CompositionLocalProvider(LocalSnackbarHostState provides snackbarHostState) {
-            // Cambiar de destino era un corte seco: un fotograma con la pantalla vieja y el
-            // siguiente con la nueva. `AnimatedContent` con el *fade through* de Material 3 —la
-            // saliente se desvanece y solo entonces entra la nueva, creciendo un pelo— da la
-            // continuidad que faltaba sin sugerir una dirección que aquí no existe: la barra
-            // inferior no es una pila, así que deslizar de lado contaría una jerarquía falsa.
-            //
-            // Efecto colateral que conviene saber, con el número correcto: `AnimatedContent` compone
-            // la pantalla nueva de inmediato y deja que la vieja termine su salida, así que las dos
-            // conviven en la composición durante los **90 ms** que dura el `fadeOut` — no los 300 ms
-            // de la transición entera, que incluye una entrada que empieza cuando la salida ya
-            // acabó. El escáner apaga su sesión en el `onDispose` de la pantalla, de modo que la
-            // cámara sigue viva esos 90 ms de más. Es el mismo apagado de siempre, un pelo más
-            // tarde.
             AnimatedContent(
                 targetState = current,
                 transitionSpec = { fadeThrough() },
                 modifier = Modifier.fillMaxSize().padding(padding),
-                label = "destination",
+                label = "destino",
             ) { destination ->
-                when (destination) {
-                    Destination.Scanner -> ScannerScreen(advancedMode = advancedMode)
-                    Destination.Comparison -> ComparisonScreen()
-                    Destination.History -> HistoryScreen(advancedMode = advancedMode)
-                    Destination.Settings -> SettingsScreen()
+                Column(modifier = Modifier.fillMaxSize()) {
+                    when (destination) {
+                        Destination.Scanner -> ScannerScreen(advancedMode = advancedMode)
+                        Destination.Comparison -> ComparisonScreen()
+                        Destination.History -> HistoryScreen(advancedMode = advancedMode)
+                        Destination.Settings -> SettingsScreen()
+                    }
                 }
             }
         }
@@ -201,30 +249,34 @@ private fun AppScaffold(navigator: Navigator, advancedMode: Boolean) {
 }
 
 /**
- * *Fade through* de Material 3: la pantalla saliente se desvanece primero y la entrante aparece
- * después, con un crecimiento mínimo que sugiere que llega desde el fondo.
+ * Transición entre destinos: *fade through* de Material 3.
  *
- * Los tiempos no son inventados, son los de la especificación de movimiento de Material 3, y el
- * solape es justo lo que la hace legible: la entrada espera a que termine la salida (`delayMillis`),
- * así que en ningún momento se ven las dos pantallas a media opacidad una encima de otra.
+ * **Fundido y no deslizamiento**, y no es una cuestión de gusto. Un deslizamiento comunica jerarquía
+ * —de dónde vengo y a dónde vuelvo— y aquí no la hay: los cuatro destinos son hermanos y se alcanzan
+ * desde la misma barra, en cualquier orden. Deslizar contaría una relación entre pantallas que no
+ * existe, y obligaría además a decidir la dirección a partir del índice en la barra, que es
+ * exactamente el tipo de detalle que se rompe al reordenar los ítems o al ocultar el comparador.
  *
- * `SizeTransform(clip = false)`: sin esto, `AnimatedContent` animaría también el tamaño del
- * contenedor y recortaría lo que sobresale. Las cuatro pantallas ocupan lo mismo —todo el hueco del
- * `Scaffold`—, así que no hay tamaño que animar y sí hay contenido que no conviene recortar.
+ * Los tiempos son los de la especificación y están escogidos para que **no se solapen**: lo que sale
+ * se va en 90 ms y lo que entra empieza justo después. Solapar dos pantallas a media opacidad da
+ * unos milisegundos de puré visual, y sobre un visor de cámara se nota más que en ningún otro sitio.
+ *
+ * El `scaleIn` arranca en 0,92 y no en 0: es un matiz de que el contenido "llega", no una entrada
+ * con voluntad propia. Una animación que se nota es una animación que estorba a la tercera vez.
  */
-private fun fadeThrough(): ContentTransform = ContentTransform(
-    targetContentEnter = fadeIn(
-        animationSpec = tween(durationMillis = ENTER_MILLIS, delayMillis = EXIT_MILLIS),
-    ) + scaleIn(
-        animationSpec = tween(durationMillis = ENTER_MILLIS, delayMillis = EXIT_MILLIS),
-        initialScale = ENTER_SCALE,
-    ),
-    initialContentExit = fadeOut(animationSpec = tween(durationMillis = EXIT_MILLIS)),
-    sizeTransform = SizeTransform(clip = false),
-)
+private fun fadeThrough(): ContentTransform =
+    fadeIn(tween(durationMillis = ENTER_MILLIS, delayMillis = EXIT_MILLIS)) +
+        scaleIn(
+            animationSpec = tween(durationMillis = ENTER_MILLIS, delayMillis = EXIT_MILLIS),
+            initialScale = ENTER_SCALE,
+        ) togetherWith fadeOut(tween(durationMillis = EXIT_MILLIS))
 
-private const val ENTER_MILLIS = 210
+/** Lo que tarda en irse la pantalla saliente. */
 private const val EXIT_MILLIS = 90
+
+/** Lo que tarda en llegar la entrante, empezando cuando la otra ya se fue del todo. */
+private const val ENTER_MILLIS = 220
+
 private const val ENTER_SCALE = 0.92f
 
 /**

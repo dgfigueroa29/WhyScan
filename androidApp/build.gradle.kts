@@ -11,12 +11,10 @@ android {
         // ficha y la clave con la que el sistema reconoce una actualización. No se puede cambiar
         // después de la primera publicación, así que se ajusta ahora que todavía no hay ninguna.
         //
-        // Llegó a apuntar a un nombre de producto anterior mientras los paquetes de Kotlin
-        // apuntaban a un tercero. No coincidir era una decisión razonable —renombrar doscientos
-        // archivos para cambiar algo que el usuario no ve— hasta que se vio lo que costaba de
-        // verdad: este identificador es el único de los tres que se vuelve **irreversible** al
-        // publicar. Se unificaron todos antes de esa primera subida, que era la última ocasión de
-        // hacerlo sin consecuencias.
+        // No tiene por qué coincidir con los paquetes de Kotlin, pero aquí coincide: el proyecto
+        // usa `com.whyscan.*` en todas partes —paquetes, `namespace` de cada módulo, plugins de
+        // convención y almacenes de datos—, así que no hay dos nombres que mantener sincronizados
+        // ni ninguno que explicar.
         //
         // Antes de la primera subida hay que comprobar en Play Console que este id está libre.
         applicationId = "com.whyscan.app"

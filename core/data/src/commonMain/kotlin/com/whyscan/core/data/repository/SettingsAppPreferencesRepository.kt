@@ -48,15 +48,31 @@ class SettingsAppPreferencesRepository(
         state.update { it.copy(advancedMode = enabled) }
     }
 
+    override suspend fun setDyslexiaFriendly(enabled: Boolean) {
+        settings[KEY_DYSLEXIA] = enabled
+        state.update { it.copy(dyslexiaFriendly = enabled) }
+    }
+
+    override suspend fun setLastSeenNewsRevision(revision: Int) {
+        settings[KEY_NEWS] = revision
+        state.update { it.copy(lastSeenNewsRevision = revision) }
+    }
+
     private fun readFromDisk(): AppPreferences = AppPreferences(
         themeMode = ThemeMode.fromId(settings.getStringOrNull(KEY_THEME)),
         language = AppLanguage.fromId(settings.getStringOrNull(KEY_LANGUAGE)),
         advancedMode = settings.getBoolean(KEY_ADVANCED, false),
+        dyslexiaFriendly = settings.getBoolean(KEY_DYSLEXIA, false),
+        // `getIntOrNull` y no `getInt(…, 0)`: la diferencia entre "nunca se ha escrito" y "vio la
+        // tanda cero" es la que decide si la pantalla de novedades salta en el primer arranque.
+        lastSeenNewsRevision = settings.getIntOrNull(KEY_NEWS),
     )
 
     private companion object {
         const val KEY_THEME = "app.theme_mode"
         const val KEY_LANGUAGE = "app.language"
         const val KEY_ADVANCED = "app.advanced_mode"
+        const val KEY_DYSLEXIA = "app.dyslexia_friendly"
+        const val KEY_NEWS = "app.last_seen_news_revision"
     }
 }

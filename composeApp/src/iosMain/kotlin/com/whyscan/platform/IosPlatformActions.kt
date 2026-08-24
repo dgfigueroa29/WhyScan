@@ -43,10 +43,23 @@ class IosPlatformActions : PlatformActions {
         return true
     }
 
+    /**
+     * Abre una URL con `openURL:options:completionHandler:` y no con el `openURL:` a secas, que
+     * Apple depreció en iOS 10 (deuda D17).
+     *
+     * El viejo era **síncrono y devolvía si había podido**; este entrega el resultado por el
+     * `completionHandler`. Aquí no se espera a propósito: `openUrl` responde si la app **puede**
+     * abrirlo, cosa que ya contesta `canOpenURL`, y suspender hasta que el sistema termine de
+     * cambiar de app no le añadiría nada a quien llama — la pantalla ya no está delante.
+     *
+     * `options` va vacío porque las que hay son para casos que esta app no tiene: abrir solo si hay
+     * una app universal instalada, en vez de caer al navegador.
+     */
     override suspend fun openUrl(url: String): Boolean {
         val nsUrl = NSURL.URLWithString(url) ?: return false
         if (!UIApplication.sharedApplication.canOpenURL(nsUrl)) return false
-        UIApplication.sharedApplication.openURL(nsUrl)
+
+        UIApplication.sharedApplication.openURL(nsUrl, options = emptyMap<Any?, Any>(), completionHandler = null)
         return true
     }
 

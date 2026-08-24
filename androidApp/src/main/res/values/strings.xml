@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
     Android resources, not Compose resources. These two catalogues are separate on purpose and are
     not duplicates: this one is read by the **system** — the launcher label, the app info screen,
     the permission dialogs — before a single composable exists. The Compose one under

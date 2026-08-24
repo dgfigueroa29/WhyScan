@@ -1,12 +1,9 @@
 package com.whyscan.di
 
+import com.russhwolf.settings.Settings
 import com.whyscan.core.domain.repository.AppPreferencesRepository
-import com.whyscan.core.domain.repository.ScanHistoryRepository
 import com.whyscan.core.domain.repository.ScanPreferencesRepository
 import com.whyscan.core.domain.repository.ScannerEngineRepository
-import com.whyscan.core.domain.usecase.ClearScanHistoryUseCase
-import com.whyscan.core.domain.usecase.ObserveScanHistoryUseCase
-import com.whyscan.core.domain.usecase.ScanSessions
 import com.whyscan.core.domain.usecase.ScanSettings
 import com.whyscan.core.domain.usecase.StartComparisonUseCase
 import com.whyscan.core.model.ScannerPlatform
@@ -30,39 +27,57 @@ import java.util.concurrent.Executor
 import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 /**
- * Cierra la mitad que le faltaba a **D18**: el `platformModule` de **Android**.
+ * Cierra la deuda **D18**: el grafo de Koin de **Android**, que es donde estaba el defecto original.
  *
- * ## Por qué justo este
+ * ## Por qué hacía falta además de `KoinGraphTest`
  *
- * El defecto que abrió D18 estaba aquí y en ningún otro sitio. `platformModule` registraba el
- * executor de análisis como `ExecutorService` mientras los tres motores de cámara lo piden como
- * `Executor`; Koin resuelve por igualdad exacta de tipo y no recorre supertipos, así que la app
- * moría al componer la primera pantalla. `KoinGraphTest` —el de `desktopTest`— cubrió los módulos
- * comunes y el `platformModule` de escritorio, y dejó dicho que el de Android seguía sin red porque
- * necesitaba un `androidUnitTest` en este módulo. Esto es ese `androidUnitTest`.
+ * El de `desktopTest` cubre los cinco módulos comunes y el `platformModule` de escritorio, y eso ya
+ * es mucho — pero **no cubre el módulo donde ocurrió el crash**. `platformModule()` es
+ * `expect`/`actual`, y el de Android es con diferencia el más grande de los cuatro: cuatro motores
+ * de cámara, un `Executor`, el controlador de permisos, tres servicios del sistema y las
+ * preferencias sobre `SharedPreferences`. Que resuelva el de escritorio no dice nada del de Android.
  *
- * ## Por qué Robolectric y no un emulador
+ * El defecto que costó el primer arranque vivía justo ahí: `Executors.newSingleThreadExecutor()`
+ * registrado como `ExecutorService` mientras los tres motores de cámara lo piden como `Executor`.
+ * Koin indexa por **igualdad exacta de tipo** y no recorre supertipos, así que la app moría al
+ * componer la primera pantalla. Este test lo habría cazado.
  *
- * Este proyecto decidió que no habría tests instrumentados: sin emulador en CI, un test que exija
- * dispositivo es un test que nadie ejecuta (deuda D6). Robolectric no lo contradice, lo esquiva: el
- * grafo de Android no necesita un dispositivo, necesita un `Context`. Todas las definiciones de
- * abajo se construyen con ese `Context` y nada más — los motores de cámara guardan la referencia y
- * dejan el `LifecycleCameraController` y los clientes de ML Kit detrás de un `by lazy`, así que
- * resolverlos no arranca ninguna cámara.
+ * ## Por qué Robolectric, y por qué no contradice la decisión D6
  *
- * `sdk = 34` a propósito, y no el `targetSdk` 36 del proyecto: Robolectric exige JDK 21 para simular
- * la 36 y el CI corre sobre 17. Lo que se comprueba aquí es cableado de Koin, que no cambia entre
- * niveles de API; fijar el número evita que la elección la haga el entorno por su cuenta.
+ * El grafo de Android necesita un `Context` de verdad: `SharedPreferencesSettings` llama a
+ * `getSharedPreferences`, y eso no lo satisface un doble. Robolectric da ese `Context` **en la JVM**,
+ * en el mismo job que el resto de los tests y sin emulador.
  *
- * ## Qué sigue sin cubrir
+ * D6 dice que no habrá tests instrumentados, y su motivo era concreto: sin emulador en CI, un test
+ * que exija dispositivo es un test que nunca se ejecuta y que da una falsa sensación de red. Esto es
+ * lo contrario — un test que sí corre en cada PR. Lo que se mantiene es lo que importaba de aquella
+ * decisión: nada de esto necesita hardware.
  *
- * Lo mismo que en escritorio: no construye los ViewModels —eso arrancaría corrutinas en
- * `viewModelScope`— sino todo lo que piden por constructor, que es donde falló D18. Y no comprueba
- * que un motor **lea** un código: para eso hace falta una cámara, y eso no lo arregla ningún test.
+ * ## Qué no cubre, dicho para que no se confunda con una red completa
+ *
+ * **No toca el historial persistente, ni nada que dependa de él.** `sqlite-bundled` trae binarios
+ * nativos compilados para las ABI de Android, y bajo Robolectric el proceso es una JVM de
+ * escritorio: no los puede cargar. Eso deja fuera de este archivo `ScanHistoryRepository`,
+ * `ScanHistory` y `ScanSessions` —que arrastra `SaveDetectionUseCase`—.
+ *
+ * No es un hueco de cableado y conviene ser preciso sobre por qué: esa misma cadena
+ * (`DatabaseBuilderFactory` → `buildBundled` → `RoomScanHistoryRepository` → `ScanSessions`) **sí**
+ * se resuelve de verdad en `KoinGraphTest`, con el `actual` de escritorio, y fue ahí donde se
+ * destapó que el driver no se aplicaba. Lo único que no comprueba nadie es el `actual` de Android
+ * de `DatabaseBuilderFactory`, que son cuatro líneas y sigue necesitando un dispositivo.
+ *
+ * Tampoco se construyen los ViewModels, por lo mismo que en su gemelo: instanciarlos arranca
+ * corrutinas en `viewModelScope`. Lo que se comprueba es que **todo lo que piden por constructor**
+ * resuelva, que es exactamente donde falló D18.
  */
 @RunWith(RobolectricTestRunner::class)
+// Fijado a conciencia y no heredado del `targetSdk`: Robolectric descarga un `android-all` por nivel
+// de API, y subir el `targetSdk` no debería romper los tests el día que se suba, antes de que
+// Robolectric publique soporte para ese nivel. Nada de lo que hay aquí depende del nivel: esto es
+// cableado, no API de plataforma.
 @Config(sdk = [ROBOLECTRIC_SDK])
 class AndroidKoinGraphTest {
 
@@ -72,25 +87,21 @@ class AndroidKoinGraphTest {
     }
 
     @Test
-    fun `el grafo de Android arranca con todos los modulos de la app`() {
+    fun `el grafo de Android arranca con todos los modulos`() {
+        // Arrancar ya detecta la clase de fallo más tonta y más cara: dos módulos declarando el
+        // mismo tipo sin qualifier, que Koin rechaza al montar.
         val koin = start()
 
         assertEquals(ScannerPlatform.Android, koin.get<ScannerPlatform>())
-        assertEquals(
-            EXPECTED_ENGINES,
-            koin.get<List<BarcodeScannerEngine>>().size,
-            "la lista de motores de Android cambió sin que nadie lo dijera",
-        )
     }
 
     /**
-     * El test que existe por el defecto original, escrito para que se lea como lo que fue.
+     * **El test que le faltaba a D18.**
      *
-     * `Executor` y no `ExecutorService`: si alguien vuelve a declarar la fábrica por su tipo
-     * concreto, esto falla aquí en lugar de en el primer arranque del primer teléfono. Se pide con
-     * `get` y no con una aserción propia porque el mensaje que interesa leer es el de Koin, palabra
-     * por palabra el que apareció en el logcat aquel día: `No definition found for type
-     * 'java.util.concurrent.Executor'`.
+     * `Executor` y no `ExecutorService`: es el tipo con el que los tres motores de cámara lo piden y
+     * por tanto el único con el que Koin lo va a encontrar. Si alguien vuelve a declarar la
+     * definición por el tipo que devuelve la fábrica en lugar de por el que se consume, esto falla
+     * aquí y no en el teléfono de alguien.
      */
     @Test
     fun `el executor de analisis se resuelve por el tipo que piden los motores`() {
@@ -100,80 +111,73 @@ class AndroidKoinGraphTest {
     }
 
     @Test
-    fun `resuelve todo lo que ScannerViewModel pide por constructor`() {
+    fun `los motores de Android se construyen todos`() {
+        // Son los que solo existen en este binario (RNF-06). Si alguno pidiera por constructor algo
+        // que este módulo no declara, no habría forma de verlo sin montar el grafo: los `get()` son
+        // genéricos y se resuelven en ejecución.
         val koin = start()
 
-        koin.get<ScanSettings>()
-        koin.get<ScanSessions>()
-        koin.get<ScannerEngineRepository>()
+        val engines = koin.get<List<BarcodeScannerEngine>>()
+
+        assertEquals(
+            EXPECTED_ANDROID_ENGINES,
+            engines.size,
+            "cambió la lista de motores de Android sin actualizar el test",
+        )
+        assertTrue(engines.distinctBy { it.id }.size == engines.size, "hay motores repetidos")
+    }
+
+    @Test
+    fun `resuelve los servicios del sistema que aporta Android`() {
+        val koin = start()
+
         koin.get<PermissionController>()
-        koin.get<ImagePicker>()
-        koin.get<ResultActionRunner>()
-
-        // La pantalla lo pide aparte del ViewModel, con `koinInject`.
-        koin.get<EnginePreviewResolver>()
-    }
-
-    @Test
-    fun `resuelve todo lo que HistoryViewModel pide por constructor`() {
-        val koin = start()
-
-        koin.get<ObserveScanHistoryUseCase>()
-        koin.get<ClearScanHistoryUseCase>()
         koin.get<PlatformActions>()
+        koin.get<ImagePicker>()
         koin.get<FileSaver>()
-    }
-
-    @Test
-    fun `resuelve todo lo que ComparisonViewModel pide por constructor`() {
-        val koin = start()
-
-        koin.get<StartComparisonUseCase>()
-        koin.get<ScanPreferencesRepository>()
-    }
-
-    @Test
-    fun `resuelve todo lo que SettingsViewModel pide por constructor`() {
-        val koin = start()
-
-        koin.get<AppPreferencesRepository>()
-    }
-
-    @Test
-    fun `resuelve lo que la app necesita para arrancar`() {
-        val koin = start()
-
         koin.get<TimeProvider>()
     }
 
     /**
-     * Aparte de los demás por el mismo motivo que en escritorio: es el único que construye algo
-     * pesado. Room no abre el archivo aquí —lo hace en la primera consulta, y no se hace ninguna—,
-     * pero sí ejecuta la configuración del driver, que es justo la línea que llevaba meses sin
-     * ejecutarse en las otras dos plataformas (SDD §11).
+     * Las dependencias que **cruzan** de un módulo común a uno de plataforma, que es la forma exacta
+     * del defecto D18 y la única que ningún compilador puede ver.
+     *
+     * `Settings` lo aporta Android sobre `SharedPreferences`; los dos repositorios de preferencias y
+     * el catálogo de motores viven en el `dataModule` común y lo consumen desde allí.
      */
     @Test
-    fun `resuelve el historial persistente`() {
+    fun `resuelve lo comun que depende de lo que aporta Android`() {
         val koin = start()
 
-        koin.get<ScanHistoryRepository>()
+        koin.get<Settings>()
+        koin.get<ScanPreferencesRepository>()
+        koin.get<AppPreferencesRepository>()
+        koin.get<ScannerEngineRepository>()
+    }
+
+    @Test
+    fun `resuelve lo que las pantallas piden y no viene del historial`() {
+        val koin = start()
+
+        koin.get<ScanSettings>()
+        koin.get<ResultActionRunner>()
+        koin.get<StartComparisonUseCase>()
+
+        // La pantalla de escaneo lo pide aparte del ViewModel, con `koinInject`.
+        koin.get<EnginePreviewResolver>()
     }
 
     private fun start(): Koin = startKoin {
         androidContext(RuntimeEnvironment.getApplication())
         modules(appModules())
     }.koin
-
-    private companion object {
-        /** Los cuatro motores de Android más el de entrada manual. */
-        const val EXPECTED_ENGINES = 5
-    }
 }
 
 /**
- * Nivel de API que simula Robolectric.
- *
- * Fuera de la clase porque `@Config` necesita una constante de compilación y las de un
- * `companion object` no lo son a efectos de anotación.
+ * Nivel de API con el que Robolectric levanta el entorno: por encima de `minSdk` (24) y por debajo
+ * del `compileSdk`, en un nivel para el que Robolectric lleva tiempo publicando su `android-all`.
  */
 private const val ROBOLECTRIC_SDK = 34
+
+/** Los cinco de `platformModule()`: GMS, ML Kit + CameraX, zxing-cpp, OCR y entrada manual. */
+private const val EXPECTED_ANDROID_ENGINES = 5

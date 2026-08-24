@@ -50,9 +50,13 @@ class IosPermissionController : PermissionController {
         return if (granted) PermissionStatus.Granted else PermissionStatus.Denied(permanently = true)
     }
 
+    /**
+     * Lleva a los ajustes de la app. Con `openURL:options:completionHandler:`, no con el `openURL:`
+     * depreciado en iOS 10 (deuda D17): era el otro sitio del proyecto que lo usaba.
+     */
     override fun openAppSettings() {
         val url = NSURL.URLWithString(UIApplicationOpenSettingsURLString) ?: return
-        UIApplication.sharedApplication.openURL(url)
+        UIApplication.sharedApplication.openURL(url, options = emptyMap<Any?, Any>(), completionHandler = null)
     }
 
     private fun cameraStatus(): PermissionStatus =

@@ -5,6 +5,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
@@ -14,7 +15,7 @@ import androidx.compose.ui.unit.dp
  * Sustituye al `dynamicColorScheme` que traía la plantilla de Android: un tema que cambia con el
  * fondo de pantalla del usuario es incompatible con una app cuya UI se superpone a un preview de
  * cámara, donde el contraste tiene que estar garantizado (RNF-05). Esa decisión se mantiene ahora
- * que hay marca: el azul de WhyScan **es** parte del producto, no un acento negociable.
+ * que hay marca: el esmeralda de WhyScan **es** parte del producto, no un acento negociable.
  */
 // Los colores viven en `ScannerPalette`, que no depende de Compose. Así el contraste se mide con
 // aritmética en `commonTest` (`ContrastTest`) en lugar de quedar como una intención del documento.
@@ -119,20 +120,28 @@ object Spacing {
 /**
  * Envuelve el contenido en el tema de WhyScan.
  *
- * Recibe un booleano y no un `ThemeMode`: resolver "sistema" contra lo que el sistema dice **ahora**
- * es cosa de quien tiene el estado de la app delante, y así este módulo no depende del dominio.
- * El valor por defecto sigue siendo el del sistema para que cualquier `@Preview` o punto de entrada
- * que no quiera saber de preferencias siga funcionando.
+ * Recibe booleanos y no los enums del dominio: resolver "sistema" contra lo que el sistema dice
+ * **ahora** es cosa de quien tiene el estado de la app delante, y así este módulo no depende del
+ * dominio. Los valores por defecto dejan que cualquier `@Preview` o punto de entrada que no quiera
+ * saber de preferencias siga funcionando.
+ *
+ * @param easierReading el modo dislexia. Cambia la escala tipográfica entera —espaciado entre
+ *   letras, interlínea y tamaño— y también el estilo del valor de un código, que viaja aparte por
+ *   [LocalCodeValueStyle] porque no es un rol de Material. Que las dos cosas salgan de aquí es lo
+ *   que evita que una pantalla tenga que preguntarse si el modo está encendido.
  */
 @Composable
 fun WhyScanTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    easierReading: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
-        typography = WhyScanTypography,
-        shapes = WhyScanShapes,
-        content = content,
-    )
+    CompositionLocalProvider(LocalCodeValueStyle provides codeValueStyle(easierReading)) {
+        MaterialTheme(
+            colorScheme = if (darkTheme) DarkColors else LightColors,
+            typography = whyScanTypography(easierReading),
+            shapes = WhyScanShapes,
+            content = content,
+        )
+    }
 }

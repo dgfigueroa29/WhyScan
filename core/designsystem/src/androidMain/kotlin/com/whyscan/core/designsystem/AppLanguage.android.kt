@@ -1,6 +1,7 @@
 package com.whyscan.core.designsystem
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalLocale
 import java.util.Locale
 
 /**
@@ -21,11 +22,11 @@ private var systemDefault: Locale? = null
  */
 @Composable
 internal actual fun ApplyPlatformLanguage(tag: String?) {
-    val original = systemDefault ?: Locale.getDefault().also { systemDefault = it }
+    val original = systemDefault ?: LocalLocale.current.platformLocale.also { systemDefault = it }
     val target = tag?.let(Locale::forLanguageTag) ?: original
 
     // Comparar antes de escribir evita tocar un estado global en cada recomposición.
-    if (Locale.getDefault() != target) Locale.setDefault(target)
+    if (LocalLocale.current.platformLocale != target) Locale.setDefault(target)
 }
 
 actual val PlatformSupportsLanguageOverride: Boolean = true

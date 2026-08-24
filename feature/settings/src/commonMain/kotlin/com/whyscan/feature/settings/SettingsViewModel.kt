@@ -2,17 +2,18 @@ package com.whyscan.feature.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.whyscan.core.domain.concurrency.launchCatching
 import com.whyscan.core.domain.repository.AppLanguage
 import com.whyscan.core.domain.repository.AppPreferencesRepository
 import com.whyscan.core.domain.repository.ThemeMode
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 
 /**
- * Ajustes de la app: aspecto, idioma y modo avanzado.
+ * Ajustes de la app: aspecto, accesibilidad, idioma y modo avanzado.
  *
  * No tiene efectos de una sola vez —ni `SharedFlow` ni snackbars— y no es un olvido: aquí todo
  * cambio *es* su propio feedback, porque el tema y el idioma se ven en la propia pantalla en cuanto
@@ -30,23 +31,40 @@ class SettingsViewModel(
     val state: StateFlow<SettingsState> = _state.asStateFlow()
 
     init {
-        viewModelScope.launch {
+        launchSafely {
             preferences.observePreferences().collect { current ->
                 _state.update { it.copy(preferences = current, isLoading = false) }
             }
         }
     }
 
+    /**
+     * Como `viewModelScope.launch`, pero un fallo al persistir no mata la app.
+     *
+     * **El `onFailure` está vacío a propósito, y esta vez no es tragarse el error.** El estado de
+     * esta pantalla sale del repositorio y no de un eco local: el repositorio actualiza su flujo
+     * **después** de escribir, así que si la escritura falla el estado no cambia y el interruptor
+     * vuelve solo a donde estaba. El usuario ve que no se guardó, que es exactamente lo que un
+     * mensaje le diría, y lo ve en el sitio donde acaba de tocar.
+     *
+     * Es la misma razón por la que esta pantalla no tiene canal de efectos: aquí cada cambio **es**
+     * su propio feedback. Lo que se arregla con esto es lo otro — que la excepción subiera hasta el
+     * manejador del hilo y cerrara el proceso por no haber podido escribir un booleano.
+     */
+    private fun launchSafely(block: suspend CoroutineScope.() -> Unit) =
+        viewModelScope.launchCatching(onFailure = { }, block = block)
+
     fun onAction(action: SettingsAction) {
         when (action) {
             is SettingsAction.SetThemeMode -> setThemeMode(action.mode)
             is SettingsAction.SetLanguage -> setLanguage(action.language)
             is SettingsAction.SetAdvancedMode -> setAdvancedMode(action.enabled)
+            is SettingsAction.SetDyslexiaFriendly -> setDyslexiaFriendly(action.enabled)
         }
     }
 
     private fun setThemeMode(mode: ThemeMode) {
-        viewModelScope.launch { preferences.setThemeMode(mode) }
+        launchSafely { preferences.setThemeMode(mode) }
     }
 
     /**
@@ -56,10 +74,14 @@ class SettingsViewModel(
      */
     private fun setLanguage(language: AppLanguage) {
         if (!_state.value.canChooseLanguage) return
-        viewModelScope.launch { preferences.setLanguage(language) }
+        launchSafely { preferences.setLanguage(language) }
     }
 
     private fun setAdvancedMode(enabled: Boolean) {
-        viewModelScope.launch { preferences.setAdvancedMode(enabled) }
+        launchSafely { preferences.setAdvancedMode(enabled) }
+    }
+
+    private fun setDyslexiaFriendly(enabled: Boolean) {
+        launchSafely { preferences.setDyslexiaFriendly(enabled) }
     }
 }

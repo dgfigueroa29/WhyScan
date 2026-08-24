@@ -12,6 +12,16 @@ sealed interface HistoryMessage {
 
     data object Copied : HistoryMessage
 
+    /**
+     * Algo que toca disco falló: la base, el archivo de la exportación.
+     *
+     * Un solo mensaje para todas esas causas, y a propósito. Al usuario no le sirve distinguir
+     * `SQLITE_FULL` de un permiso denegado —no puede hacer nada distinto con esa información— y lo
+     * que sí le sirve es enterarse de que **su acción no se guardó**, que es justo lo que antes no
+     * pasaba: la app se cerraba.
+     */
+    data object OperationFailed : HistoryMessage
+
     data object CopyFailed : HistoryMessage
 
     data object ShareFailed : HistoryMessage
@@ -22,6 +32,13 @@ sealed interface HistoryMessage {
     data class Exported(val location: String?) : HistoryMessage
 
     data object NothingToExport : HistoryMessage
+
+    /** La nota se guardó. Se confirma porque el campo se cierra y si no, no queda ni rastro. */
+    data object NoteSaved : HistoryMessage
+
+    data object NoteRemoved : HistoryMessage
+
+    data object EntryDeleted : HistoryMessage
 
     /** Motivo que da la plataforma al no poder escribir. Ver la nota de `ScannerMessage.Raw`. */
     data class ExportFailed(val reason: String) : HistoryMessage

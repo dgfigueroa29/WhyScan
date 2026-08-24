@@ -3,6 +3,9 @@ plugins {
     // Solo para la exportación del historial (RF-11): el formato del archivo es una decisión
     // explícita con sus propios DTO, no un reflejo del modelo interno.
     alias(libs.plugins.kotlinSerialization)
+    // El SDD §13.1 promete "≥ 80 % en `:core:domain` y `:core:data`". Hasta ahora eso era una frase
+    // sin nada detrás: un objetivo que nadie mide no disciplina nada.
+    alias(libs.plugins.kover)
 }
 
 android {

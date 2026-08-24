@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Settings strings. Unqualified `values/`, so English is the fallback for every locale. -->
+<?xml version="1.0" encoding="utf-8"?><!-- Settings strings. Unqualified `values/`, so English is the fallback for every locale. -->
 <resources>
     <string name="settings_appearance">Appearance</string>
     <string name="settings_theme">Theme</string>
@@ -13,12 +12,36 @@
     <string name="settings_language_english">English</string>
     <string name="settings_language_spanish">Español</string>
 
+    <!-- Accessibility. The switch is called "dyslexia mode" because that is what the people who
+         need it will look for; the hint says what it actually does, which is not a magic font. -->
+    <string name="settings_accessibility">Accessibility</string>
+    <string name="settings_dyslexia_mode">Dyslexia mode</string>
+    <string name="settings_dyslexia_mode_hint">Bigger text, more space between letters and more air between lines — the adjustments that reading research actually backs. It adds to your system font size, it does not replace it.</string>
+
     <string name="settings_advanced">Advanced</string>
     <string name="settings_advanced_mode">Engine workbench</string>
     <string name="settings_advanced_mode_hint">Brings back the engine catalogue, the side-by-side comparison and the per-read latencies. Off by default: scanning a code does not require choosing a decoder.</string>
 
+    <!-- What's new. One entry per thing that changed how a screen behaves, not per commit: the
+         point is discovery, and a list of fixes buries the two lines that matter. -->
+    <string name="news_title">What is new</string>
+    <string name="news_dismiss">Got it</string>
+    <string name="news_notes_title">Notes on your scans</string>
+    <string name="news_notes_body">Add a reference text to any scan, from the history or right after reading a code. A row of digits is exact and useless; "March invoice" is neither.</string>
+    <string name="news_search_title">Search that ignores accents</string>
+    <string name="news_search_body">Looks at the scanned value and at your note, and finds "Factúra" when you type "factura".</string>
+    <string name="news_groups_title">History grouped by day</string>
+    <string name="news_groups_body">Sticky headers saying "Today" and "Yesterday", which is what you actually remember about a scan you did not annotate.</string>
+    <string name="news_undo_title">Undo a delete</string>
+    <string name="news_undo_body">Deleting one scan no longer asks — it offers to undo instead, and puts the row back in its place by date, with its note.</string>
+    <string name="news_export_title">Export as plain text</string>
+    <string name="news_export_body">One scan per line, no header and no quoting. CSV and JSON are for tools; this is for pasting into an email.</string>
+    <string name="news_dyslexia_title">Dyslexia mode</string>
+    <string name="news_dyslexia_body">In Settings → Accessibility. Bigger text, more space between letters and more air between lines.</string>
+
     <string name="settings_about">About</string>
-    <string name="settings_privacy">No account, no tracking, no network. WhyScan does not request internet access at all, so what you scan cannot leave the device.</string>
+    <string name="settings_whats_new">What is new</string>
+    <string name="settings_privacy">No account, no tracking, no network. WhyScan does not request internet access at all, and the system backup is switched off, so what you scan stays on this device — and leaves it only if you export it yourself.</string>
 
     <!-- Accessibility (RNF-05): the theme and language options are chips whose label alone does not
          say what they set. "Dark" on its own could be anything. -->

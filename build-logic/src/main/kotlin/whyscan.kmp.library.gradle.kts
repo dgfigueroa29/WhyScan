@@ -22,6 +22,17 @@ fun version(alias: String): String = libs.findVersion(alias).get().requiredVersi
 kotlin {
     jvmToolchain(version("jvmTarget").toInt())
 
+    // Los `expect class` siguen en beta y el compilador lo avisa **una vez por compilación**: diez
+    // líneas por build para una sola declaración, la de `DatabaseBuilderFactory`. Es el aviso que
+    // el propio mensaje propone silenciar con esta bandera, y silenciarlo aquí no tapa nada nuestro:
+    // dice que la característica del lenguaje es beta, no que haya un problema en este código.
+    //
+    // Se acepta a conciencia, y forma parte de la postura sobre avisos de la deuda D19: el ruido que
+    // se puede quitar se quita, para que el que quede se pueda leer.
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
+
     androidTarget()
     jvm()
     // Sin `iosX64()`: es el simulador de los Mac con Intel, y Compose Multiplatform 1.11.1 ya no
@@ -45,6 +56,23 @@ android {
 
     defaultConfig {
         minSdk = version("minSdk").toInt()
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    testOptions {
+        targetSdk = version("targetSdk").toInt()
+    }
+
+    packaging {
+        resources {
+            excludes.add("META-INF/{AL2.0,LGPL2.1}")
+            excludes.add("META-INF/versions/9/previous-compilation-data.bin")
+            excludes.add("META-INF/*.kotlin_module")
+            excludes.add("**/META-INF/LICENSE*")
+            excludes.add("**/META-INF/NOTICE*")
+            excludes.add("**/META-INF/*.kotlin_module")
+            excludes.add("META-INF/MANIFEST.MF")
+        }
     }
 
     compileOptions {

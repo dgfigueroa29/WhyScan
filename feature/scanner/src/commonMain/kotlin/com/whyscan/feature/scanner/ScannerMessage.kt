@@ -27,7 +27,28 @@ sealed interface ScannerMessage {
 
     data object OpenFailed : ScannerMessage
 
+    /**
+     * Algo que toca disco o el sistema falló: guardar la lectura, persistir un ajuste, leer una nota.
+     *
+     * Un solo mensaje para todas esas causas. Al usuario no le sirve distinguir `SQLITE_FULL` de un
+     * permiso del sistema de archivos —no puede hacer nada distinto con eso— y lo que sí le sirve es
+     * enterarse de que su lectura **no se guardó**, que es lo que antes no pasaba: la app se cerraba
+     * en mitad del escaneo.
+     */
+    data object OperationFailed : ScannerMessage
+
     data object NoCodeInImage : ScannerMessage
+
+    /**
+     * La nota quedó guardada, o se quitó la que había.
+     *
+     * Son dos mensajes y no uno porque vaciar el campo es cómo se borra una nota, y un "Nota
+     * guardada" tras haberla borrado diría lo contrario de lo que pasó. Son los mismos dos que usa
+     * el historial: la acción es la misma en las dos pantallas y no tiene por qué contarse distinto.
+     */
+    data object NoteSaved : ScannerMessage
+
+    data object NoteRemoved : ScannerMessage
 
     /**
      * Texto que ya viene resuelto de fuera: el motivo que da el selector de imágenes del sistema o

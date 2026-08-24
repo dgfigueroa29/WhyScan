@@ -29,6 +29,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Antes que nada y antes que Java: tarda segundos, no necesita Gradle y comprueba cosas que no
+      # comprueba nadie más —la paridad de los catálogos de recursos entre idiomas, las claves
+      # huérfanas y que el `package` siga a su carpeta—. Que corra aquí no es solo por rapidez: es
+      # lo que impide que estas comprobaciones se desincronicen de lo que detekt exige de verdad
+      # sin que nadie se entere (deuda D23).
+      - name: Comprobaciones sin compilador
+        run: python3 tools/checks.py
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -39,6 +47,20 @@ jobs:
       - name: Detekt
         run: ./gradlew detekt
 
+      # D24: declarar una versión no la impone. Si otro punto del grafo pide una superior, Gradle
+      # resuelve la mayor para todo el classpath y lo escrito en el catálogo pasa a ser una
+      # sugerencia. Costó una tanda entera: `kotlinx-datetime` fijado en 0.6.2 y resuelto en 0.7+,
+      # donde el tipo que se usaba sobrevive solo como typealias — compilaba y reventaba al
+      # ejecutar. Esto lo dice antes, y falla solo cuando lo sustituido es **nuestra** declaración.
+      - name: Versiones declaradas contra versiones resueltas
+        run: |
+          # Sin `--quiet`: el informe se imprime a nivel `lifecycle` y `--quiet` lo silenciaría,
+          # dejando un archivo vacío. Sin caché de configuración porque `dependencies` no es
+          # compatible con ella, y aquí es mejor decirlo que descubrirlo.
+          ./gradlew --no-configuration-cache :composeApp:dependencies > dependencias.txt
+          ./gradlew --no-configuration-cache :androidApp:dependencies >> dependencias.txt
+          python3 tools/check_resolved_versions.py dependencias.txt
+
       # Sin rutas de proyecto a propósito: Gradle ejecuta la tarea en **todos** los módulos que la
       # tengan. La lista escrita a mano que había aquí antes ya se había quedado corta —los tests de
       # `:core:designsystem` y `:engines:zxing-java` existían y no los corría nadie—, y un test que
@@ -46,6 +68,29 @@ jobs:
       # `:composeApp` se llama `desktop`.
       - name: Tests multiplataforma del núcleo y las features
         run: ./gradlew jvmTest desktopTest
+
+      # Aparte de la línea de arriba porque la tarea se llama distinto, no porque sea otra clase de
+      # test: es JVM y sin emulador, como todo lo demás. Monta el `platformModule` de Android con
+      # Robolectric y comprueba que resuelve — la mitad de D18 que `desktopTest` no puede cubrir.
+      - name: Tests de JVM del grafo de Android
+        run: ./gradlew :composeApp:testDebugUnitTest
+
+      # El SDD §13.1 promete "≥ 80 % en `:core:domain` y `:core:data`" desde hace tiempo y hasta
+      # ahora **no había nada que lo midiera**: cincuenta y un ficheros de test y nadie sabía el
+      # número. Un objetivo que no se mide no dice cuándo se incumple, así que se incumple sin que
+      # nadie se entere.
+      #
+      # La primera medición dio 89,0 % en `:core:domain` y 60,8 % en `:core:data`, y lo que encontró
+      # en el segundo no fue falta de tests sino **código muerto**: `InMemoryRepositories.kt`, dos
+      # clases que ningún módulo de Koin declaraba desde que Room y `Settings` las sustituyeron. La
+      # respuesta correcta ahí era borrarlas, no escribirles tests: un test sobre código que nadie
+      # usa sube el número y no protege nada.
+      #
+      # Ya con el dato delante, el umbral del SDD §13.1 se exige de verdad.
+      - name: Cobertura de dominio y datos
+        run: |
+          ./gradlew :core:domain:koverXmlReport :core:data:koverXmlReport
+          python3 tools/coverage.py core/domain core/data --min 80
 
       - name: Publicar informes
         if: always()
@@ -55,6 +100,7 @@ jobs:
           path: |
             **/build/reports/detekt/**
             **/build/reports/tests/**
+            **/build/reports/kover/**
           if-no-files-found: ignore
 
   # Nota sobre el baseline profile: **no se genera aquí**. Generarlo exige arrancar un emulador y
@@ -79,12 +125,6 @@ jobs:
 
       - name: Ensamblar debug
         run: ./gradlew :androidApp:assembleDebug
-
-      # El grafo de Koin de **Android**, que es donde estuvo el defecto D18 y donde el CI llevaba
-      # todo el proyecto sin mirar. Va en este job y no en `checks` porque necesita el SDK de
-      # Android; Robolectric pone el resto, así que sigue sin hacer falta emulador.
-      - name: Tests unitarios de Android
-        run: ./gradlew :composeApp:testDebugUnitTest
 
       - name: Lint
         run: ./gradlew :androidApp:lintDebug

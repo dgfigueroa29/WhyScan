@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
+import androidx.annotation.OptIn
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageProxy
 import androidx.camera.view.LifecycleCameraController
@@ -75,6 +76,7 @@ class MlKitOcrEngine(
         else -> EngineAvailability.Available
     }
 
+    @OptIn(ExperimentalGetImage::class)
     override fun scan(request: ScanRequest): Flow<ScanEvent> = callbackFlow {
         val startedAtMillis = time.nowMillis()
         trySend(ScanEvent.SessionStarted(id))
@@ -134,7 +136,11 @@ class MlKitOcrEngine(
     private fun createRecognizer(): TextRecognizer =
         TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
 
-    @OptIn(ExperimentalGetImage::class)
+    // Anotación directa y no `@OptIn`: `ExperimentalGetImage` no está marcada con
+    // `@RequiresOptIn`, así que envolverla en `@OptIn` no hacía nada — y el compilador lo
+    // decía en cada build. Es una anotación de CameraX que se aplica al miembro que usa
+    // `ImageProxy.image`, que es exactamente lo que hace esta función.
+    @ExperimentalGetImage
     private fun analyze(
         imageProxy: ImageProxy,
         recognizer: TextRecognizer,

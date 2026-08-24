@@ -2,8 +2,10 @@ package com.whyscan.feature.scanner
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.whyscan.core.domain.concurrency.launchCatching
 import com.whyscan.core.domain.repository.ScannerEngineRepository
 import com.whyscan.core.domain.scan.ResultAction
+import com.whyscan.core.domain.usecase.ScanHistory
 import com.whyscan.core.domain.usecase.ScanSessions
 import com.whyscan.core.domain.usecase.ScanSettings
 import com.whyscan.core.model.BarcodeFormat
@@ -17,6 +19,7 @@ import com.whyscan.core.scanner.CameraControlEngine
 import com.whyscan.core.scanner.ScanEvent
 import com.whyscan.core.scanner.TextInputEngine
 import com.whyscan.core.scanner.capability
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,8 +27,9 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 
 /**
  * MVI de la pantalla de escaneo.
@@ -37,7 +41,11 @@ import kotlinx.coroutines.launch
  * ### Por qué sigue teniendo supresiones
  * La deuda D16 se saldó agrupando: los ajustes en [ScanSettings], la sesión y el guardado en
  * [ScanSessions], y las acciones sobre el resultado en [ResultActionRunner]. De **doce
- * dependencias quedan seis**, y `LongParameterList` ya no hace falta silenciarla.
+ * dependencias quedan siete**, y `LongParameterList` ya no hace falta silenciarla.
+ *
+ * La séptima es [ScanHistory], y entró con las notas. No contradice que guardar sea de
+ * [ScanSessions]: guardar una lectura es un hecho del motor y anotarla es una acción del usuario,
+ * que es exactamente la línea por la que están separados esos dos colaboradores.
  *
  * `TooManyFunctions` sobrevive, y es un dato honesto: esta pantalla tiene catorce acciones de
  * usuario y cada una necesita su función. Partirla por partir movería el recuento a otro archivo
@@ -48,6 +56,7 @@ import kotlinx.coroutines.launch
 class ScannerViewModel(
     private val settings: ScanSettings,
     private val sessions: ScanSessions,
+    private val history: ScanHistory,
     private val engineRepository: ScannerEngineRepository,
     private val permissionController: PermissionController,
     private val imagePicker: ImagePicker,
@@ -70,6 +79,7 @@ class ScannerViewModel(
     init {
         observeCatalogChanges()
         observePreferenceChanges()
+        observeNotes()
     }
 
     /**
@@ -101,11 +111,33 @@ class ScannerViewModel(
             is ScannerAction.SetZoom -> setZoom(action.ratio)
             ScannerAction.RequestCameraPermission -> requestCameraPermission()
             ScannerAction.DismissError -> _state.update { it.copy(error = null) }
+            is ScannerAction.EditNote -> editNote(action.detectionId)
+            is ScannerAction.NoteDraftChanged -> _state.update { it.copy(noteDraft = action.value) }
+            ScannerAction.SaveNote -> saveNote()
+            ScannerAction.DismissNote -> dismissNote()
         }
     }
 
+    /**
+     * Como `viewModelScope.launch`, pero un fallo se le cuenta al usuario en vez de matar la app.
+     *
+     * Debajo de esta pantalla hay disco por todas partes: el historial guarda cada lectura, los
+     * ajustes se persisten al tocarlos y las notas se leen de la base. Antes, una excepción de Room
+     * —disco lleno, base corrupta— subía por el `launch` hasta el manejador por defecto del hilo y
+     * cerraba el proceso **en mitad de un escaneo**. Ver `launchCatching`.
+     *
+     * Se usa en todos los `launch` de esta clase, incluido el de la sesión: que un motor de cámara
+     * lance no debería llevarse la app por delante, y aquí el `sessionJob` sigue siendo el `Job` que
+     * devuelve, así que parar y reanudar funciona igual.
+     */
+    private fun launchSafely(block: suspend CoroutineScope.() -> Unit) =
+        viewModelScope.launchCatching(
+            onFailure = { _effects.emit(ScannerEffect.ShowMessage(ScannerMessage.OperationFailed)) },
+            block = block,
+        )
+
     private fun observeCatalogChanges() {
-        viewModelScope.launch {
+        launchSafely {
             engineRepository.observeCatalog().collect { catalog ->
                 _state.update { it.copy(catalog = catalog, isLoading = false) }
                 startIfPending()
@@ -151,7 +183,7 @@ class ScannerViewModel(
     }
 
     private fun observePreferenceChanges() {
-        viewModelScope.launch {
+        launchSafely {
             settings.observe().collect { preferences ->
                 _state.update {
                     it.copy(
@@ -164,12 +196,66 @@ class ScannerViewModel(
         }
     }
 
+    /**
+     * Las notas del historial, para que el escáner pueda mostrarlas y editarlas sin inventárselas.
+     *
+     * Se observa el historial entero y se reduce al mapa de las que tienen nota, con
+     * `distinctUntilChanged` **sobre el mapa ya reducido**: el historial emite en cada lectura
+     * guardada —treinta veces en una sesión continua de un minuto— y sin ese filtro cada una
+     * recompondría la hoja de resultados sin que ninguna nota hubiera cambiado.
+     *
+     * La alternativa era guardarlas en el estado del escáner según se escriben. Se descartó porque
+     * abre un agujero real: al releer un código ya anotado el id es el mismo, el campo se abriría
+     * vacío y guardar se llevaría por delante la nota que había.
+     */
+    private fun observeNotes() {
+        launchSafely {
+            history.observe()
+                .map { entries ->
+                    entries.mapNotNull { entry -> entry.note?.let { entry.id to it } }.toMap()
+                }
+                .distinctUntilChanged()
+                .collect { notes -> _state.update { it.copy(notes = notes) } }
+        }
+    }
+
     private fun refresh() {
-        viewModelScope.launch { engineRepository.refresh() }
+        launchSafely { engineRepository.refresh() }
+    }
+
+    /** Abre el campo con lo que la lectura ya tuviera escrito, para editarlo y no para sustituirlo. */
+    private fun editNote(detectionId: String) {
+        _state.update {
+            it.copy(noteTargetId = detectionId, noteDraft = it.noteOf(detectionId).orEmpty())
+        }
+    }
+
+    private fun dismissNote() {
+        _state.update { it.copy(noteTargetId = null, noteDraft = "") }
+    }
+
+    /**
+     * Guarda la nota y cierra el campo.
+     *
+     * No rechaza el texto vacío: vaciar el campo **es** cómo se quita una nota, y
+     * [ScanHistory.setNote] normaliza los blancos a `null` en un solo sitio para las tres
+     * plataformas. El estado del escáner no toca su propio mapa de notas — lo actualiza la emisión
+     * del historial, que es la única fuente.
+     */
+    private fun saveNote() {
+        val detectionId = _state.value.noteTargetId ?: return
+        val note = _state.value.noteDraft
+
+        dismissNote()
+        launchSafely {
+            history.setNote(detectionId, note)
+            val message = if (note.isBlank()) ScannerMessage.NoteRemoved else ScannerMessage.NoteSaved
+            _effects.emit(ScannerEffect.ShowMessage(message))
+        }
     }
 
     private fun selectEngine(id: ScannerEngineId?) {
-        viewModelScope.launch {
+        launchSafely {
             settings.preferEngine(id)
             if (_state.value.sessionStatus == SessionStatus.Scanning) {
                 stopSession()
@@ -179,14 +265,14 @@ class ScannerViewModel(
     }
 
     private fun toggleFormat(format: BarcodeFormat) {
-        viewModelScope.launch {
+        launchSafely {
             val current = _state.value.formats
             settings.setFormats(if (format in current) current - format else current + format)
         }
     }
 
     private fun setContinuous(enabled: Boolean) {
-        viewModelScope.launch { settings.setContinuous(enabled) }
+        launchSafely { settings.setContinuous(enabled) }
     }
 
     private fun startSession() {
@@ -200,7 +286,7 @@ class ScannerViewModel(
             )
         }
 
-        sessionJob = viewModelScope.launch {
+        sessionJob = launchSafely {
             sessions.start(settings.current()).collect(::reduce)
         }
     }
@@ -261,7 +347,7 @@ class ScannerViewModel(
         val value = _state.value.manualInput
         if (value.isBlank()) return
 
-        viewModelScope.launch {
+        launchSafely {
             val engine = engineRepository.engine(ScannerEngineId.ManualInput)
                 ?.capability<TextInputEngine>()
 
@@ -292,7 +378,7 @@ class ScannerViewModel(
         stopSession()
         _state.update { it.copy(isDecodingImage = true, error = null) }
 
-        viewModelScope.launch {
+        launchSafely {
             try {
                 when (val picked = imagePicker.pickImage()) {
                     is PickImageResult.Cancelled -> Unit
@@ -333,7 +419,7 @@ class ScannerViewModel(
     }
 
     private fun runResultAction(action: ResultAction, text: String) {
-        viewModelScope.launch {
+        launchSafely {
             resultActions.run(action, text)
                 ?.let { _effects.emit(ScannerEffect.ShowMessage(it)) }
         }
@@ -345,8 +431,8 @@ class ScannerViewModel(
      * el caso sin excepciones.
      */
     private fun toggleTorch() {
-        viewModelScope.launch {
-            val control = cameraControlOfActiveEngine() ?: return@launch
+        launchSafely {
+            val control = cameraControlOfActiveEngine() ?: return@launchSafely
 
             val enabled = !_state.value.torchEnabled
             control.setTorch(enabled)
@@ -355,8 +441,8 @@ class ScannerViewModel(
     }
 
     private fun setZoom(ratio: Float) {
-        viewModelScope.launch {
-            val control = cameraControlOfActiveEngine() ?: return@launch
+        launchSafely {
+            val control = cameraControlOfActiveEngine() ?: return@launchSafely
             control.setZoomRatio(ratio)
             _state.update { it.copy(zoomRatio = ratio) }
         }
@@ -372,7 +458,7 @@ class ScannerViewModel(
      * cámara cambia bajo los pies y el estado que la UI muestra quedaría obsoleto.
      */
     private fun requestCameraPermission() {
-        viewModelScope.launch {
+        launchSafely {
             val status = permissionController.request(Permission.Camera)
             engineRepository.refresh()
 

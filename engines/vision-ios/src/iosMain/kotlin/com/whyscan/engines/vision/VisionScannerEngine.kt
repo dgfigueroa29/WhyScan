@@ -71,8 +71,7 @@ class VisionScannerEngine(
             AVAuthorizationStatusAuthorized -> EngineAvailability.Available
 
             AVAuthorizationStatusNotDetermined,
-            AVAuthorizationStatusDenied,
-            -> EngineAvailability.RequiresPermission(Permission.Camera)
+            AVAuthorizationStatusDenied, -> EngineAvailability.RequiresPermission(Permission.Camera)
 
             // "Restricted" es control parental o MDM: el usuario no puede concederlo aunque quiera,
             // así que no es lo mismo que "falta permiso" y la UI no debe ofrecer pedirlo.

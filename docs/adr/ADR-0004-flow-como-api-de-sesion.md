@@ -36,10 +36,12 @@ Opción 3: **`fun scan(request: ScanRequest): Flow<ScanEvent>`**.
 ## Consecuencias
 
 **Positivas**
+
 - Testeable con Turbine sin cámara: un motor falso emite la secuencia de eventos deseada.
 - Backpressure y `conflate()` disponibles cuando el análisis va más lento que los frames.
 
 **Negativas y su gestión**
+
 - Cada motor debe implementar `callbackFlow` + `awaitClose` correctamente. La suite de contrato
   (§13.2 del SDD) verifica que la cancelación libera recursos.
 - El GMS Code Scanner es intrínsecamente *one-shot* (abre su UI, devuelve un resultado). Se adapta
@@ -48,8 +50,8 @@ Opción 3: **`fun scan(request: ScanRequest): Flow<ScanEvent>`**.
 
 ## Alternativas descartadas
 
-| Alternativa | Motivo |
-|---|---|
-| `suspend fun scan(): Result<Barcode>` | No modela modo continuo, múltiples códigos ni telemetría |
-| Callbacks + `stop()` | Ciclo de vida manual, propenso a fugas; fallback difícil de componer |
-| `SharedFlow` caliente en un singleton | La sesión de cámara debe ser fría y ligada al consumidor |
+| Alternativa                           | Motivo                                                               |
+|---------------------------------------|----------------------------------------------------------------------|
+| `suspend fun scan(): Result<Barcode>` | No modela modo continuo, múltiples códigos ni telemetría             |
+| Callbacks + `stop()`                  | Ciclo de vida manual, propenso a fugas; fallback difícil de componer |
+| `SharedFlow` caliente en un singleton | La sesión de cámara debe ser fría y ligada al consumidor             |

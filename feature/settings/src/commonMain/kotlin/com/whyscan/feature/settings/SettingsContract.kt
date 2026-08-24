@@ -27,4 +27,5 @@ sealed interface SettingsAction {
     data class SetThemeMode(val mode: ThemeMode) : SettingsAction
     data class SetLanguage(val language: AppLanguage) : SettingsAction
     data class SetAdvancedMode(val enabled: Boolean) : SettingsAction
+    data class SetDyslexiaFriendly(val enabled: Boolean) : SettingsAction
 }

@@ -4,8 +4,7 @@ import com.whyscan.core.domain.repository.AppPreferencesRepository
 import com.whyscan.core.domain.repository.ScanHistoryRepository
 import com.whyscan.core.domain.repository.ScanPreferencesRepository
 import com.whyscan.core.domain.repository.ScannerEngineRepository
-import com.whyscan.core.domain.usecase.ClearScanHistoryUseCase
-import com.whyscan.core.domain.usecase.ObserveScanHistoryUseCase
+import com.whyscan.core.domain.usecase.ScanHistory
 import com.whyscan.core.domain.usecase.ScanSessions
 import com.whyscan.core.domain.usecase.ScanSettings
 import com.whyscan.core.domain.usecase.StartComparisonUseCase
@@ -82,6 +81,7 @@ class KoinGraphTest {
 
         koin.get<ScanSettings>()
         koin.get<ScanSessions>()
+        koin.get<ScanHistory>()
         koin.get<ScannerEngineRepository>()
         koin.get<PermissionController>()
         koin.get<ImagePicker>()
@@ -95,8 +95,7 @@ class KoinGraphTest {
     fun `resuelve todo lo que HistoryViewModel pide por constructor`() {
         val koin = start()
 
-        koin.get<ObserveScanHistoryUseCase>()
-        koin.get<ClearScanHistoryUseCase>()
+        koin.get<ScanHistory>()
         koin.get<PlatformActions>()
         koin.get<FileSaver>()
     }

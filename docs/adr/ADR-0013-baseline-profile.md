@@ -1,4 +1,4 @@
-# ADR-0012 — Baseline profile generado en un emulador declarado, versionado y lanzado a mano
+# ADR-0013 — Baseline profile generado en un emulador declarado, versionado y lanzado a mano
 
 - **Estado:** Aceptada
 - **Fecha:** 2026-08-24

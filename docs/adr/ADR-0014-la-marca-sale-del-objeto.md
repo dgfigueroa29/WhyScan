@@ -1,4 +1,4 @@
-# ADR-0013 — La marca sale del objeto que la app lee, no del nombre ni de la categoría
+# ADR-0014 — La marca sale del objeto que la app lee, no del nombre ni de la categoría
 
 - **Estado:** Aceptada
 - **Fecha:** 2026-08-24

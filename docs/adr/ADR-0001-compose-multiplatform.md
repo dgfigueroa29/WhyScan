@@ -35,10 +35,12 @@ Adoptar **Compose Multiplatform**.
 ## Consecuencias
 
 **Positivas**
+
 - Un solo lugar donde cambiar el diseño; imposible que las plataformas deriven visualmente.
 - Los tests de UI sobre `XContent` stateless valen para todas las plataformas.
 
 **Negativas y su gestión**
+
 - La app no se sentirá 100 % nativa en iOS. Aceptable: es una herramienta técnica, no una app de
   consumo masivo. Se compensa usando gestos y transiciones de plataforma en `:core:designsystem`.
 - Los tiempos de build de iOS (Kotlin/Native) son altos. Mitigado limitando el build de iOS a
@@ -48,9 +50,9 @@ Adoptar **Compose Multiplatform**.
 
 ## Alternativas descartadas
 
-| Alternativa | Motivo del descarte |
-|---|---|
-| KMP + SwiftUI | Duplica el esfuerzo de UI sin beneficio en un producto de UI declarativa |
-| Flutter | Descarta el ecosistema Kotlin y obliga a *bindings* manuales hacia ML Kit, Vision y ZXing |
-| React Native | Mismo problema de *bindings*, peor acceso a la cámara en tiempo real |
-| Solo Android | Contradice el objetivo del producto de comparar motores **entre plataformas** |
+| Alternativa   | Motivo del descarte                                                                       |
+|---------------|-------------------------------------------------------------------------------------------|
+| KMP + SwiftUI | Duplica el esfuerzo de UI sin beneficio en un producto de UI declarativa                  |
+| Flutter       | Descarta el ecosistema Kotlin y obliga a *bindings* manuales hacia ML Kit, Vision y ZXing |
+| React Native  | Mismo problema de *bindings*, peor acceso a la cámara en tiempo real                      |
+| Solo Android  | Contradice el objetivo del producto de comparar motores **entre plataformas**             |

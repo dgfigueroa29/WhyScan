@@ -36,10 +36,12 @@ existente y migrar pantalla por pantalla, manteniendo la app funcionando en todo
 ## Consecuencias
 
 **Positivas**
+
 - Un solo modelo mental desde el primer día; nadie escribe código en el módulo condenado.
 - El version catalog y el Kotlin DSL entran limpios, sin período de coexistencia con Groovy.
 
 **Negativas y su gestión**
+
 - **Hay un intervalo en el que la app no compila** hasta que la Fase 1 cierra. Mitigado
   entregando la Fase 1 completa y verificable como una unidad, y manteniendo `main` intacto hasta
   que la rama de migración pase CI.
@@ -50,8 +52,8 @@ existente y migrar pantalla por pantalla, manteniendo la app funcionando en todo
 
 ## Alternativas descartadas
 
-| Alternativa | Motivo |
-|---|---|
-| Migración incremental con `:app` en paralelo | Protege un activo que no existe, a cambio de coste real de coexistencia |
-| Solo documentar y no tocar el build | Deja el SDD sin verificación; las decisiones de estructura no se validan hasta que se escriben |
-| Empezar un repositorio nuevo | Pierde el historial y la trazabilidad de por qué se migró |
+| Alternativa                                  | Motivo                                                                                         |
+|----------------------------------------------|------------------------------------------------------------------------------------------------|
+| Migración incremental con `:app` en paralelo | Protege un activo que no existe, a cambio de coste real de coexistencia                        |
+| Solo documentar y no tocar el build          | Deja el SDD sin verificación; las decisiones de estructura no se validan hasta que se escriben |
+| Empezar un repositorio nuevo                 | Pierde el historial y la trazabilidad de por qué se migró                                      |
