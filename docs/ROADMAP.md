@@ -395,6 +395,36 @@ está cubierta.
 
 ---
 
+## D19, primera pieza: los accesores `compose.*` de los scripts de build
+
+Un fallo de CI dejó ver lo que desde el entorno de desarrollo no se puede leer, porque no alcanza el
+maven de Google y ninguna tarea de Gradle se puede lanzar. Vale la pena escribirlo mientras está a
+mano, que es justo lo que D19 reprocha no haber hecho antes.
+
+Cada `implementation(compose.algo)` de los scripts de build emite:
+
+```
+w: composeApp/build.gradle.kts:57:36: 'runtime: String' is deprecated. Specify dependency directly
+```
+
+Y así con `foundation`, `animation`, `material3`, `components` y `resources` en `:composeApp`, más
+`runtime` en `:androidApp`. Los demás módulos no aparecían en ese log porque la build se cayó antes
+de configurarlos, así que la lista completa es más larga: el convention plugin
+`testscanner.kmp.compose` los usa también.
+
+Tres cosas que conviene tener claras antes de arreglarlo:
+
+- **No son errores, aunque Gradle los cuente como tales.** El compilador los emite como `w:`; cuando
+  *además* hay un error de verdad en el mismo script, el informe de "Script compilation errors" los
+  lista todos juntos y suma. Eso es lo que hizo que un fallo por otra cosa pareciera ocho.
+- **El arreglo lo dice el propio aviso**: "Specify dependency directly", es decir, coordenadas
+  explícitas en vez del accesor del plugin. No es una línea: hay que decidir de dónde sale la versión
+  para no dispersar por los módulos lo que hoy centraliza el plugin de Compose.
+- **Es una familia, no el total.** D19 sigue abierta: falta el resto del build y falta la postura
+  —limpiar y activar `allWarningsAsErrors`, o aceptar el ruido por escrito—.
+
+---
+
 ## Deuda técnica aceptada en la Fase 1
 
 Registrada de forma explícita para que no se olvide:
@@ -419,7 +449,7 @@ Registrada de forma explícita para que no se olvide:
 | ~~D16~~ | ~~`ScannerViewModel` tiene doce colaboradores y veinte funciones~~ | **Saldada**: seis dependencias. Los ajustes en `ScanSettings`, la sesión y el guardado en `ScanSessions`, las acciones sobre el resultado en `ResultActionRunner`. Los tres casos de uso de preferencias y el del catálogo se **borraron** en vez de envolverse —delegaban al repositorio sin añadir nada—, y la única regla que había se conservó donde se puede probar. Quince tests nuevos que antes exigían levantar el ViewModel entero. Quedan dos supresiones, ninguna global: `TooManyFunctions` en la clase (catorce acciones de usuario, catorce funciones) y `CyclomaticComplexMethod` en `onAction`, que es una tabla de despacho sobre un `sealed interface` |
 | D17 | `IosPlatformActions.openUrl` usa `UIApplication.openURL:`, que Apple depreció en iOS 10 a favor de `openURL:options:completionHandler:`. Compila —solo es un aviso— pero es API vieja en código nuevo. Salió de auditar el header real al preparar la compilación de iOS, no de un fallo | Cuando iOS enlace en verde y se pueda comprobar el cambio en el runner |
 | ~~D18~~ | ~~**Nada comprueba que el grafo de Koin resuelva.** Saldada a medias: falta el `platformModule` de Android.~~ **Saldada entera.** El defecto que la abrió lo demostró el primer arranque real en un dispositivo: `platformModule` registraba el executor de análisis como `ExecutorService` mientras los tres motores de cámara lo piden como `Executor`, y Koin resuelve por igualdad exacta de tipo. La app moría al componer la primera pantalla con `NoDefinitionFoundException`. **El compilador no puede verlo** —los `get()` son genéricos que se resuelven en ejecución— y el CI tampoco: compila, pasa lint, pasa R8 y publica un APK que revienta al abrirse. Es el mismo agujero que el criterio de salida de la Fase 1, visto desde el otro lado. `KoinGraphTest` (`composeApp/src/desktopTest`) arranca el grafo real y **resuelve** cada tipo que la raíz de la app consume, agrupado por el ViewModel que lo pide. No usa `verify()` sino resolución de verdad, que es más fuerte: instancia en vez de reflexionar. Cubre `dataModule`, `domainModule` y los tres módulos de feature —comunes a las cuatro plataformas— más el `platformModule` de escritorio. En su primera ejecución destapó el defecto del driver de Room que no se aplicaba (SDD §11). La mitad que faltaba —el `platformModule` de **Android**, que es justo donde estaba el defecto original— la cubre ahora `AndroidKoinGraphTest` en `composeApp/src/androidUnitTest`, sobre Robolectric, con su tarea en el job de Android del CI | **Cerrada.** Lo que queda fuera es iOS y Web, y no por el mismo motivo: ahí falta ejecutar tests de esos targets, no falta el test |
-| D19 | **Los avisos del compilador no los lee nadie, y uno de ellos era un defecto de producción.** `This extension is shadowed by a member` llevaba apareciendo en cada build desde que existe `:core:database`, y señalaba el defecto del driver de Room que reventaba escritorio e iOS (SDD §11): un aviso correcto, visible en cada compilación y leído por nadie durante meses. Hoy el build emite además avisos de deprecación mezclados con ruido de terceros, así que ninguno destaca. **Uno menos:** el `KoinContext is not needed anymore` se fue al cerrar D20, y se fue por el camino largo —comprobando qué pasaba al quitarlo— que es el que esta deuda pide para el resto | Decidiendo una postura: o se limpian todos y se activa `allWarningsAsErrors`, o se acepta el ruido explícitamente. Lo primero exige antes saber cuáles vienen de plugins y no se pueden arreglar, y eso exige leer un build completo — que desde el entorno de desarrollo no se puede lanzar, porque no alcanza el maven de Google |
+| D19 | **Los avisos del compilador no los lee nadie, y uno de ellos era un defecto de producción.** `This extension is shadowed by a member` llevaba apareciendo en cada build desde que existe `:core:database`, y señalaba el defecto del driver de Room que reventaba escritorio e iOS (SDD §11): un aviso correcto, visible en cada compilación y leído por nadie durante meses. Hoy el build emite además avisos de deprecación mezclados con ruido de terceros, así que ninguno destaca. **Uno menos:** el `KoinContext is not needed anymore` se fue al cerrar D20, y se fue por el camino largo —comprobando qué pasaba al quitarlo— que es el que esta deuda pide para el resto. **Y ya hay inventario de una familia entera**, leída de un log real de CI (ver abajo) | Decidiendo una postura: o se limpian todos y se activa `allWarningsAsErrors`, o se acepta el ruido explícitamente. Lo primero exige antes saber cuáles vienen de plugins y no se pueden arreglar, y eso exige leer un build completo — que desde el entorno de desarrollo no se puede lanzar, porque no alcanza el maven de Google. Lo que sí se puede es leer el log de CI cuando algo falla, que es como salió el inventario de abajo |
 | ~~D20~~ | ~~**El aviso `KoinContext is not needed anymore` en `App.kt`.** Quitarlo cambia por dónde resuelven `koinInject` y `koinViewModel`, y eso no se puede comprobar sin ejecutar la app.~~ **Saldada, y la premisa era falsa.** Sí se puede comprobar sin ejecutar la app, porque `koinInject` no es UI: es una función `@Composable` que lee un `CompositionLocal` y llama a `remember`, y eso lo resuelve el **runtime** de Compose, que es Kotlin puro y no sabe nada de pantallas. `ComposeKoinContextTest` monta una `Composition` con un `Applier` que no aplica nada —no hay árbol de nodos que construir, lo que interesa ocurre *durante* la composición— y comprueba que `koinInject` devuelve la misma instancia que `koin.get()`, para un tipo de los módulos comunes y otro que depende del `platformModule`. Leyendo koin-compose se ve por qué: `LocalKoinScopeContext` declara como valor por defecto `KoinPlatform.getKoin().scopeRegistry.rootScope`, que es exactamente lo que `KoinContext` proveía a mano — el envoltorio era una identidad. Pero eso es leer la librería, y leyendo la librería también estaba bien el `build()` de Room que no se llamaba nunca | **Cerrada.** Con ella se va uno de los avisos que D19 señala como ruido |
 | D22 | **Una migración de esquema borra el historial del usuario.** `buildBundled()` cierra con `fallbackToDestructiveMigration(dropAllTables = true)`, que hoy no hace daño —la base va por la versión 1 y nunca ha cambiado— pero es una bomba de relojería en cuanto la app esté instalada en teléfonos ajenos: la primera vez que se añada una columna, Room tirará la tabla en vez de migrarla y el usuario perderá lo que tenía sin enterarse. No se cambia ahora porque quitarlo hoy sustituye una pérdida silenciosa por un cierre inesperado, y no hay ninguna migración que escribir todavía. Lo que sí está: `room { schemaDirectory(...) }` exporta el esquema, que es el requisito para poder escribirla | En el mismo cambio que suba `@Database(version = 2)`: escribir la `Migration` y quitar el fallback. Antes no hay nada que hacer; después es tarde |
 | D21 | **El selector de idioma en iOS está sin verificar.** El actual escribe `AppleLanguages` en `NSUserDefaults`, que es el mecanismo estándar; si Compose lee `preferredLanguages` el cambio es inmediato, si lee `currentLocale` no lo será hasta reabrir. Ver ADR-0011 | Cuando haya un iPhone. Es lo primero que hay que mirar de la UI de iOS |

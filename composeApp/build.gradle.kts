@@ -100,6 +100,12 @@ kotlin {
         // `ViewModelStoreOwner` que en la app pone la plataforma.
         val desktopTest by getting {
             dependencies {
+                // `compose.uiTest` está marcado como experimental por el propio plugin de Compose,
+                // y sin este `@OptIn` la **compilación del script** falla —no es un aviso—. Lo que
+                // hay detrás es `runComposeUiTest`, la API multiplataforma de test de composición:
+                // experimental en el sentido de que su firma puede cambiar, no en el de que no
+                // funcione.
+                @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
                 implementation(compose.uiTest)
                 implementation(libs.lifecycle.runtime.compose)
                 implementation(libs.lifecycle.viewmodel.compose)
