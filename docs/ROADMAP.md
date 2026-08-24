@@ -231,13 +231,14 @@ recupera correctamente EAN-13 impresos sobre códigos dañados.
 
 Hasta aquí el criterio de todas las fases fue *técnico*. Este no: la app tenía que dejar de parecer
 lo que es por dentro. Un usuario que abre un lector de códigos no debería encontrarse ocho motores
-con sus latencias en la portada, ni una app llamada "TestScanner" sin icono.
+con sus latencias en la portada, ni una app con nombre de prototipo y sin icono.
 
 ### Ronda 1 — marca, sistema de diseño, tema e idiomas ✅
 
-- [x] **Nombre y marca: Scanly.** `applicationId` a `com.scanly.app` — se cambia ahora porque
-      después de la primera publicación en Play ya no se puede. Los paquetes de Kotlin se quedan en
-      `com.testscanner.*` a conciencia: son doscientos archivos para cambiar algo que nadie ve
+- [x] **Nombre y marca.** `applicationId` a un identificador propio — se cambia ahora porque después
+      de la primera publicación en Play ya no se puede. Los paquetes de Kotlin se dejaron como
+      estaban a conciencia: doscientos archivos para cambiar algo que nadie ve. **Esa decisión se
+      revocó después** — ver la Ronda 5
 - [x] **Icono de lanzador, que no existía.** Ni uno: el manifiesto no declaraba `android:icon`, así
       que Android ponía su robot por defecto. Es un bloqueo duro de Play, y de los que no aparecen en
       ningún CI. Adaptativo con capa `monochrome` (iconos temáticos de Android 13+), PNG de respaldo
@@ -347,13 +348,44 @@ con sus latencias en la portada, ni una app llamada "TestScanner" sin icono.
       Un clic en Actions → "Baseline profile (manual)" lo produce. Hasta entonces el perfil no existe
       y la app arranca como arrancaba: el cableado no miente sobre eso
 
+### Ronda 5 — un solo nombre ✅
+
+El proyecto llegó a tener **tres nombres a la vez** y nadie lo había mirado de frente: uno en el
+repositorio, otro en `app_name` —lo único que el usuario lee— y un tercero en los paquetes de Kotlin,
+en `rootProject.name`, en los convention plugins, en el archivo de la base de datos, en la clave de
+preferencias y en el directorio de escritorio.
+
+La divergencia estaba razonada en la Ronda 1, y el razonamiento no era malo: renombrar doscientos
+archivos para cambiar algo que ningún usuario ve es mal negocio. Lo que faltaba en esa cuenta es que
+**uno de los tres nombres no es reversible**. El `applicationId` queda congelado en la primera
+publicación —es la URL de la ficha y la clave con la que el sistema reconoce una actualización—, así
+que unificar costaba lo mismo antes que después salvo por ese detalle. Se hizo antes.
+
+- [x] **`com.whyscan` en todo el código**: paquetes, directorios (movidos con `git mv`, para no perder
+      el historial), `namespace` de los quince módulos y el paquete de la clase de recursos de Compose
+- [x] **`applicationId`, `app_name`, `rootProject.name`**, el `packageName` de la distribución de
+      escritorio, el título de la ventana, el `<title>` de la web y el `Info.plist` de iOS
+- [x] **Los símbolos de marca**: el tema de Compose, la marca vectorial, el estilo `Theme.*` de
+      Android y la clase `Application`
+- [x] **Los convention plugins**, renombrados los tres archivos y sus catorce usos
+- [x] **Los textos que el usuario lee**: el aviso de privacidad de Ajustes y los dos mensajes de la
+      pantalla de escaneo, en los dos idiomas
+- [x] **Los identificadores de datos**: archivo de la base de datos, clave de `SharedPreferences`,
+      nodo de preferencias de escritorio y directorio `~/.…`
+
+> **Lo que esto rompe, dicho antes de que sorprenda.** Cambiar el nombre del archivo de la base de
+> datos, la clave de preferencias y el directorio de escritorio significa que **una instalación
+> anterior no encuentra sus datos**: historial y ajustes arrancan vacíos. No se escribió ninguna
+> migración a propósito — la app nunca se ha distribuido, así que los únicos afectados son los
+> dispositivos de desarrollo, y una migración para eso sería código muerto desde el día uno.
+
 ### Antes de la ficha de Play, esto va primero
 
 Lo de abajo es trámite de tienda. Lo de esta lista no. Se hizo el repaso a propósito antes de tocar
 nada de Play, y salió algo que no estaba en ninguna lista:
 
 - [x] **`allowBackup` estaba en `true`, y la app le dice al usuario lo contrario.** Ajustes afirma que
-      "Scanly no pide permiso de internet, así que lo que escaneás no puede salir del dispositivo".
+      "WhyScan no pide permiso de internet, así que lo que escaneás no puede salir del dispositivo".
       Con Auto Backup encendido eso era **falso**: el historial de Room vive en `databases/` y las
       preferencias en `shared_prefs/`, dos de los directorios que el sistema copia a Google Drive por
       defecto. Y lo hace **el sistema**, desde fuera del proceso, sin necesitar el permiso `INTERNET`
@@ -376,7 +408,7 @@ Solo después tiene sentido pelearse con la ficha.
 
 ### Pendiente para publicar
 
-- [ ] Comprobar en Play Console que `com.scanly.app` está libre y que "Scanly" no colisiona con una
+- [ ] Comprobar en Play Console que `com.whyscan.app` está libre y que "WhyScan" no colisiona con una
       ficha existente. **Sin red en el entorno de desarrollo, esto no se pudo verificar aquí**
 - [ ] Capturas, gráfico de cabecera 1024×500 y textos de la ficha, en los dos idiomas
 - [ ] Política de privacidad publicada y formulario de seguridad de datos. Es el trámite más corto
@@ -426,7 +458,7 @@ w: composeApp/build.gradle.kts:57:36: 'runtime: String' is deprecated. Specify d
 Y así con `foundation`, `animation`, `material3`, `components` y `resources` en `:composeApp`, más
 `runtime` en `:androidApp`. Los demás módulos no aparecían en ese log porque la build se cayó antes
 de configurarlos, así que la lista completa es más larga: el convention plugin
-`testscanner.kmp.compose` los usa también.
+`whyscan.kmp.compose` los usa también.
 
 Tres cosas que conviene tener claras antes de arreglarlo:
 
@@ -447,7 +479,7 @@ Registrada de forma explícita para que no se olvide:
 
 | # | Deuda | Se salda en |
 |---|---|---|
-| ~~D1~~ | ~~Sin convention plugins: cada módulo repite su configuración KMP~~ | **Saldada**: `build-logic/` con `testscanner.kmp.library`, `.kmp.compose` y `.android.application` |
+| ~~D1~~ | ~~Sin convention plugins: cada módulo repite su configuración KMP~~ | **Saldada**: `build-logic/` con `whyscan.kmp.library`, `.kmp.compose` y `.android.application` |
 | ~~D2~~ | ~~Preferencias en memoria, no persistidas~~ | **Saldada**: `multiplatform-settings` en las cuatro plataformas |
 | ~~D3~~ | ~~Historial en memoria~~ | **Saldada**: Room KMP en Android, iOS y Desktop. En Web sigue en memoria porque Room no tiene target wasmJs |
 | ~~D4~~ | ~~Navegación propia sin deep links ni restauración de estado~~ | **Saldada**: hecha la revisión de ADR-0005, el umbral (seis destinos o deep links) no se alcanza y la navegación propia se mantiene. Lo que sí era un defecto era la restauración: al recrearse la Activity —muerte del proceso, cambio de idioma o de tamaño de letra; no al rotar, que el manifiesto ya cubre— se volvía al escáner. `Navigator` guarda y restaura el backstack por ids estables y `MainActivity` lo pasa por `onSaveInstanceState` |

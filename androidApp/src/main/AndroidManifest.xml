@@ -22,7 +22,7 @@
         `allowBackup="false"`, y no es una precaución genérica: lo que había era `true` —el valor por
         defecto, puesto sin pensarlo— y **contradecía lo que la app le dice al usuario**.
 
-        La pantalla de Ajustes afirma que "Scanly no pide permiso de internet, así que lo que escaneás
+        La pantalla de Ajustes afirma que "WhyScan no pide permiso de internet, así que lo que escaneás
         no puede salir del dispositivo". Con Auto Backup activado eso es falso, y de la forma más
         difícil de ver: quien sube los datos **no es la app**, es el sistema. El historial de Room
         vive en `databases/` y las preferencias en `shared_prefs/`, que son dos de los directorios que
@@ -39,7 +39,7 @@
         pequeña que encontrárselo en Drive cuando la app promete que no puede salir de aquí.
     -->
     <application
-        android:name=".TestScannerApplication"
+        android:name=".WhyScanApplication"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
@@ -47,14 +47,14 @@
         android:localeConfig="@xml/locales_config"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Scanly"
+        android:theme="@style/Theme.WhyScan"
         android:usesCleartextTraffic="false">
 
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
-            android:theme="@style/Theme.Scanly">
+            android:theme="@style/Theme.WhyScan">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

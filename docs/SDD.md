@@ -1,13 +1,13 @@
-# Software Design Document — Scanly Multiplatform (repositorio: TestScanner)
+# Software Design Document — WhyScan Multiplatform
 
 | Campo | Valor |
 |---|---|
-| Proyecto | Scanly (repositorio `TestScanner`) |
+| Proyecto | WhyScan |
 | Documento | Software Design Document (SDD) |
 | Versión | 1.8 |
 | Estado | Vigente — **el proyecto compila y pasa CI** en Android (con R8), Escritorio y Web, y el framework de iOS **enlaza entero** desde el workflow manual `ios.yml`. Fases 1, 2, 4 y 5 cerradas salvo lo listado como pendiente; la 3 (iOS) escrita y despriorizada por falta de dispositivo, no de compilación. **La app arrancó por primera vez en un dispositivo real** en agosto de 2026, y ese arranque encontró un defecto que ninguna comprobación automática podía ver (§10); la versión anterior convirtió esa comprobación en un test —que destapó un segundo defecto de meses en la persistencia (§11)— y esta la termina: el grafo de **Android** también está cubierto, y sin emulador |
 | Fecha | 2026-08-24 |
-| Autor | Equipo Scanly |
+| Autor | Equipo WhyScan |
 | Alcance de esta versión | Cerrar lo pendiente antes de la ficha de Play: D18 completa (`AndroidKoinGraphTest` sobre Robolectric), D20 (fuera el envoltorio `KoinContext`, comprobado componiendo sin UI), transiciones entre destinos, y el **baseline profile** de Android cableado y documentado (§10, §13.5, ADR-0012) |
 
 ---
@@ -16,15 +16,24 @@
 
 ### 1.1 Propósito
 
-Este documento define la arquitectura objetivo de **Scanly** tras su migración desde una
+Este documento define la arquitectura objetivo de **WhyScan** tras su migración desde una
 aplicación Android de módulo único hacia una aplicación **Compose Multiplatform (CMP)**.
 
-> **Sobre los nombres.** El producto se llama **Scanly** y su `applicationId` en Play es
-> `com.scanly.app`. El repositorio, los paquetes de Kotlin y los módulos Gradle siguen siendo
-> `com.testscanner.*` **a propósito**: renombrarlos tocaría doscientos archivos para cambiar algo que
-> ningún usuario ve, mientras que el `applicationId` —que sí es la identidad pública y permanente en
-> Play— ya está donde corresponde. Este documento usa "Scanly" para el producto y `TestScanner` para
-> el repositorio.
+> **Sobre el nombre.** **WhyScan**, en todas partes y sin excepciones: el repositorio, el
+> `applicationId` (`com.whyscan.app`), los paquetes de Kotlin (`com.whyscan.*`), los convention
+> plugins, el archivo de la base de datos, la clave de preferencias y lo que se lee bajo el icono.
+>
+> Llegó a haber **tres nombres a la vez** —uno en el repositorio, otro en `app_name` y un tercero en
+> los paquetes— y esa divergencia estaba razonada: renombrar doscientos archivos para cambiar algo
+> que ningún usuario ve parecía mal negocio. Lo que faltaba en esa cuenta es que uno de los tres no
+> es reversible. El `applicationId` queda **congelado en la primera publicación**: es la URL de la
+> ficha y la clave con la que el sistema reconoce una actualización. Unificar costaba lo mismo antes
+> y después, salvo por ese detalle — así que se hizo antes.
+>
+> Un efecto colateral que conviene tener presente: cambiaron también el nombre del archivo de la base
+> de datos, la clave de `SharedPreferences` y el directorio de escritorio. Cualquier instalación
+> anterior a este cambio **no encuentra sus datos**. Como la app nunca se ha distribuido, eso afecta
+> solo a los dispositivos de desarrollo.
 
 El objetivo funcional principal del producto es:
 
@@ -32,7 +41,7 @@ El objetivo funcional principal del producto es:
 > barras y QR**, permitiendo comparar motores, degradar con elegancia cuando uno no está
 > disponible, y funcionar sobre Android, iOS, Desktop y Web.
 
-Scanly no es solo un lector de códigos: es un **banco de pruebas de motores de escaneo**. Esa
+WhyScan no es solo un lector de códigos: es un **banco de pruebas de motores de escaneo**. Esa
 naturaleza es lo que dicta la decisión arquitectónica central del documento — el **Scanner Engine
 SPI** (§7).
 
@@ -82,7 +91,7 @@ la misma pantalla con cosas ocultas sino dos disposiciones distintas, por los mo
 ### 2.1 Estado inicial (antes de la migración)
 
 ```
-TestScanner/
+WhyScan/
 └── app/                          # módulo Android único
     ├── build.gradle              # Groovy DSL, AGP 8.0.2, Kotlin 1.8.10
     └── src/main/java/…/
@@ -223,7 +232,7 @@ dominio**. Un módulo de motor depende de `:core:scanner-api` y de su SDK nativo
 ### 5.2 Estructura de módulos Gradle
 
 ```
-TestScanner/
+WhyScan/
 ├── gradle/libs.versions.toml          # version catalog — única fuente de versiones
 ├── build-logic/                       # convention plugins: kmp.library, kmp.compose, android.application
 │
@@ -566,7 +575,7 @@ Detalle operativo completo en `docs/ENGINES.md`. Resumen:
 La presencia de **ZXing-cpp en las cuatro plataformas** no es redundante: es el control
 experimental. Al ser el mismo decodificador en todas partes, cualquier diferencia de resultado
 entre plataformas se atribuye a la captura de cámara, no al algoritmo — que es exactamente la
-medición que hace útil a TestScanner.
+medición que hace útil a WhyScan.
 
 ---
 
@@ -1028,7 +1037,7 @@ pendiente antes de publicar, que es el momento exacto en el que había que mirar
 primera subida, cambiar esto le cambia al usuario un comportamiento que ya tenía.
 
 El manifiesto declaraba `android:allowBackup="true"` —el valor por defecto, puesto sin pensarlo— y la
-pantalla de Ajustes afirma, textualmente, que *"Scanly no pide permiso de internet, así que lo que
+pantalla de Ajustes afirma, textualmente, que *"WhyScan no pide permiso de internet, así que lo que
 escaneás no puede salir del dispositivo"*. Con Auto Backup activado eso **era falso**: el historial
 de Room vive en `databases/` y las preferencias en `shared_prefs/`, dos de los directorios que Auto
 Backup copia a Google Drive por defecto.
@@ -1587,7 +1596,7 @@ siempre: son decisiones del producto entero y no de una pantalla.
 
 #### La paleta se declara entera
 
-`ScanlyTheme` fija los **~30 roles** de Material 3 y no los seis habituales. El motivo está contado
+`WhyScanTheme` fija los **~30 roles** de Material 3 y no los seis habituales. El motivo está contado
 en §12.1: `lightColorScheme()` rellena con su paleta de fábrica todo lo que no se le pase, y el mismo
 defecto apareció dos veces —primero en los `on*`, después en los `*Container`— antes de que quedara
 claro que la única postura estable es no dejar ninguno al azar. `surfaceTint` incluido: es el color
@@ -1596,7 +1605,7 @@ superficie con elevación.
 
 Se mantiene la decisión de **no usar `dynamicColorScheme`** (Material You). Un tema que cambia con el
 fondo de pantalla del usuario es incompatible con una UI que se superpone a un preview de cámara,
-donde el contraste tiene que estar garantizado (RNF-05) — y ahora, además, el azul de Scanly es parte
+donde el contraste tiene que estar garantizado (RNF-05) — y ahora, además, el azul de WhyScan es parte
 del producto.
 
 #### Tipografía y formas
@@ -1619,7 +1628,7 @@ correcto por casualidad y se habría redondeado de rebote al cambiar el margen d
 #### Tema claro/oscuro elegido por el usuario
 
 `ThemeMode` (Sistema / Claro / Oscuro) se persiste con las demás preferencias de app.
-`ScanlyTheme` recibe un **booleano ya resuelto** y no el modo: resolver "sistema" contra lo que el
+`WhyScanTheme` recibe un **booleano ya resuelto** y no el modo: resolver "sistema" contra lo que el
 sistema dice *ahora* es cosa de quien tiene el estado delante, y así `:core:designsystem` no depende
 del dominio.
 
@@ -1646,7 +1655,7 @@ incógnita pendiente en iOS están en
 
 #### La marca
 
-`ScanlyMark` es un `ImageVector` dibujado en código —cuatro esquinas de encuadre y la línea de
+`WhyScanMark` es un `ImageVector` dibujado en código —cuatro esquinas de encuadre y la línea de
 lectura— y no una imagen empaquetada, por dos motivos: se tiñe con el color del tema, así que
 funciona en claro y en oscuro sin dos archivos; y es **la misma forma** que el icono de lanzador de
 Android, con lo que la app y su icono no se pueden separar por descuido.

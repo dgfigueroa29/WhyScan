@@ -34,7 +34,7 @@ val managedDeviceApi = 34
 val generatorMinSdk = 28
 
 android {
-    namespace = "com.testscanner.baselineprofile"
+    namespace = "com.whyscan.baselineprofile"
     compileSdk = libs.versions.compileSdk.get().toInt()
 
     compileOptions {
