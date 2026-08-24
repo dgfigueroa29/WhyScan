@@ -266,6 +266,9 @@ WhyScan/
 │                                      # targets: android, iosArm64/SimulatorArm64, jvm, wasmJs
 ├── androidApp/                        # shell Android: Application + MainActivity
 │                                      #   + icono adaptativo, temas de arranque y localeConfig
+├── baselineprofile/                   # com.android.test: graba el baseline profile de Android
+│                                      #   sobre un emulador declarado (ADR-0012). No entra en
+│                                      #   ningún binario
 ├── iosApp/                            # shell iOS: proyecto Xcode + SwiftUI host
 ├── playstore/                         # material de la ficha de Play (icono 512×512)
 └── docs/
@@ -832,6 +835,8 @@ Lo que **no** cubre, dicho para que no se confunda con una red completa:
   `Dispatchers.Main` real. Comprueba que **todo lo que piden por constructor** resuelva, que es
   exactamente donde falló D18. Añadir un parámetro a un ViewModel obliga a añadirlo también a la
   lista del test, y esa fricción es deliberada.
+- No cubre iOS ni Web. Ahí lo que falta no es el test, es ejecutar los tests de esos targets: uno
+  necesita un runner macOS y el otro el target wasmJs.
 
 **Encontró un defecto en su primera ejecución**, y no en el cableado de Koin sino en la persistencia
 (§11): la base de datos nunca recibía su driver. Es la mejor defensa posible de por qué este test
@@ -872,6 +877,24 @@ guarden lo mismo—. `SaveDetectionUseCase` se queda fuera y no es una inconsist
 escáner al leer un código, que es otro camino y no quiere arrastrar el borrado ni las notas.
 
 La historia original, que es de donde salió el criterio: `ScannerViewModel` llegó a tener doce
+
+### D20: componer sin UI (`ComposeKoinContextTest`)
+
+D20 decía que quitar el `KoinContext { }` de `App.kt` "no se puede comprobar sin ejecutar la app". La
+premisa era falsa y vale la pena registrar por qué, porque el mismo razonamiento sirve para más
+cosas.
+
+`koinInject` **no es UI**. Es una función `@Composable` que lee un `CompositionLocal` y llama a
+`remember`, y las dos las resuelve el *runtime* de Compose, que es Kotlin puro y no sabe nada de
+pantallas. Lo que hacía falta no era un dispositivo ni una ventana: era **componer**. El test monta
+una `Composition` con un `Applier` que no aplica nada —no hay árbol de nodos que construir, lo que
+interesa ocurre *durante* la composición— y comprueba que `koinInject` devuelve la misma instancia
+que `koin.get()`, para un tipo del `dataModule` común y otro que depende del `platformModule`.
+
+Leyendo koin-compose se llega a la misma conclusión: `LocalKoinScopeContext` declara como valor por
+defecto `KoinPlatform.getKoin().scopeRegistry.rootScope`, exactamente el scope que `KoinContext`
+proveía a mano. Pero leyendo la librería también estaba bien el `build()` de Room que no se llamaba
+nunca (§11), así que aquí no se da nada por bueno leyendo: se compone y se mira qué sale.
 colaboradores por seguirla al pie de la letra, y cuatro de ellos eran la misma idea: tres casos de
 uso de una línea sobre `ScanPreferencesRepository` más el propio repositorio, inyectado aparte
 porque dos operaciones no tenían caso de uso. La corrección (deuda D16) fue en dos direcciones:
@@ -1133,6 +1156,38 @@ Android, pero es una garantía silenciosa: no aparece en ninguna parte y el pró
 dependencia puede reintroducirla sin darse cuenta. Queda anotado aquí como la invariante que hay que
 defender.
 
+**Hallazgo 3 — `allowBackup="true"`, y la app decía lo contrario.** Salió al revisar qué quedaba
+pendiente antes de publicar, que es el momento exacto en el que había que mirarlo: después de la
+primera subida, cambiar esto le cambia al usuario un comportamiento que ya tenía.
+
+El manifiesto declaraba `android:allowBackup="true"` —el valor por defecto, puesto sin pensarlo— y la
+pantalla de Ajustes afirma, textualmente, que *"WhyScan no pide permiso de internet, así que lo que
+escaneás no puede salir del dispositivo"*. Con Auto Backup activado eso **era falso**: el historial
+de Room vive en `databases/` y las preferencias en `shared_prefs/`, dos de los directorios que Auto
+Backup copia a Google Drive por defecto.
+
+Lo interesante del defecto es su forma, porque es la misma que la de D18 y la del driver de Room:
+**la garantía se comprobó en el sitio equivocado.** La auditoría verificó que la app no tiene cliente
+HTTP, no declara `INTERNET` y no escribe trazas — todo cierto, y todo sobre lo que *la app* hace.
+Aquí quien sube los datos no es la app, es el sistema, desde fuera del proceso y sin necesitar
+ninguno de los permisos que la app declara. Una invariante que solo se defiende mirando el código
+propio no cubre lo que hace la plataforma por debajo.
+
+La corrección son dos cosas, y hacen falta las dos:
+
+- `android:allowBackup="false"`, que apaga la copia en la nube en todas las versiones.
+- `android:dataExtractionRules="@xml/data_extraction_rules"`, porque **desde Android 12
+  `allowBackup` dejó de cubrirlo todo**: la transferencia entre dispositivos —la de configurar un
+  teléfono nuevo desde el viejo— se gobierna desde ese archivo, y sin él el historial viajaría
+  igualmente en ese traspaso. El archivo excluye `root` además de los dominios sueltos: excluir por
+  dominios obliga a acertar con la lista y a revisarla cada vez que se guarde algo nuevo.
+
+El coste está aceptado y dicho: **el historial no sobrevive a un cambio de teléfono.** Para un
+registro local de lo que uno ha escaneado, perderlo al cambiar de móvil es una sorpresa más pequeña
+que encontrárselo en Drive cuando la app promete que no puede salir de aquí. Tiene además una
+consecuencia directa en el trámite de Play: el formulario de seguridad de datos pregunta si los datos
+se transfieren fuera del dispositivo, y ahora la respuesta "no" es verdad.
+
 ---
 
 ### 12.1 Accesibilidad (RNF-05)
@@ -1164,7 +1219,7 @@ Material —una paleta morada que no es esta— y el texto de un botón primario
 morado. Se arreglaron los `on*`… y **volvió a pasar con los `*Container`**, que es lo que pinta un
 `FilterChip` seleccionado, la `Card`, el `NavigationBar` y el indicador del ítem activo: todos
 salían
-morados en una app cuya marca es azul. La conclusión no es "declarar más roles" sino que
+morados en una app cuya marca es verde. La conclusión no es "declarar más roles" sino que
 `lightColorScheme()` rellena **todo** lo que no se le pase, así que la única postura estable es
 declarar los ~30 roles y que no quede ninguno al azar.
 
@@ -1465,8 +1520,16 @@ Implementado en `.github/workflows/verify.yml`:
 | `desktop` | cada PR | `desktopJar`                                                                                                             |
 | `web`     | cada PR | `wasmJsBrowserDistribution`                                                                                              |
 
-El job de iOS **no está en esta tabla**: vive en un workflow aparte, `ios.yml`, y solo se dispara a
-mano (`workflow_dispatch`).
+`baseline-profile.yml` tampoco está en la tabla, y por una razón distinta que iOS: no es que su
+veredicto no sirva como criterio, es que **no emite ninguno**. Arranca un emulador, recorre la app y
+escribe un archivo con los métodos que ART debe compilar de antemano. Es una grabación, no una
+comprobación. Ver [ADR-0013](adr/ADR-0013-baseline-profile.md).
+
+Los tests unitarios de Android van en el job de `android` y no en `checks` porque necesitan el SDK de
+Android; Robolectric pone el resto, así que siguen sin necesitar emulador.
+
+**Dos workflows no están en esta tabla, y los dos por el mismo motivo.** `ios.yml` y
+`baseline-profile.yml` viven aparte y solo se disparan a mano (`workflow_dispatch`).
 
 La razón no es el coste del runner macOS —que también, riesgo R4— sino qué significa un check.
 Enlazar el framework comprueba que el Kotlin/Native **compila**; no comprueba que la app de iOS
@@ -1480,9 +1543,52 @@ La contrapartida está aceptada a conciencia: el código de iOS queda sin verifi
 es la situación en la que se coló el `Cannot access 'val IO': it is internal`. Se compensa lanzando
 `ios.yml` a mano al tocar código de iOS, y obligatoriamente antes de retomar la Fase 3.
 
+`baseline-profile.yml` está fuera por la razón simétrica: no es que su veredicto no sirva como
+criterio, es que **no emite ningún veredicto**. Arranca un emulador, recorre la app y escribe un
+archivo con los métodos que ART debe compilar de antemano. Es una grabación, no una comprobación: no
+afirma nada y no puede fallar por lo que la app haga. Se relanza cuando cambia el camino que graba
+—una pantalla nueva, un motor nuevo, una versión de Compose—, no en cada PR, donde añadiría un cuarto
+de hora para producir casi siempre el mismo archivo. Lo que sí está en cada PR es que el cableado del
+plugin no rompa la build: `assembleRelease` consume el perfil versionado sin arrancar nada. Ver
+[ADR-0013](adr/ADR-0013-baseline-profile.md).
+
 `assembleRelease` está en cada PR y no solo al publicar por una razón concreta: R8 solo rompe cosas
 cuando se ejecuta, y los fallos que produce —una clase eliminada, un nombre ofuscado que alguien
 esperaba leer— no aparecen en debug. Descubrirlos al preparar una release es tarde.
+
+### 13.6 Rendimiento del arranque: el baseline profile
+
+Es la única optimización de arranque que este proyecto puede hacer sin tocar arquitectura, y ataca un
+coste real: al abrir, la app monta Compose, resuelve un grafo de Koin con cinco motores y construye
+Room. Todo eso lo **interpreta** ART la primera vez que se ejecuta. Un baseline profile es la lista de
+clases y métodos que ART compila por adelantado al instalar; Play la distribuye dentro del AAB, y es
+lo que separa "la app arranca" de "la app arranca rápido la primera vez" — que es justo el arranque
+que mide Android vitals y el que decide si alguien deja la app instalada.
+
+Las piezas y dónde vive cada una:
+
+| Pieza | Dónde | Qué hace |
+|---|---|---|
+| `:baselineprofile` | módulo `com.android.test` | Graba dos recorridos —arranque y navegación por las tres pantallas— sobre un Gradle Managed Device: Pixel 6, API 34, imagen `aosp` |
+| Plugin `androidx.baselineprofile` | `:androidApp` y `:baselineprofile` | Une productor y consumidor; crea las variantes `nonMinifiedRelease` (para grabar sin R8) y `benchmarkRelease` |
+| `androidx.profileinstaller` | `:androidApp` | Instala el perfil en Android 7-11, donde el sistema no lo hace solo. Con `minSdk` 24 eso es la mitad del rango, y la mitad más lenta |
+| `baseline-profile.yml` | CI | El botón que lanza la grabación. Manual, no en cada PR |
+
+Tres decisiones que conviene no perder, con su razón, y el detalle en
+[ADR-0013](adr/ADR-0013-baseline-profile.md):
+
+- **Emulador declarado y no dispositivo enchufado.** El perfil depende de por dónde pasa el código,
+  así que dos dispositivos dan dos perfiles y ninguno es "el" perfil.
+- **El perfil se versiona y `assembleRelease` lo consume del repositorio**
+  (`automaticGenerationDuringBuild = false`). Si ensamblar arrancara un emulador, nadie podría
+  ensamblar la app sin uno — y el job de Android del CI dejaría de existir tal como está.
+- **La grabación no es un test.** No afirma nada y no puede fallar por lo que la app haga. Por eso
+  vive fuera de `Verify` y por eso no contradice la decisión de no tener tests instrumentados (D6):
+  lo que se rechazó allí era la falsedad de un criterio que nadie ejecuta, no el emulador.
+
+Y una consecuencia que hay que tener presente porque **no avisa**: un perfil viejo no rompe nada,
+simplemente deja de cubrir el código nuevo. Hay que relanzar el workflow al añadir pantallas o al
+subir Compose.
 
 ---
 
@@ -1780,9 +1886,8 @@ superficie con elevación.
 Se mantiene la decisión de **no usar `dynamicColorScheme`** (Material You). Un tema que cambia con
 el
 fondo de pantalla del usuario es incompatible con una UI que se superpone a un preview de cámara,
-donde el contraste tiene que estar garantizado (RNF-05) — y ahora, además, el azul de WhyScan es
-parte
-del producto.
+donde el contraste tiene que estar garantizado (RNF-05) — y ahora, además, el esmeralda de WhyScan es
+parte del producto.
 
 #### Tipografía y formas
 
@@ -1869,18 +1974,32 @@ incógnita pendiente en iOS están en
 
 #### La marca
 
-`WhyScanMark` es un `ImageVector` dibujado en código —cuatro esquinas de encuadre y la línea de
-lectura— y no una imagen empaquetada, por dos motivos: se tiñe con el color del tema, así que
-funciona en claro y en oscuro sin dos archivos; y es **la misma forma** que el icono de lanzador de
-Android, con lo que la app y su icono no se pueden separar por descuido.
+`WhyScanMark` es **el módulo fugado**: un *patrón de localización* —los cuadrados anidados que toda
+esquina de un QR lleva para que un lector sepa dónde empieza el código— con el anillo abierto por una
+esquina y el módulo central ya fuera, atravesando la brecha. El razonamiento completo, y las cuatro
+alternativas descartadas, están en [ADR-0014](adr/ADR-0014-la-marca-sale-del-objeto.md).
+
+Lo que sustituyó merece quedar dicho, porque explica el criterio: antes eran **cuatro esquinas de
+encuadre y una línea de lectura**, que es el icono `QrCodeScanner` que Material ya trae y el que usan
+otras doscientas apps de la tienda. En una ficha de Play un símbolo así no distingue, **agrupa**.
+
+Es un `ImageVector` dibujado en código y no una imagen empaquetada, por dos motivos: se tiñe con el
+color del tema, así que funciona en claro y en oscuro sin dos archivos; y es **la misma forma** que
+el icono de lanzador, con lo que la app y su icono no se pueden separar por descuido.
 
 El icono adaptativo lleva capa `monochrome`, que es lo que da soporte a los iconos temáticos de
 Android 13+, y hay PNG de respaldo para API 24 y 25, que no entienden iconos adaptativos. El
 contenido ocupa 48 dp centrados en el lienzo de 108: sus esquinas quedan a 33,9 dp del centro, por
 debajo de los 36 del radio seguro, así que no se recorta ni con máscara redonda.
 
-**Antes de esto no había icono en absoluto** — el manifiesto no declaraba `android:icon` y Android
-ponía su robot por defecto. Es un bloqueo duro de Play, y de los que ningún CI detecta.
+**Una restricción que hay que respetar al tocar la forma.** La brecha del anillo termina en 10.4 y el
+módulo empieza en 13.4, en la rejilla de 24. Esa holgura no es estética: en la capa monocroma las dos
+piezas se pintan del **mismo color**, así que acercarlas las funde en una mancha y la marca deja de
+contar nada. Por eso el anillo va en trazo y el módulo en macizo — la diferencia entre línea y mancha
+es lo que las separa cuando el color desaparece.
+
+**Antes de todo esto no había icono en absoluto** — el manifiesto no declaraba `android:icon` y
+Android ponía su robot por defecto. Es un bloqueo duro de Play, y de los que ningún CI detecta.
 
 ### 9.10 Ciclo de vida de la sesión de escaneo
 
@@ -2053,3 +2172,5 @@ de conveniencia usado como si fuera un dato.
 | [ADR-0010](adr/ADR-0010-dos-disposiciones-de-la-pantalla-de-escaneo.md) | La pantalla de escaneo tiene dos disposiciones —producto y banco de pruebas— y no una con condicionales       |
 | [ADR-0011](adr/ADR-0011-idioma-de-la-app-por-encima-del-sistema.md)     | El idioma de la app se fija cambiando el locale de la plataforma: `LocalComposeEnvironment` es `internal`     |
 | [ADR-0012](adr/ADR-0012-la-nota-es-del-historial-no-de-la-deteccion.md) | La nota del usuario es un tercer nivel del modelo (`HistoryEntry`) y no un campo de `Detection`               |
+| [ADR-0013](adr/ADR-0013-baseline-profile.md)                            | El baseline profile se graba en un emulador declarado, se versiona y se lanza a mano: es un artefacto, no un criterio|
+| [ADR-0014](adr/ADR-0014-la-marca-sale-del-objeto.md)                    | La marca sale del objeto que la app lee —el patrón de localización de un QR— y no del nombre ni de la categoría|

@@ -58,7 +58,6 @@ import com.whyscan.resources.destination_scanner
 import com.whyscan.resources.destination_settings
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
-import org.koin.compose.KoinContext
 import org.koin.compose.koinInject
 
 /**
@@ -67,6 +66,23 @@ import org.koin.compose.koinInject
  * No arranca Koin: eso lo hace `initKoin()` desde cada punto de entrada, porque Android necesita
  * entregar su `Context` antes de que exista cualquier composable. Aquí solo se consume el grafo ya
  * montado.
+ *
+ * ## Por qué ya no hay `KoinContext { }` (deuda D20)
+ *
+ * Lo había, envolviendo todo lo de abajo, y llevaba tiempo avisando de que sobraba:
+ *
+ *     w: 'KoinContext' is deprecated. KoinContext is not needed anymore. This can be removed.
+ *        Compose Koin context is setup with StartKoin()
+ *
+ * El aviso dice la verdad y se puede comprobar leyendo koin-compose: `koinInject` y `koinViewModel`
+ * resuelven contra `LocalKoinScopeContext`, y ese `CompositionLocal` se declara con un **valor por
+ * defecto** que es `KoinPlatform.getKoin().scopeRegistry.rootScope` — exactamente el mismo scope que
+ * `KoinContext` proveía a mano. El envoltorio era una identidad.
+ *
+ * Lo que hacía que esto no se pudiera cerrar es que el valor por defecto se calcula **la primera vez
+ * que alguien lo consume**, y eso solo ocurre componiendo. Ya no hace falta un dispositivo para
+ * verlo: `ComposeKoinContextTest` compone de verdad —con el runtime de Compose y sin UI— y comprueba
+ * que `koinInject` devuelve la misma instancia que `koin.get()`.
  *
  * El [Navigator] se recibe por parámetro para que Android pueda cederle el botón atrás del sistema
  * y para que la navegación sea testeable sin Compose (ADR-0005).
@@ -83,26 +99,24 @@ fun App(
     navigator: Navigator = remember { Navigator() },
     onDarkThemeResolved: (Boolean) -> Unit = {},
 ) {
-    KoinContext {
-        val preferencesRepository = koinInject<AppPreferencesRepository>()
-        val preferences by preferencesRepository.observePreferences()
-            .collectAsStateWithLifecycle(AppPreferences())
+    val preferencesRepository = koinInject<AppPreferencesRepository>()
+    val preferences by preferencesRepository.observePreferences()
+        .collectAsStateWithLifecycle(AppPreferences())
 
-        val darkTheme = preferences.themeMode.isDark(isSystemInDarkTheme())
-        LaunchedEffect(darkTheme) { onDarkThemeResolved(darkTheme) }
+    val darkTheme = preferences.themeMode.isDark(isSystemInDarkTheme())
+    LaunchedEffect(darkTheme) { onDarkThemeResolved(darkTheme) }
 
-        // El idioma envuelve al tema y no al revés: cambiar de idioma recompone el subárbol entero
-        // (ver `ProvideAppLanguage`), y no hay motivo para volver a construir el `ColorScheme` por
-        // eso. Al revés sí lo habría.
-        ProvideAppLanguage(preferences.language.tag) {
-            WhyScanTheme(
-                darkTheme = darkTheme,
-                easierReading = preferences.dyslexiaFriendly,
-            ) {
-                AppScaffold(navigator = navigator, advancedMode = preferences.advancedMode)
+    // El idioma envuelve al tema y no al revés: cambiar de idioma recompone el subárbol entero
+    // (ver `ProvideAppLanguage`), y no hay motivo para volver a construir el `ColorScheme` por
+    // eso. Al revés sí lo habría.
+    ProvideAppLanguage(preferences.language.tag) {
+        WhyScanTheme(
+            darkTheme = darkTheme,
+            easierReading = preferences.dyslexiaFriendly,
+        ) {
+            AppScaffold(navigator = navigator, advancedMode = preferences.advancedMode)
 
-                WhatsNewOnUpdate(preferencesRepository)
-            }
+            WhatsNewOnUpdate(preferencesRepository)
         }
     }
 }

@@ -1,5 +1,6 @@
 plugins {
     id("whyscan.android.application")
+    alias(libs.plugins.baselineProfile)
 }
 
 android {
@@ -34,7 +35,35 @@ android {
                 "proguard-rules.pro",
             )
         }
+
+        // El plugin de baseline profile deriva de `release` dos tipos de build propios:
+        // `nonMinifiedRelease`, sobre el que se graba el perfil —sin R8, para que los nombres de los
+        // métodos sean los de verdad— y `benchmarkRelease`, para medir. Los crea él, así que se
+        // configuran aquí en lugar de nombrarlos: `all` alcanza también a lo que llegue después.
+        //
+        // Firma: `release` no la tiene, y está bien que no la tenga —la de subida a Play no vive en
+        // el repositorio—, pero un APK sin firmar no se puede instalar en el emulador y sin
+        // instalarlo no hay nada que grabar. Se les presta la de debug, que es de juguete y no sale
+        // de la máquina que corre la grabación.
+        all {
+            if (name != "debug" && name != "release") {
+                signingConfig = signingConfigs.getByName("debug")
+
+                // Sin esto, las dependencias —`:composeApp` y los motores— no saben qué variante
+                // suya emparejar con una que ellas no declaran.
+                if ("release" !in matchingFallbacks) {
+                    matchingFallbacks += "release"
+                }
+            }
+        }
     }
+}
+
+baselineProfile {
+    // El perfil se versiona y la build de release consume el archivo del repositorio. Generarlo es
+    // un acto deliberado —el workflow `baseline-profile.yml`— y no un efecto colateral de compilar:
+    // si `assembleRelease` arrancara un emulador, nadie podría ensamblar la app sin uno.
+    automaticGenerationDuringBuild = false
 }
 
 dependencies {
@@ -51,4 +80,16 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.core.ktx)
     implementation(compose.runtime)
+
+    // Instala el baseline profile que viaja en el APK/AAB.
+    //
+    // No sobra por venir de Play: en Android 12+ el sistema instala el perfil por su cuenta, pero
+    // esta app soporta desde la 24 y en el tramo 24-30 no lo hace nadie. Sin esta dependencia, el
+    // perfil sería peso muerto justo en los dispositivos más lentos, que son los que lo necesitan.
+    implementation(libs.androidx.profileinstaller)
+
+    // De dónde sale el perfil. La generación **no** ocurre en `assembleRelease`: esta línea solo
+    // dice qué módulo lo produce cuando se pide `:androidApp:generateBaselineProfile`. Lo que la
+    // build de release consume es el archivo ya generado y versionado en `src/release/generated/`.
+    baselineProfile(project(":baselineprofile"))
 }

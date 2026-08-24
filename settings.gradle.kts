@@ -103,3 +103,7 @@ include(":feature:settings")
 // Aplicaciones
 include(":composeApp")
 include(":androidApp")
+
+// Generador del baseline profile de Android. No entra en ningún binario: es un APK de test que
+// recorre la app en un emulador y escribe la lista de métodos que conviene compilar de antemano.
+include(":baselineprofile")

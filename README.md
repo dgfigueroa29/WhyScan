@@ -41,7 +41,7 @@ el comparador en paralelo y las latencias por lectura.
 | Acciones sobre el resultado (RF-13)              | ✅ copiar, compartir y abrir, según el significado del código                                                                                                                                                                                       |
 | Navegación                                       | ✅ propia, con backstack que sobrevive a que el sistema mate el proceso                                                                                                                                                                             |
 | Build de release con R8                          | ✅ `minify` y `shrinkResources`, con `assembleRelease` en CI                                                                                                                                                                                        |
-| Marca, icono y tema                              | ✅ WhyScan: icono adaptativo con capa monocroma, paleta con los ~30 roles de Material 3, escala tipográfica y de formas propias                                                                                                                     |
+| Marca, icono y tema                              | ✅ **El módulo fugado**: el patrón de localización de un QR con el anillo abierto y su módulo central ya fuera ([ADR-0014](docs/adr/ADR-0014-la-marca-sale-del-objeto.md)). Grafito cálido con un único acento esmeralda, los ~30 roles de Material 3 declarados, icono adaptativo con capa monocroma y escala tipográfica y de formas propias|
 | Selector de tema claro/oscuro                    | ✅ Sistema / Claro / Oscuro, persistido, con las barras del sistema siguiendo al tema **de la app**                                                                                                                                                 |
 | Idiomas inglés y español                         | ✅ los cuatro catálogos en `values/` (inglés, respaldo de cualquier idioma) y `values-es/`, con selector propio ([ADR-0011](docs/adr/ADR-0011-idioma-de-la-app-por-encima-del-sistema.md)) y `localeConfig` para el selector por app de Android 13+ |
 | Pantalla de escaneo                              | ✅ cámara a pantalla completa con el resultado en una hoja que la empuja, no que la tapa; la sesión arranca sola y se apaga al salir ([ADR-0010](docs/adr/ADR-0010-dos-disposiciones-de-la-pantalla-de-escaneo.md))                                 |
@@ -52,6 +52,9 @@ el comparador en paralelo y las latencias por lectura.
 | Exportación del historial                        | ✅ CSV, JSON y texto plano, guardado en las cuatro plataformas                                                                                                                                                                                      |
 | Migraciones de la base                           | ✅ `@AutoMigration`, y un test que abre una base v1 con datos y comprueba que siguen ahí                                                                                                                                                            |
 | Que el grafo de Koin resuelva                    | ✅ los módulos comunes, escritorio **y Android** (este con Robolectric, en la JVM y sin emulador). D18 cerrada                                                                                                                                      |
+| Que la app **se monte**                          | ✅ `AppCompositionTest` compone `App()` entera con el grafo real y cambia de destino, sin emulador ni ventana                                                                                                                                       |
+| Transiciones entre pantallas                     | ✅ *fade through* de Material 3 al cambiar de destino, en lugar del corte seco que había                                                                                                                                                            |
+| Baseline profile                                 | 🚧 cableado listo y comprobado en CI ([ADR-0013](docs/adr/ADR-0013-baseline-profile.md)); **falta lanzar la grabación**, que necesita un emulador y vive en el workflow `Baseline profile (manual)`                                                 |
 | Qué hay de nuevo                                 | ✅ una vez tras cada actualización, y siempre accesible desde Ajustes. A quien acaba de instalar no se le estrena nada                                                                                                                              |
 | Accesibilidad (RNF-05)                           | ✅ contraste AA **verificado por test** (56 pares, los dos temas), semántica para lectores de pantalla y **modo dislexia** que ajusta la escala tipográfica entera                                                                                  |
 | Privacidad (RNF-03)                              | ✅ auditada: sin trazas, sin cliente HTTP, sin analítica, sin permiso `INTERNET` y **sin copia de seguridad del sistema** — esa última era la puerta que no pasaba por la app, y la vigila un chequeo en CI                                         |
@@ -76,6 +79,9 @@ Lo que queda fuera por ahora, y por qué:
   comprueba
   se pueda ejecutar en cada PR**: lo que la incumple es el hardware, no el nombre de la plataforma —
   por eso el grafo de Android sí tiene test, con Robolectric, en la misma JVM que el resto.
+  La única excepción es `:baselineprofile`, que sí arranca un emulador — y no contradice la regla
+  porque **no es un test, es una grabación**: no afirma nada, no puede fallar por lo que la app haga
+  y su resultado es un archivo. Por eso vive en un workflow manual y no en `Verify`.
 - **Escritorio lee archivos pero no cámara**: hay decodificador (ZXing en Java) y no hay captura de
   webcam, así que una sesión en vivo cae a la entrada manual.
 - **El APK de Android carga con los cuatro motores de la plataforma.** RNF-06 se cumple entre
@@ -119,6 +125,12 @@ Lo que queda fuera por ahora, y por qué:
 > da Robolectric en la JVM. Lo que sigue sin cubrir es que la app **se abra y lea un código**, que
 > necesita un dispositivo y siempre lo va a necesitar.
 >
+> En el mismo pase se cerró **D20**, y merece la pena por cómo: lo que la mantenía abierta era creer
+> que quitar el `KoinContext { }` de `App.kt` no se podía comprobar sin instalar la app. Sí se puede.
+> `koinInject` no es UI —lee un `CompositionLocal` y llama a `remember`—, así que basta el **runtime**
+> de Compose, que es Kotlin puro: `ComposeKoinContextTest` monta una `Composition` con un `Applier`
+> que no aplica nada y comprueba que sale la misma instancia que del grafo.
+>
 > Hasta que se activó Actions nada de esto se había compilado nunca —el entorno de desarrollo no
 > alcanza el maven de Google—, y el primer CI encontró **doce fallos encadenados**, desde el
 > `build-logic` que no resolvía sus plugins hasta un `ScanError` construido sin argumentos en el
@@ -158,6 +170,7 @@ feature/history     historial filtrable por motor
 feature/settings    tema, idioma y modo avanzado
 composeApp          raíz Compose Multiplatform y composition root de la DI
 androidApp          shell de Android
+baselineprofile     graba el baseline profile de Android; no entra en ningún binario
 iosApp              shell de iOS (Xcode)
 playstore/          material de la ficha de Play (icono 512×512)
 ```
@@ -174,7 +187,7 @@ habituales. No es exhaustividad por gusto: `lightColorScheme()` rellena con su p
 todo
 lo que no se le pase, así que un `FilterChip` seleccionado o el indicador del ítem activo de la
 barra
-salían **morados** en una app cuya marca es azul. `ContrastTest` mide 50 pares de color a 4.5:1 y 6
+salían **morados** en una app cuya marca es verde. `ContrastTest` mide 50 pares de color a 4.5:1 y 6
 más a 3.0:1, sobre los dos esquemas, con aritmética de WCAG en `commonTest`: sin dispositivo y sin
 renderizar nada.
 
@@ -311,6 +324,8 @@ python3 tools/checks.py                              # comprobaciones sin compil
 ./gradlew :composeApp:run                            # Desktop
 ./gradlew :composeApp:wasmJsBrowserDevelopmentRun    # Web
 ./gradlew detekt                                     # análisis estático
+./gradlew jvmTest desktopTest                        # tests multiplataforma
+./gradlew :composeApp:testDebugUnitTest              # grafo de Koin de Android (Robolectric)
 ./gradlew check                                      # tests + detekt
 ```
 
@@ -335,6 +350,16 @@ lo escrito en `libs.versions.toml` pasa a ser una sugerencia. Eso costó una tan
 como
 typealias: **compilaba y reventaba al ejecutar**—. El chequeo falla cuando lo sustituido es una
 versión nuestra e informa de los ascensos entre terceros, que son funcionamiento normal.
+
+**Baseline profile.** Se graba aparte, porque necesita un emulador:
+
+```bash
+./gradlew :androidApp:generateBaselineProfile        # arranca el emulador declarado y graba
+```
+
+Tarda unos quince minutos y deja el perfil en `androidApp/src/release/generated/baselineProfiles/`,
+que se versiona. En CI hay un botón para lo mismo: Actions → "Baseline profile (manual)". No corre en
+cada PR a propósito — ver [ADR-0013](docs/adr/ADR-0013-baseline-profile.md).
 
 ---
 

@@ -45,9 +45,19 @@ con su estado real; los tests de `:core:domain` y `:core:data` pasan en CI.
 > ese tiempo: compilaba, pasaba lint, pasaba R8 y publicaba un APK que reventaba al abrirse.
 >
 > Vale la pena quedarse con la forma del fallo y no solo con el fallo: **todo lo que este proyecto
-> comprueba son piezas, y nada comprueba el montaje.** Arreglado el defecto, el criterio sigue sin
-> tener quien lo verifique de forma automática; lo que cambió es que ahora se sabe, y que D18
-> propone la comprobación que sí cabe sin emulador.
+> comprueba son piezas, y nada comprueba el montaje.**
+>
+> **Eso ya no es del todo cierto, y conviene decir exactamente cuánto.** `AppCompositionTest` compone
+> `App()` entera con el grafo real —tema, idioma, `CompositionLocal`, `koinViewModel`, los efectos de
+> arranque de cada pantalla— y cambia de destino, en un test JVM normal sobre escritorio. Es el
+> montaje, y es lo más cerca que este proyecto ha estado de su propio criterio de salida sin arrancar
+> la app.
+>
+> Lo que ese test **no** dice: que la app arranque en **Android**. `MainActivity`, `enableEdgeToEdge`
+> y el préstamo de los `ActivityResultLauncher` son código de plataforma que sigue sin quien lo
+> ejecute; el grafo de Android sí está cubierto, por `AndroidKoinGraphTest`. Y no dice que nada se
+> **vea** bien: componer no es dibujar. El criterio de la Fase 1 pasa de no tener ninguna red a
+> tenerla en su parte común, que es la mayor.
 
 ---
 
@@ -279,9 +289,8 @@ con sus latencias en la portada, ni una app con nombre de proyecto interno y sin
   capturando mientras el usuario miraba el historial: el ViewModel sobrevive a la navegación y
   nadie paraba la sesión
 - [x] Animación al crecer la hoja, tope de cien resultados vivos, pausa y reanudación sobre el visor
-- [x] **D18 saldada para los módulos comunes y el escritorio** (`KoinGraphTest`). El
-  `platformModule`
-  de Android sigue necesitando `androidUnitTest`
+- [x] **D18 saldada para los módulos comunes y el escritorio** (`KoinGraphTest`). El `platformModule`
+      de Android lo cubrió la ronda siguiente
 - [x] **Lecturas repetidas suprimidas.** Una cámara a 30 fps emitía el mismo código noventa veces en
   tres segundos, y cada repetición **se guardaba en el historial persistente**: no era ruido
   visual, era corrupción de los datos del usuario. Lo arregla `DistinctDetectionsScannerEngine`
@@ -533,6 +542,90 @@ salió, ordenado por lo que costaría equivocarse.
   `MAIN`/`LAUNCHER`. No hay superficie exportada de más
 - La poda del historial está acotada de verdad (`dao.trimTo` en cada guardado)
 
+### Ronda 6 — D20, cerrada sin dispositivo ✅
+
+- [x] **Fuera el envoltorio `KoinContext { }` de `App.kt`.** Lo que mantenía abierta la deuda era
+      creer que quitarlo no se podía comprobar sin instalar la app. Sí se puede: `koinInject` no es
+      UI —lee un `CompositionLocal` y llama a `remember`—, así que basta el **runtime** de Compose,
+      que es Kotlin puro. `ComposeKoinContextTest` monta una `Composition` con un `Applier` que no
+      aplica nada y comprueba que `koinInject` devuelve la misma instancia que `koin.get()`, para un
+      tipo de los módulos comunes y otro que depende del `platformModule`
+
+### Ronda 7 — arranque: el baseline profile 🔜
+
+- [x] **Baseline profile** (ver [ADR-0013](adr/ADR-0013-baseline-profile.md)). La app arranca
+      Compose, monta el grafo de Koin con cinco motores y abre Room: todo eso lo **interpreta** ART la
+      primera vez, y ese primer arranque es el que Play mide y el que decide si alguien deja la app
+      instalada. El módulo `:baselineprofile` graba dos recorridos —arranque y navegación por las tres
+      pantallas— sobre un emulador declarado en la build, y `androidx.profileinstaller` instala el
+      perfil también en Android 7-11, donde el sistema no lo hace solo: con `minSdk` 24 eso es la
+      mitad del rango, y la mitad más lenta
+- [x] **El cableado está y `Verify` lo comprueba**: `assembleDebug`, `lintDebug` y `assembleRelease`
+      con R8 pasan con el plugin aplicado, y ninguno arranca un emulador — la build de release toma el
+      perfil del repositorio cuando lo haya y sigue adelante cuando no. La **grabación** vive en
+      `baseline-profile.yml` y se lanza a mano, igual que iOS y por el mismo motivo: no es un criterio
+      para aceptar un cambio, es un artefacto
+- [ ] **Lanzar el workflow y commitear el perfil generado.** Es lo único de esta ronda que sigue sin
+      hacerse, y conviene decir por qué con precisión: el entorno de desarrollo **no alcanza el maven
+      de Google**, así que aquí no se puede ni resolver el plugin, y mucho menos arrancar un emulador.
+      Un clic en Actions → "Baseline profile (manual)" lo produce. Hasta entonces el perfil no existe
+      y la app arranca como arrancaba: el cableado no miente sobre eso
+
+### Ronda 8 — una marca que distingue en vez de agrupar ✅
+
+Ver [ADR-0014](adr/ADR-0014-la-marca-sale-del-objeto.md). El sistema de diseño estaba bien
+construido; lo que no se había examinado era sobre qué se construyó. El símbolo eran **cuatro
+esquinas de encuadre y una línea de lectura** —el icono `QrCodeScanner` que Material ya trae y que
+usan otras doscientas apps de la tienda— y el color era el azul por defecto de Tailwind. En una ficha
+de Play, junto a sus competidores, eso no distingue: **agrupa**.
+
+- [x] **La marca es el módulo fugado**: el patrón de localización de un QR —los cuadrados anidados de
+      sus esquinas— con el anillo abierto y el módulo central ya fuera. Es el átomo más reconocible de
+      un código, casi nadie lo usa, y rompe a propósito una regla real: un patrón de localización es
+      siempre concéntrico y siempre cerrado
+- [x] **La forma, en sus tres copias**: el `ImageVector` de Compose, el primer plano del icono
+      adaptativo y la capa monocroma
+- [x] **Los PNG regenerados**: los cinco pares de `mipmap-*` (el icono real en API 24-25, que no
+      entienden iconos adaptativos) y el 512×512 de la ficha. Si no, esas tres superficies se habrían
+      quedado con la marca vieja sin que nada avisara
+- [x] **Paleta nueva: grafito cálido y un único acento esmeralda.** Los 56 pares del `ContrastTest`
+      medidos antes de escribir una sola constante — cero fallos
+- [x] **El color de arranque**, en Android (`values/` y `values-night/`) y en Web (`theme-color` y el
+      fondo del `body`): tiene que coincidir con el `background` del tema o se ve un destello de otro
+      color entre que el sistema pinta la ventana y Compose pinta la primera pantalla
+
+> **Lo que se descartó, que es parte de la decisión.** Una marca hecha con la inicial del nombre —la
+> salida cómoda: una letra no dice nada del producto y la copia cualquiera— y un signo de
+> interrogación jugando con el nombre, que compite con «ayuda» en una cuadrícula de aplicaciones.
+> Cerradas esas dos, la única dirección honesta era mirar el objeto que la app lee.
+
+### Antes de la ficha de Play, esto va primero
+
+Lo de abajo es trámite de tienda. Lo de esta lista no. Se hizo el repaso a propósito antes de tocar
+nada de Play, y salió algo que no estaba en ninguna lista:
+
+- [x] **`allowBackup` estaba en `true`, y la app le dice al usuario lo contrario.** Ajustes afirma que
+      "WhyScan no pide permiso de internet, así que lo que escaneás no puede salir del dispositivo".
+      Con Auto Backup encendido eso era **falso**: el historial de Room vive en `databases/` y las
+      preferencias en `shared_prefs/`, dos de los directorios que el sistema copia a Google Drive por
+      defecto. Y lo hace **el sistema**, desde fuera del proceso, sin necesitar el permiso `INTERNET`
+      que la app no declara — que era justamente la garantía en la que se apoyaba la auditoría de
+      privacidad (RNF-03). Es el mismo error de forma que D18 y que el driver de Room: **la garantía
+      se comprobó en el sitio equivocado**, mirando solo lo que hace el código propio. Corregido con
+      `allowBackup="false"` **y** `dataExtractionRules`, que hacen falta los dos: desde Android 12 el
+      atributo solo apaga la copia en la nube y la transferencia entre dispositivos se gobierna desde
+      el XML. Coste aceptado y dicho: el historial no sobrevive a un cambio de teléfono
+- [ ] **Instalar y abrir la app en un dispositivo real con estos cambios.** No es una formalidad: el
+      único arranque real que ha tenido este proyecto destapó un defecto que ningún CI podía ver (D18),
+      y la revisión siguiente destapó otro de meses en la persistencia. Hay cosas nuevas sin mirar con
+      los ojos — la pantalla sin `KoinContext` y la transición entre destinos
+- [ ] **Objetivos táctiles y `enableEdgeToEdge`** (RNF-05, pendiente desde la Fase 5). Es la clase de
+      cosa que no rompe, se ve mal, y se ve mal precisamente en la primera pantalla
+- [ ] **Generar el baseline profile** lanzando `baseline-profile.yml`. Un clic y quince minutos de
+      runner, y es lo que separa "la app arranca" de "la app arranca rápido la primera vez"
+
+Solo después tiene sentido pelearse con la ficha.
+
 ### Pendiente para publicar
 
 **Necesita un dispositivo.** Todo lo de este bloque está bloqueado por lo mismo, y por eso vive aquí
@@ -576,11 +669,43 @@ y qué lo compensa:
 | Que ZXing (Java) **lea de verdad** un QR y un EAN-13 desde píxeles, filtre por formato y distinga "no hay código" de "no es una imagen"                                       | Lo mismo en los motores que necesitan cámara                                                      |
 | Que el **grafo de Koin resuelva** de verdad: `KoinGraphTest` arranca los módulos comunes más el `platformModule` de escritorio y pide cada tipo que la raíz de la app consume | Lo mismo para el `platformModule` de **Android**, que necesita `androidUnitTest` en `:composeApp` |
 | Que el proyecto **compile** para Android, Escritorio y Web, incluida la build de release con R8                                                                               | Que la app **arranque** y lea un código: sigue haciendo falta un dispositivo                      |
+| Que `koinInject` resuelva **componiendo de verdad**, sin envoltorio y sin UI: `ComposeKoinContextTest` monta una `Composition` con el runtime de Compose y compara la instancia con la del grafo | Que la pantalla se **vea** bien: el runtime compone, no dibuja |
+| Que **`App()` se monte entera**: `AppCompositionTest` compone la raíz con el grafo real —tema, idioma, `CompositionLocal`, `koinViewModel`, los efectos de arranque de cada pantalla— y cambia de destino. Es lo más cerca que este proyecto ha estado de "la app arranca" sin arrancarla | Que se **vea** bien, y que el arranque de **Android** funcione: `MainActivity`, `enableEdgeToEdge` y el préstamo de los `ActivityResultLauncher` siguen sin quien los ejecute |
 
 El riesgo que queda es el de siempre en este tipo de app: el código de cámara solo se prueba
 usándola. Lo que sí evita el diseño es que un fallo ahí se lleve por delante al resto — el SPI
 mantiene la lógica de selección, degradación y presentación fuera de los motores, y esa parte sí
 está cubierta.
+
+---
+
+## D19, primera pieza: los accesores `compose.*` de los scripts de build
+
+Un fallo de CI dejó ver lo que desde el entorno de desarrollo no se puede leer, porque no alcanza el
+maven de Google y ninguna tarea de Gradle se puede lanzar. Vale la pena escribirlo mientras está a
+mano, que es justo lo que D19 reprocha no haber hecho antes.
+
+Cada `implementation(compose.algo)` de los scripts de build emite:
+
+```
+w: composeApp/build.gradle.kts:57:36: 'runtime: String' is deprecated. Specify dependency directly
+```
+
+Y así con `foundation`, `animation`, `material3`, `components` y `resources` en `:composeApp`, más
+`runtime` en `:androidApp`. Los demás módulos no aparecían en ese log porque la build se cayó antes
+de configurarlos, así que la lista completa es más larga: el convention plugin
+`whyscan.kmp.compose` los usa también.
+
+Tres cosas que conviene tener claras antes de arreglarlo:
+
+- **No son errores, aunque Gradle los cuente como tales.** El compilador los emite como `w:`; cuando
+  *además* hay un error de verdad en el mismo script, el informe de "Script compilation errors" los
+  lista todos juntos y suma. Eso es lo que hizo que un fallo por otra cosa pareciera ocho.
+- **El arreglo lo dice el propio aviso**: "Specify dependency directly", es decir, coordenadas
+  explícitas en vez del accesor del plugin. No es una línea: hay que decidir de dónde sale la versión
+  para no dispersar por los módulos lo que hoy centraliza el plugin de Compose.
+- **Es una familia, no el total.** D19 sigue abierta: falta el resto del build y falta la postura
+  —limpiar y activar `allWarningsAsErrors`, o aceptar el ruido por escrito—.
 
 ---
 
@@ -611,6 +736,6 @@ Registrada de forma explícita para que no se olvide:
 | ~~D24~~ | ~~**Declarar una versión de dependencia no la impone.**~~ Se fijó `kotlinx-datetime` en 0.6.2 —donde `kotlinx.datetime.Instant` es una clase de verdad— y Gradle resolvió una superior porque otro punto del grafo la pedía. El resultado fue lo peor de los dos mundos: **compilaba y reventaba al ejecutar** con `ClassNotFoundException`, porque en 0.7+ ese nombre sobrevive como typealias y un typealias no existe en el bytecode                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | **Saldada**: `tools/check_resolved_versions.py` cruza el informe de dependencias de Gradle con el catálogo. **Falla** cuando lo sustituido es una versión **nuestra** —alguien la escribió y el grafo la ignoró, que es exactamente este caso— y solo **informa** de los ascensos entre terceros, que son funcionamiento normal y convertirlos en error dejaría un build que falla por decisiones ajenas. Falla también **cerrado**: si el informe llega vacío devuelve error en vez de aprobar por no haber leído nada. Comprobado con el caso real antes de subirlo — y **en su primera ejecución encontró uno**: el catálogo declaraba `androidx.core:core-ktx` en 1.15.0 y el grafo resolvía 1.18.0, así que lo escrito era una versión que no usaba nadie                                                                                                                                                                                                                                                                                                                                                                                                                |
 | ~~D23~~ | ~~**Las comprobaciones locales van por detrás de detekt, y se descubre en CI.**~~ Sin poder compilar aquí, cada ronda se verificaba con chequeos escritos a mano, y cada uno se añadió **después** de que CI rechazara ese caso concreto: la red crecía a golpes. Peor: vivían en una carpeta temporal, así que se perdían entre sesiones y había que reescribirlas — cosa que pasó de verdad                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | **Saldada**: `tools/checks.py`, en el repositorio y ejecutado por CI como **primer paso** del job de checks, antes incluso de instalar Java. Que corra en CI es lo que impide que se desincronice de lo que detekt exige sin que nadie se entere. Cubre lo que detekt ya mira —longitud de línea, orden de imports— más lo que **no comprueba nadie**: paridad de los catálogos entre idiomas, claves huérfanas, `Res.string.X` sin importar y `package` que no sigue a su carpeta. No intenta reimplementar las reglas que necesitan árbol sintáctico, `MagicNumber` incluida: una aproximación con expresiones regulares acabaría fallando donde detekt aprueba, que es la peor forma de tener una comprobación                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | ~~D19~~ | ~~**Los avisos del compilador no los lee nadie, y uno de ellos era un defecto de producción.**~~ `This extension is shadowed by a member` llevaba apareciendo en cada build desde que existe `:core:database`, y señalaba el defecto del driver de Room que reventaba escritorio e iOS (SDD §11): un aviso correcto, visible en cada compilación y leído por nadie durante meses                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | **Postura decidida, con el inventario delante y no de memoria.** Del log de CI salen **44 avisos en 12 mensajes distintos**, y esa cuenta era la condición que faltaba para poder decidir. Se quitan los que son nuestros: `dayOfMonth` → `day` (kotlinx-datetime 0.8), `@OptIn(ExperimentalGetImage::class)` → `@ExperimentalGetImage` —el compilador decía que ese `@OptIn` **no hacía nada**, porque la anotación de CameraX no está marcada con `@RequiresOptIn`— y `-Xexpect-actual-classes`, que es la bandera que el propio mensaje propone y que se lleva 10 de los 44. **No se activa `allWarningsAsErrors`, y el motivo es concreto:** 27 de los 44 son la deprecación de los accesores `compose.ui`, `compose.runtime` y compañía en los ficheros de build, que pide declarar las coordenadas directamente. Es mecánico pero toca los diecinueve módulos y exige acertar coordenadas que **aquí no se pueden comprobar sin compilar**; adivinarlas rompería el build entero. Queda como el siguiente paso, con el trabajo ya acotado. Los otros dos que sobreviven tienen dueño: `KoinContext` es D20 y `materialIconsExtended` avisa de que está clavado en 1.7.3 |
-| D20     | **El aviso `KoinContext is not needed anymore` en `App.kt`.** Koin dice que `startKoin()` ya monta el contexto de Compose y que ese envoltorio sobra. Quitarlo cambia por dónde resuelven `koinInject` y `koinViewModel`, y eso **no se puede comprobar sin ejecutar la app**                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | En el mismo pase que la primera instalación en un dispositivo con estos cambios                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ~~D20~~ | ~~**El aviso `KoinContext is not needed anymore` en `App.kt`.** Quitarlo cambia por dónde resuelven `koinInject` y `koinViewModel`, y eso no se puede comprobar sin ejecutar la app.~~ **Saldada, y la premisa era falsa.** Sí se puede comprobar sin ejecutar la app, porque `koinInject` no es UI: es una función `@Composable` que lee un `CompositionLocal` y llama a `remember`, y eso lo resuelve el **runtime** de Compose, que es Kotlin puro y no sabe nada de pantallas. `ComposeKoinContextTest` monta una `Composition` con un `Applier` que no aplica nada —no hay árbol de nodos que construir, lo que interesa ocurre *durante* la composición— y comprueba que `koinInject` devuelve la misma instancia que `koin.get()`, para un tipo de los módulos comunes y otro que depende del `platformModule`. Leyendo koin-compose se ve por qué: `LocalKoinScopeContext` declara como valor por defecto `KoinPlatform.getKoin().scopeRegistry.rootScope`, que es exactamente lo que `KoinContext` proveía a mano — el envoltorio era una identidad. Pero eso es leer la librería, y leyendo la librería también estaba bien el `build()` de Room que no se llamaba nunca | **Cerrada.** Con ella se va uno de los avisos que D19 señala como ruido |
 | D21     | **El selector de idioma en iOS está sin verificar.** El actual escribe `AppleLanguages` en `NSUserDefaults`, que es el mecanismo estándar; si Compose lee `preferredLanguages` el cambio es inmediato, si lee `currentLocale` no lo será hasta reabrir. Ver ADR-0011                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Cuando haya un iPhone. Es lo primero que hay que mirar de la UI de iOS                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | ~~D22~~ | ~~**Nada ejecuta la migración de la base de datos.**~~ Room genera `@AutoMigration` y la valida en compilación contra los esquemas exportados, que cubre que el SQL sea correcto — pero que una base v1 con historial dentro se abra con código v2 y siga teniendo el historial no lo comprueba nadie. Es justo el fallo que la migración existe para evitar, y es un test JVM con un archivo de prueba: no necesita dispositivo                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | **Saldada**: `MigrationTest` levanta una base v1 con el `createSql` literal del `1.json`, le escribe filas y comprueba que siguen ahí tras abrirla con el código v2. No mira el esquema a propósito — un esquema correcto es compatible con haber borrado la tabla, que es justo el fallo que se quería evitar                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |

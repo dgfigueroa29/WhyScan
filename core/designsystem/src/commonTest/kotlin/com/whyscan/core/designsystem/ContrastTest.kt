@@ -17,15 +17,15 @@ class ContrastTest {
 
     @Test
     fun `un_color_contra_si_mismo_no_tiene_contraste`() {
-        assertTrue(abs(Contrast.ratio(0xFF2563EB.toInt(), 0xFF2563EB.toInt()) - 1.0) < 0.001)
+        assertTrue(abs(Contrast.ratio(0xFF07704E.toInt(), 0xFF07704E.toInt()) - 1.0) < 0.001)
     }
 
     @Test
     fun `el_orden_de_los_colores_no_cambia_el_resultado`() {
         // La razón se define entre el más claro y el más oscuro, no entre texto y fondo: si
         // dependiera del orden, medir un texto claro sobre fondo oscuro daría otro número.
-        val directo = Contrast.ratio(0xFF2563EB.toInt(), 0xFFFFFFFF.toInt())
-        val inverso = Contrast.ratio(0xFFFFFFFF.toInt(), 0xFF2563EB.toInt())
+        val directo = Contrast.ratio(0xFF07704E.toInt(), 0xFFFFFFFF.toInt())
+        val inverso = Contrast.ratio(0xFFFFFFFF.toInt(), 0xFF07704E.toInt())
 
         assertTrue(abs(directo - inverso) < 0.0001)
     }

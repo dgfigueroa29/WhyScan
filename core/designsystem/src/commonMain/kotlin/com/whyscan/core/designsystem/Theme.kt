@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.dp
  * Sustituye al `dynamicColorScheme` que traía la plantilla de Android: un tema que cambia con el
  * fondo de pantalla del usuario es incompatible con una app cuya UI se superpone a un preview de
  * cámara, donde el contraste tiene que estar garantizado (RNF-05). Esa decisión se mantiene ahora
- * que hay marca: el azul de WhyScan **es** parte del producto, no un acento negociable.
+ * que hay marca: el esmeralda de WhyScan **es** parte del producto, no un acento negociable.
  */
 // Los colores viven en `ScannerPalette`, que no depende de Compose. Así el contraste se mide con
 // aritmética en `commonTest` (`ContrastTest`) en lugar de quedar como una intención del documento.
