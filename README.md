@@ -48,7 +48,9 @@ el comparador en paralelo y las latencias por lectura.
 | Idiomas inglés y español | ✅ los cuatro catálogos en `values/` (inglés, respaldo de cualquier idioma) y `values-es/`, con selector propio ([ADR-0011](docs/adr/ADR-0011-idioma-de-la-app-por-encima-del-sistema.md)) y `localeConfig` para el selector por app de Android 13+ |
 | Pantalla de escaneo | ✅ cámara a pantalla completa con el resultado en una hoja que la empuja, no que la tapa; la sesión arranca sola y se apaga al salir ([ADR-0010](docs/adr/ADR-0010-dos-disposiciones-de-la-pantalla-de-escaneo.md)) |
 | Lecturas repetidas | ✅ suprimidas en el dominio con ventana de dos segundos. Antes, tres segundos apuntando a un QR escribían noventa filas en el historial |
-| Que el grafo de Koin resuelva | ✅ `KoinGraphTest` en los módulos comunes y en escritorio — cierra media D18. Falta el `platformModule` de Android |
+| Que el grafo de Koin resuelva | ✅ **D18 cerrada**: `KoinGraphTest` cubre los módulos comunes y escritorio, y `AndroidKoinGraphTest` el `platformModule` de Android sobre Robolectric — sin emulador |
+| Transiciones entre pantallas | ✅ *fade through* de Material 3 al cambiar de destino, en lugar del corte seco que había |
+| Baseline profile | 🚧 cableado listo y comprobado en CI ([ADR-0012](docs/adr/ADR-0012-baseline-profile.md)); **falta lanzar la grabación**, que necesita un emulador y vive en el workflow `Baseline profile (manual)` |
 | Accesibilidad (RNF-05) | ✅ contraste AA **verificado por test** (56 pares, los dos temas), y semántica para lectores de pantalla |
 | Privacidad (RNF-03) | ✅ auditada: sin trazas, sin cliente HTTP, sin analítica y sin permiso `INTERNET` |
 | ZXing en Java (Desktop) | ✅ el único decodificador de escritorio; **verificado de verdad**, decodificando imágenes generadas en el test |
@@ -67,7 +69,10 @@ Lo que queda fuera por ahora, y por qué:
   framework entero enlaza. Falta el `iosApp.xcodeproj`, que solo se crea desde Xcode, y un iPhone.
 - **No hay tests instrumentados y no los va a haber.** Sin emulador en CI, un test que exija
   dispositivo nunca se ejecuta y da una falsa sensación de red. El ROADMAP dice exactamente qué queda
-  cubierto sin dispositivo y qué no.
+  cubierto sin dispositivo y qué no. El único emulador del proyecto vive en `:baselineprofile`, y no
+  contradice esto: **no es un test, es una grabación**. No afirma nada, no puede fallar por lo que la
+  app haga, y su resultado es un archivo. Lo que se rechazó en D6 era la falsedad de un criterio que
+  nadie ejecuta, no el emulador.
 - **Escritorio lee archivos pero no cámara**: hay decodificador (ZXing en Java) y no hay captura de
   webcam, así que una sesión en vivo cae a la entrada manual.
 - **El APK de Android carga con los cuatro motores de la plataforma.** RNF-06 se cumple entre
@@ -103,9 +108,19 @@ Lo que queda fuera por ahora, y por qué:
 >   salida por defecto de Gradle daba el tipo de excepción y la línea, sin mensaje ni causa. El
 >   `build.gradle.kts` raíz configura ahora `testLogging` con `exceptionFormat = FULL`.
 >
-> Lo que sigue sin cubrir: el `platformModule` de **Android** —que es donde estaba el defecto
-> original de D18 y necesita `androidUnitTest`— y que la app se abra y lea un código, que sigue
-> necesitando un dispositivo.
+> **El `platformModule` de Android ya no está en esa lista.** Era la mitad que le faltaba a D18 —y
+> justo donde estuvo el defecto original— y la cubre `AndroidKoinGraphTest` sobre Robolectric, en el
+> job de Android del CI. Robolectric no contradice "no habrá tests instrumentados": el grafo de
+> Android no necesita un dispositivo, necesita un `Context`.
+>
+> En el mismo pase se cerró **D20**, y merece la pena por cómo: lo que la mantenía abierta era creer
+> que quitar el `KoinContext { }` de `App.kt` no se podía comprobar sin instalar la app. Sí se puede.
+> `koinInject` no es UI —lee un `CompositionLocal` y llama a `remember`—, así que basta el **runtime**
+> de Compose, que es Kotlin puro: `ComposeKoinContextTest` monta una `Composition` con un `Applier`
+> que no aplica nada y comprueba que sale la misma instancia que del grafo.
+>
+> Lo que sigue sin cubrir: que la app se abra y lea un código, que necesita un dispositivo, y que la
+> pantalla **se vea** bien, que necesita ojos.
 >
 > Hasta que se activó Actions nada de esto se había compilado nunca —el entorno de desarrollo no
 > alcanza el maven de Google—, y el primer CI encontró **doce fallos encadenados**, desde el
@@ -146,6 +161,7 @@ feature/history     historial filtrable por motor
 feature/settings    tema, idioma y modo avanzado
 composeApp          raíz Compose Multiplatform y composition root de la DI
 androidApp          shell de Android
+baselineprofile     graba el baseline profile de Android; no entra en ningún binario
 iosApp              shell de iOS (Xcode)
 playstore/          material de la ficha de Play (icono 512×512)
 ```
@@ -229,10 +245,22 @@ mismo código es un caso de uso real — contar unidades iguales en un inventari
 ./gradlew :composeApp:run                            # Desktop
 ./gradlew :composeApp:wasmJsBrowserDevelopmentRun    # Web
 ./gradlew detekt                                     # análisis estático
+./gradlew jvmTest desktopTest                        # tests multiplataforma
+./gradlew :composeApp:testDebugUnitTest              # grafo de Koin de Android (Robolectric)
 ./gradlew check                                      # tests + detekt
 ```
 
 iOS se construye desde `iosApp/` en Xcode (requiere macOS).
+
+**Baseline profile.** Se graba aparte, porque necesita un emulador:
+
+```bash
+./gradlew :androidApp:generateBaselineProfile        # arranca el emulador declarado y graba
+```
+
+Tarda unos quince minutos y deja el perfil en `androidApp/src/release/generated/baselineProfiles/`,
+que se versiona. En CI hay un botón para lo mismo: Actions → "Baseline profile (manual)". No corre en
+cada PR a propósito — ver [ADR-0012](docs/adr/ADR-0012-baseline-profile.md).
 
 ---
 

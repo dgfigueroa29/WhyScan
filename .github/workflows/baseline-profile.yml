@@ -1,0 +1,70 @@
+name: Baseline profile (manual)
+
+# Workflow aparte y **solo manual**, por el mismo motivo que `ios.yml`: lo que hace aquí dentro no
+# es un criterio para aceptar o rechazar un cambio.
+#
+# Generar un baseline profile no comprueba nada. Arranca un emulador, recorre la app y escribe una
+# lista de métodos que ART compilará de antemano. Es una **grabación**, y una grabación se repite
+# cuando el camino que graba cambia —una pantalla nueva, un motor nuevo, una versión de Compose—, no
+# en cada pull request. Meterlo en `Verify` añadiría un cuarto de hora a cada cambio para producir un
+# archivo que casi siempre saldría igual.
+#
+# Lo que sí comprueba `Verify` en cada cambio es que el cableado del plugin no rompe la build: la
+# build de release consume el perfil ya versionado en `androidApp/src/release/generated/`.
+#
+# Cómo lanzarlo: pestaña Actions → "Baseline profile (manual)" → Run workflow. Al terminar, descarga
+# el artefacto `baseline-profile`, copia su contenido a
+# `androidApp/src/release/generated/baselineProfiles/` y haz commit. La tarea ya deja el archivo ahí
+# —`saveInSrc` viene activado por defecto—, así que en la práctica basta con copiar lo que el paso
+# final imprime como diferencia.
+
+on:
+  workflow_dispatch:
+
+env:
+  GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.welcome=never
+
+jobs:
+  generate:
+    name: Generar el perfil
+    runs-on: ubuntu-latest
+    # Un emulador arrancando desde cero, dos recorridos y la compilación de release sin R8. Con el
+    # margen por defecto de seis horas, un cuelgue del emulador se come un runner entero.
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # Sin esto el emulador arranca por software y tarda tanto que el propio macrobenchmark
+      # descarta las medidas. Los runners de Linux traen KVM, pero el nodo `/dev/kvm` solo lo puede
+      # abrir el grupo `kvm` y el usuario del runner no está en él.
+      - name: Habilitar KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Generar el baseline profile
+        run: ./gradlew :androidApp:generateBaselineProfile
+
+      # Lo que hay que llevarse. La tarea escribe aquí directamente; el artefacto existe para poder
+      # mirarlo sin reproducir la ejecución.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: baseline-profile
+          path: androidApp/src/**/generated/baselineProfiles/*.txt
+          if-no-files-found: error
+
+      # Un perfil que no cambia respecto al versionado es información: quiere decir que el camino de
+      # arranque sigue siendo el mismo y que no hay nada que commitear.
+      - name: Qué ha cambiado
+        if: always()
+        run: git --no-pager diff --stat -- androidApp/src

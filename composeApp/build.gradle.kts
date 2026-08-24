@@ -56,6 +56,9 @@ kotlin {
 
             implementation(compose.runtime)
             implementation(compose.foundation)
+            // Llega de rebote con material3, pero `App.kt` usa `AnimatedContent` directamente y una
+            // dependencia que se usa a la cara se declara.
+            implementation(compose.animation)
             implementation(compose.material3)
             implementation(compose.components.resources)
 
@@ -68,6 +71,21 @@ kotlin {
         commonTest.dependencies {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)
+        }
+
+        // El grafo de Android necesita un `Context` y nada más; Robolectric lo aporta sin
+        // emulador. Ver `AndroidKoinGraphTest` — es la mitad que le faltaba a D18.
+        //
+        // `by getting` y no el accesor con nombre: `androidUnitTest` es el source set que crea
+        // `androidTarget()`, y pedirlo por nombre no depende de qué accesores de conveniencia traiga
+        // la versión de Kotlin que toque.
+        val androidUnitTest by getting {
+            dependencies {
+                implementation(libs.robolectric)
+                // `@RunWith` es de JUnit 4. Llega de rebote con Robolectric y con
+                // `kotlin-test-junit`, pero el código lo nombra a la cara.
+                implementation(libs.junit)
+            }
         }
 
         val desktopMain by getting
@@ -125,6 +143,15 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    testOptions {
+        unitTests {
+            // Robolectric monta el `Context` a partir del manifiesto y los recursos ya fusionados.
+            // Sin esto los tests no fallan: arrancan con un entorno vacío, que es peor — darían por
+            // bueno un grafo que en el teléfono no se parece al que se probó.
+            isIncludeAndroidResources = true
+        }
     }
 }
 

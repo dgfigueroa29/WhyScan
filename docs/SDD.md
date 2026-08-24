@@ -4,11 +4,11 @@
 |---|---|
 | Proyecto | Scanly (repositorio `TestScanner`) |
 | Documento | Software Design Document (SDD) |
-| Versión | 1.7 |
-| Estado | Vigente — **el proyecto compila y pasa CI** en Android (con R8), Escritorio y Web, y el framework de iOS **enlaza entero** desde el workflow manual `ios.yml`. Fases 1, 2, 4 y 5 cerradas salvo lo listado como pendiente; la 3 (iOS) escrita y despriorizada por falta de dispositivo, no de compilación. **La app arrancó por primera vez en un dispositivo real** en la versión anterior, y ese arranque encontró un defecto que ninguna comprobación automática podía ver (§10); esta versión convierte esa comprobación en un test y, con él, destapa un segundo defecto de meses en la persistencia (§11) |
-| Fecha | 2026-08-21 |
+| Versión | 1.8 |
+| Estado | Vigente — **el proyecto compila y pasa CI** en Android (con R8), Escritorio y Web, y el framework de iOS **enlaza entero** desde el workflow manual `ios.yml`. Fases 1, 2, 4 y 5 cerradas salvo lo listado como pendiente; la 3 (iOS) escrita y despriorizada por falta de dispositivo, no de compilación. **La app arrancó por primera vez en un dispositivo real** en agosto de 2026, y ese arranque encontró un defecto que ninguna comprobación automática podía ver (§10); la versión anterior convirtió esa comprobación en un test —que destapó un segundo defecto de meses en la persistencia (§11)— y esta la termina: el grafo de **Android** también está cubierto, y sin emulador |
+| Fecha | 2026-08-24 |
 | Autor | Equipo Scanly |
-| Alcance de esta versión | Preparación para publicar: marca, tema claro/oscuro, inglés y español, y el rediseño de la pantalla de escaneo en dos disposiciones (§9.9, §9.10, ADR-0010, ADR-0011) |
+| Alcance de esta versión | Cerrar lo pendiente antes de la ficha de Play: D18 completa (`AndroidKoinGraphTest` sobre Robolectric), D20 (fuera el envoltorio `KoinContext`, comprobado componiendo sin UI), transiciones entre destinos, y el **baseline profile** de Android cableado y documentado (§10, §13.5, ADR-0012) |
 
 ---
 
@@ -260,6 +260,9 @@ TestScanner/
 │                                      # targets: android, iosArm64/SimulatorArm64, jvm, wasmJs
 ├── androidApp/                        # shell Android: Application + MainActivity
 │                                      #   + icono adaptativo, temas de arranque y localeConfig
+├── baselineprofile/                   # com.android.test: graba el baseline profile de Android
+│                                      #   sobre un emulador declarado (ADR-0012). No entra en
+│                                      #   ningún binario
 ├── iosApp/                            # shell iOS: proyecto Xcode + SwiftUI host
 ├── playstore/                         # material de la ficha de Play (icono 512×512)
 └── docs/
@@ -772,18 +775,57 @@ que lanzaba en el teléfono.
 
 Lo que **no** cubre, dicho para que no se confunda con una red completa:
 
-- Es el `platformModule` de **escritorio**, que es el que un test JVM puede enlazar. El de Android
-  —justo donde estaba el defecto original— necesita un `androidUnitTest` en `:composeApp` y sigue
-  pendiente. Lo que sí queda cubierto para las cuatro plataformas son `dataModule`, `domainModule` y
-  los tres módulos de feature.
 - No construye los ViewModels: instanciarlos arranca corrutinas en `viewModelScope`, que exige un
   `Dispatchers.Main` real. Comprueba que **todo lo que piden por constructor** resuelva, que es
   exactamente donde falló D18. Añadir un parámetro a un ViewModel obliga a añadirlo también a la
   lista del test, y esa fricción es deliberada.
+- No cubre iOS ni Web. Ahí lo que falta no es el test, es ejecutar los tests de esos targets: uno
+  necesita un runner macOS y el otro el target wasmJs.
 
 **Encontró un defecto en su primera ejecución**, y no en el cableado de Koin sino en la persistencia
 (§11): la base de datos nunca recibía su driver. Es la mejor defensa posible de por qué este test
 tenía que existir — no comprobaba una hipótesis, destapó algo que llevaba meses ahí.
+
+### La otra mitad: `AndroidKoinGraphTest`
+
+Durante una versión, lo de arriba cubrió el `platformModule` de **escritorio** y dejó fuera el de
+**Android**, que es justo donde estaba el defecto original. Ya no.
+`composeApp/src/androidUnitTest` hace lo mismo sobre **Robolectric**: arranca el grafo real de
+Android con un `Context` simulado y resuelve cada tipo que la raíz consume, incluido —con un test
+para él solo— el `Executor` que fue D18.
+
+Robolectric no contradice la decisión de no tener tests instrumentados (deuda D6). La distinción es
+la que importa: **el grafo de Android no necesita un dispositivo, necesita un `Context`.** Los tres
+motores de cámara guardan la referencia al contexto y dejan el `LifecycleCameraController` y los
+clientes de ML Kit detrás de un `by lazy`, así que resolverlos no arranca ninguna cámara. Lo que
+seguiría necesitando dispositivo —que un motor lea— sigue sin cubrirse, y ningún test lo va a
+arreglar.
+
+Dos detalles del entorno que conviene tener escritos:
+
+- **`sdk = 34` fijo, no el `targetSdk` 36 del proyecto.** Robolectric 4.16 sí simula la 36, pero para
+  eso exige JDK 21 y el CI corre sobre 17. Lo que se comprueba aquí es cableado de Koin, que no
+  cambia entre niveles de API; fijar el número evita que la elección la haga el entorno solo.
+- **`unitTests.isIncludeAndroidResources = true`.** Sin eso los tests no fallan: arrancan con un
+  entorno vacío, que es peor — darían por bueno un grafo que en el teléfono no se parece al probado.
+
+### Y una tercera: componer sin UI (`ComposeKoinContextTest`)
+
+D20 decía que quitar el `KoinContext { }` de `App.kt` "no se puede comprobar sin ejecutar la app". La
+premisa era falsa y vale la pena registrar por qué, porque el mismo razonamiento sirve para más
+cosas.
+
+`koinInject` **no es UI**. Es una función `@Composable` que lee un `CompositionLocal` y llama a
+`remember`, y las dos las resuelve el *runtime* de Compose, que es Kotlin puro y no sabe nada de
+pantallas. Lo que hacía falta no era un dispositivo ni una ventana: era **componer**. El test monta
+una `Composition` con un `Applier` que no aplica nada —no hay árbol de nodos que construir, lo que
+interesa ocurre *durante* la composición— y comprueba que `koinInject` devuelve la misma instancia
+que `koin.get()`, para un tipo del `dataModule` común y otro que depende del `platformModule`.
+
+Leyendo koin-compose se llega a la misma conclusión: `LocalKoinScopeContext` declara como valor por
+defecto `KoinPlatform.getKoin().scopeRegistry.rootScope`, exactamente el scope que `KoinContext`
+proveía a mano. Pero leyendo la librería también estaba bien el `build()` de Room que no se llamaba
+nunca (§11), así que aquí no se da nada por bueno leyendo: se compone y se mira qué sale.
 
 **Un caso de uso por operación no es una regla.** `ScannerViewModel` llegó a tener doce
 colaboradores por seguirla al pie de la letra, y cuatro de ellos eran la misma idea: tres casos de
@@ -1203,12 +1245,15 @@ Implementado en `.github/workflows/verify.yml`:
 | Job | Dispara | Contenido |
 |---|---|---|
 | `checks` | cada PR | `detekt` + tests JVM de núcleo y features. Es el primero y el más barato: si falla, no se pagan los builds de plataforma |
-| `android` | cada PR | `assembleDebug` + `lintDebug` + `assembleRelease`, publica el APK y el `mapping.txt` |
+| `android` | cada PR | `assembleDebug` + `testDebugUnitTest` de `:composeApp` (el grafo de Koin de Android, sobre Robolectric) + `lintDebug` + `assembleRelease`, publica el APK y el `mapping.txt` |
 | `desktop` | cada PR | `desktopJar` |
 | `web` | cada PR | `wasmJsBrowserDistribution` |
 
-El job de iOS **no está en esta tabla**: vive en un workflow aparte, `ios.yml`, y solo se dispara a
-mano (`workflow_dispatch`).
+Los tests unitarios de Android van en el job de `android` y no en `checks` porque necesitan el SDK de
+Android; Robolectric pone el resto, así que siguen sin necesitar emulador.
+
+**Dos workflows no están en esta tabla, y los dos por el mismo motivo.** `ios.yml` y
+`baseline-profile.yml` viven aparte y solo se disparan a mano (`workflow_dispatch`).
 
 La razón no es el coste del runner macOS —que también, riesgo R4— sino qué significa un check.
 Enlazar el framework comprueba que el Kotlin/Native **compila**; no comprueba que la app de iOS
@@ -1222,9 +1267,52 @@ La contrapartida está aceptada a conciencia: el código de iOS queda sin verifi
 es la situación en la que se coló el `Cannot access 'val IO': it is internal`. Se compensa lanzando
 `ios.yml` a mano al tocar código de iOS, y obligatoriamente antes de retomar la Fase 3.
 
+`baseline-profile.yml` está fuera por la razón simétrica: no es que su veredicto no sirva como
+criterio, es que **no emite ningún veredicto**. Arranca un emulador, recorre la app y escribe un
+archivo con los métodos que ART debe compilar de antemano. Es una grabación, no una comprobación: no
+afirma nada y no puede fallar por lo que la app haga. Se relanza cuando cambia el camino que graba
+—una pantalla nueva, un motor nuevo, una versión de Compose—, no en cada PR, donde añadiría un cuarto
+de hora para producir casi siempre el mismo archivo. Lo que sí está en cada PR es que el cableado del
+plugin no rompa la build: `assembleRelease` consume el perfil versionado sin arrancar nada. Ver
+[ADR-0012](adr/ADR-0012-baseline-profile.md).
+
 `assembleRelease` está en cada PR y no solo al publicar por una razón concreta: R8 solo rompe cosas
 cuando se ejecuta, y los fallos que produce —una clase eliminada, un nombre ofuscado que alguien
 esperaba leer— no aparecen en debug. Descubrirlos al preparar una release es tarde.
+
+### 13.6 Rendimiento del arranque: el baseline profile
+
+Es la única optimización de arranque que este proyecto puede hacer sin tocar arquitectura, y ataca un
+coste real: al abrir, la app monta Compose, resuelve un grafo de Koin con cinco motores y construye
+Room. Todo eso lo **interpreta** ART la primera vez que se ejecuta. Un baseline profile es la lista de
+clases y métodos que ART compila por adelantado al instalar; Play la distribuye dentro del AAB, y es
+lo que separa "la app arranca" de "la app arranca rápido la primera vez" — que es justo el arranque
+que mide Android vitals y el que decide si alguien deja la app instalada.
+
+Las piezas y dónde vive cada una:
+
+| Pieza | Dónde | Qué hace |
+|---|---|---|
+| `:baselineprofile` | módulo `com.android.test` | Graba dos recorridos —arranque y navegación por las tres pantallas— sobre un Gradle Managed Device: Pixel 6, API 34, imagen `aosp` |
+| Plugin `androidx.baselineprofile` | `:androidApp` y `:baselineprofile` | Une productor y consumidor; crea las variantes `nonMinifiedRelease` (para grabar sin R8) y `benchmarkRelease` |
+| `androidx.profileinstaller` | `:androidApp` | Instala el perfil en Android 7-11, donde el sistema no lo hace solo. Con `minSdk` 24 eso es la mitad del rango, y la mitad más lenta |
+| `baseline-profile.yml` | CI | El botón que lanza la grabación. Manual, no en cada PR |
+
+Tres decisiones que conviene no perder, con su razón, y el detalle en
+[ADR-0012](adr/ADR-0012-baseline-profile.md):
+
+- **Emulador declarado y no dispositivo enchufado.** El perfil depende de por dónde pasa el código,
+  así que dos dispositivos dan dos perfiles y ninguno es "el" perfil.
+- **El perfil se versiona y `assembleRelease` lo consume del repositorio**
+  (`automaticGenerationDuringBuild = false`). Si ensamblar arrancara un emulador, nadie podría
+  ensamblar la app sin uno — y el job de Android del CI dejaría de existir tal como está.
+- **La grabación no es un test.** No afirma nada y no puede fallar por lo que la app haga. Por eso
+  vive fuera de `Verify` y por eso no contradice la decisión de no tener tests instrumentados (D6):
+  lo que se rechazó allí era la falsedad de un criterio que nadie ejecuta, no el emulador.
+
+Y una consecuencia que hay que tener presente porque **no avisa**: un perfil viejo no rompe nada,
+simplemente deja de cubrir el código nuevo. Hay que relanzar el workflow al añadir pantallas o al
+subir Compose.
 
 ---
 
@@ -1561,3 +1649,4 @@ ocupar memoria en una pantalla donde nadie se desplaza cien lecturas hacia abajo
 | [ADR-0009](adr/ADR-0009-play-feature-delivery-aplazado.md) | Play Feature Delivery se aplaza: incompatible con KMP, exige Play Store y no hay medición |
 | [ADR-0010](adr/ADR-0010-dos-disposiciones-de-la-pantalla-de-escaneo.md) | La pantalla de escaneo tiene dos disposiciones —producto y banco de pruebas— y no una con condicionales |
 | [ADR-0011](adr/ADR-0011-idioma-de-la-app-por-encima-del-sistema.md) | El idioma de la app se fija cambiando el locale de la plataforma: `LocalComposeEnvironment` es `internal` |
+| [ADR-0012](adr/ADR-0012-baseline-profile.md) | El baseline profile se graba en un emulador declarado, se versiona y se lanza a mano: es un artefacto, no un criterio |

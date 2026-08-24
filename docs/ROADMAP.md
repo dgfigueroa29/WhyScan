@@ -274,7 +274,7 @@ con sus latencias en la portada, ni una app llamada "TestScanner" sin icono.
       nadie paraba la sesión
 - [x] Animación al crecer la hoja, tope de cien resultados vivos, pausa y reanudación sobre el visor
 - [x] **D18 saldada para los módulos comunes y el escritorio** (`KoinGraphTest`). El `platformModule`
-      de Android sigue necesitando `androidUnitTest`
+      de Android lo cubrió la ronda siguiente
 - [x] **Lecturas repetidas suprimidas.** Una cámara a 30 fps emitía el mismo código noventa veces en
       tres segundos, y cada repetición **se guardaba en el historial persistente**: no era ruido
       visual, era corrupción de los datos del usuario. Lo arregla `DistinctDetectionsScannerEngine`
@@ -289,16 +289,64 @@ con sus latencias en la portada, ni una app llamada "TestScanner" sin icono.
       anterior aparecía como `IllegalArgumentException at KoinGraphTest.kt:189`, sin mensaje ni
       causa; encontrar el defecto de Room exigió configurar `testLogging` primero
 
-### Ronda 3 — pendiente 🔜
+### Ronda 3 — el grafo de Android, el movimiento y el arranque ✅
 
-- [ ] `androidUnitTest` en `:composeApp` para que `KoinGraphTest` cubra también el grafo de Android,
-      que es donde estaba el defecto original de D18
-- [ ] Animaciones de transición **entre destinos** (las de dentro de la pantalla ya están)
+- [x] **`androidUnitTest` en `:composeApp`, y con él se cierra D18 entera.** `AndroidKoinGraphTest`
+      arranca el grafo real de Android sobre Robolectric y resuelve cada tipo que la raíz de la app
+      pide, incluido el `Executor` que fue el defecto original. Robolectric no contradice la decisión
+      de D6 —"no habrá tests instrumentados"—, la esquiva: el grafo de Android no necesita un
+      dispositivo, necesita un `Context`. Los motores de cámara guardan la referencia y dejan el
+      `LifecycleCameraController` y los clientes de ML Kit detrás de un `by lazy`, así que resolverlos
+      no arranca ninguna cámara. `sdk = 34` fijo: Robolectric exige JDK 21 para simular la 36 y el CI
+      corre sobre 17
+- [x] **Animaciones de transición entre destinos.** `AnimatedContent` con el *fade through* de
+      Material 3 en lugar del corte seco que había. No desliza de lado a propósito: la barra inferior
+      no es una pila, y un deslizamiento contaría una jerarquía que no existe
+- [x] **D20 saldada, y sin dispositivo.** Se quitó el `KoinContext { }` de `App.kt`. Lo que impedía
+      cerrarla era no poder comprobar dónde resuelven `koinInject` y `koinViewModel` sin instalar la
+      app, y resulta que sí se puede: `koinInject` no es UI, es una función `@Composable` que lee un
+      `CompositionLocal` y llama a `remember`, y eso lo resuelve el **runtime** de Compose, que es
+      Kotlin puro. `ComposeKoinContextTest` monta una `Composition` con un `Applier` que no aplica
+      nada —no hay árbol que construir, interesa el efecto de componer— y comprueba que `koinInject`
+      devuelve **la misma instancia** que `koin.get()`. Ni Skiko, ni ventana, ni emulador
 - [ ] Objetivos táctiles y `enableEdgeToEdge` **mirados con los ojos** en un dispositivo (queda
       pendiente desde la Fase 5)
-- [ ] El aviso `KoinContext is not needed anymore` de `App.kt`: Koin dice que `startKoin()` ya monta
-      el contexto de Compose, pero quitarlo cambia por dónde resuelven `koinInject` y `koinViewModel`
-      y eso no se puede comprobar sin ejecutar la app
+
+### Ronda 4 — arranque 🔜
+
+- [x] **Baseline profile** (ver [ADR-0012](adr/ADR-0012-baseline-profile.md)). La app arranca
+      Compose, monta el grafo de Koin con cinco motores y abre Room: todo eso lo **interpreta** ART la
+      primera vez, y ese primer arranque es el que Play mide y el que decide si alguien deja la app
+      instalada. El módulo `:baselineprofile` graba dos recorridos —arranque y navegación por las tres
+      pantallas— sobre un emulador declarado en la build, y `androidx.profileinstaller` instala el
+      perfil también en Android 7-11, donde el sistema no lo hace solo: con `minSdk` 24 eso es la
+      mitad del rango, y la mitad más lenta
+- [x] **El cableado está y `Verify` lo comprueba**: `assembleRelease` consume el perfil versionado sin
+      arrancar nada. La **grabación** vive en `baseline-profile.yml` y se lanza a mano, igual que iOS y
+      por el mismo motivo: no es un criterio para aceptar un cambio, es un artefacto
+- [ ] **Lanzar el workflow y commitear el perfil generado.** Es lo único de esta ronda que sigue sin
+      hacerse, y conviene decir por qué con precisión: el entorno de desarrollo **no alcanza el maven
+      de Google**, así que aquí no se puede ni resolver el plugin, y mucho menos arrancar un emulador.
+      Un clic en Actions → "Baseline profile (manual)" lo produce. Hasta entonces el perfil no existe
+      y la app arranca como arrancaba: el cableado no miente sobre eso
+
+### Antes de la ficha de Play, esto va primero
+
+Lo de abajo es trámite de tienda. Lo de esta lista no, y por eso va antes: son las tres cosas que
+solo se pueden hacer **con la app en la mano**, y ninguna es opcional para publicar algo que alguien
+va a instalar.
+
+1. **Instalar y abrir la app en un dispositivo real con estos cambios.** No es una formalidad: el
+   único arranque real que ha tenido este proyecto destapó un defecto que ningún CI podía ver (D18), y
+   la sesión siguiente destapó otro de meses en la persistencia. Hay tres cambios nuevos sin mirar con
+   los ojos — la pantalla sin `KoinContext`, la transición entre destinos y el edge-to-edge de la
+   Fase 5.
+2. **Objetivos táctiles y `enableEdgeToEdge`** (RNF-05, pendiente desde la Fase 5). Es la clase de
+   cosa que no rompe, se ve mal, y se ve mal precisamente en la primera pantalla.
+3. **Generar el baseline profile** lanzando `baseline-profile.yml`. Es un clic y quince minutos de
+   runner, y es lo que separa "la app arranca" de "la app arranca rápido la primera vez".
+
+Solo después tiene sentido pelearse con la ficha.
 
 ### Pendiente para publicar
 
@@ -325,7 +373,8 @@ y qué lo compensa:
 | Que la selección, el fallback, los límites de petición y el plazo se comportan según el contrato, incluida la cadena completa que llega al ViewModel | Que la cámara arranque, y que se libere al cancelar |
 | Que lo declarado tenga quien lo cumpla, en todo lo instanciable sin `Context` | Lo mismo en los motores de Android e iOS, que necesitan `Context` o `AVCaptureSession` |
 | Que ZXing (Java) **lea de verdad** un QR y un EAN-13 desde píxeles, filtre por formato y distinga "no hay código" de "no es una imagen" | Lo mismo en los motores que necesitan cámara |
-| Que el **grafo de Koin resuelva** de verdad: `KoinGraphTest` arranca los módulos comunes más el `platformModule` de escritorio y pide cada tipo que la raíz de la app consume | Lo mismo para el `platformModule` de **Android**, que necesita `androidUnitTest` en `:composeApp` |
+| Que el **grafo de Koin resuelva** de verdad, en las cuatro plataformas menos iOS y Web: `KoinGraphTest` arranca los módulos comunes más el `platformModule` de escritorio, y `AndroidKoinGraphTest` hace lo mismo con el de **Android** sobre Robolectric | Lo mismo para iOS y Web. iOS necesita ejecutar tests de Kotlin/Native en un runner macOS; Web, el target wasmJs |
+| Que `koinInject` resuelva **componiendo de verdad**, sin envoltorio y sin UI: `ComposeKoinContextTest` monta una `Composition` con el runtime de Compose y compara la instancia con la del grafo | Que la pantalla se **vea** bien: el runtime compone, no dibuja |
 | Que el proyecto **compile** para Android, Escritorio y Web, incluida la build de release con R8 | Que la app **arranque** y lea un código: sigue haciendo falta un dispositivo |
 
 El riesgo que queda es el de siempre en este tipo de app: el código de cámara solo se prueba
@@ -358,7 +407,7 @@ Registrada de forma explícita para que no se olvide:
 | ~~D13~~ | ~~Desktop y Web se quedan sin decodificador: zxing-cpp no publica artefacto JVM ni wasmJs~~ | **Saldada en Desktop**: `:engines:zxing-java` sobre `com.google.zxing:core`, en el catálogo **como motor propio** y no con el nombre de zxing-cpp — son proyectos distintos y confundirlos falsearía la comparación. Solo imagen estática: el decodificador está, la captura de webcam no. **Web se queda como está**: no hay artefacto wasmJs y su respaldo sigue siendo la entrada manual |
 | ~~D16~~ | ~~`ScannerViewModel` tiene doce colaboradores y veinte funciones~~ | **Saldada**: seis dependencias. Los ajustes en `ScanSettings`, la sesión y el guardado en `ScanSessions`, las acciones sobre el resultado en `ResultActionRunner`. Los tres casos de uso de preferencias y el del catálogo se **borraron** en vez de envolverse —delegaban al repositorio sin añadir nada—, y la única regla que había se conservó donde se puede probar. Quince tests nuevos que antes exigían levantar el ViewModel entero. Quedan dos supresiones, ninguna global: `TooManyFunctions` en la clase (catorce acciones de usuario, catorce funciones) y `CyclomaticComplexMethod` en `onAction`, que es una tabla de despacho sobre un `sealed interface` |
 | D17 | `IosPlatformActions.openUrl` usa `UIApplication.openURL:`, que Apple depreció en iOS 10 a favor de `openURL:options:completionHandler:`. Compila —solo es un aviso— pero es API vieja en código nuevo. Salió de auditar el header real al preparar la compilación de iOS, no de un fallo | Cuando iOS enlace en verde y se pueda comprobar el cambio en el runner |
-| ~~D18~~ | ~~**Nada comprueba que el grafo de Koin resuelva.**~~ El defecto que la abrió lo demostró el primer arranque real en un dispositivo: `platformModule` registraba el executor de análisis como `ExecutorService` mientras los tres motores de cámara lo piden como `Executor`, y Koin resuelve por igualdad exacta de tipo. La app moría al componer la primera pantalla con `NoDefinitionFoundException`. **El compilador no puede verlo** —los `get()` son genéricos que se resuelven en ejecución— y el CI tampoco: compila, pasa lint, pasa R8 y publica un APK que revienta al abrirse. Es el mismo agujero que el criterio de salida de la Fase 1, visto desde el otro lado. **Saldada a medias, y la mitad que falta está dicha.** `KoinGraphTest` (`composeApp/src/desktopTest`) arranca el grafo real y **resuelve** cada tipo que la raíz de la app consume, agrupado por el ViewModel que lo pide. No usa `verify()` sino resolución de verdad, que es más fuerte: instancia en vez de reflexionar. Cubre `dataModule`, `domainModule` y los tres módulos de feature —comunes a las cuatro plataformas— más el `platformModule` de escritorio. En su primera ejecución destapó el defecto del driver de Room que no se aplicaba (SDD §11) | **Falta el `platformModule` de Android**, que es justo donde estaba el defecto original: necesita `androidUnitTest` en `:composeApp` y su tarea en el job de CI |
-| D19 | **Los avisos del compilador no los lee nadie, y uno de ellos era un defecto de producción.** `This extension is shadowed by a member` llevaba apareciendo en cada build desde que existe `:core:database`, y señalaba el defecto del driver de Room que reventaba escritorio e iOS (SDD §11): un aviso correcto, visible en cada compilación y leído por nadie durante meses. Hoy el build emite además avisos de deprecación (`KoinContext is not needed anymore`, los accesores `compose.runtime` como `String`) mezclados con ruido de terceros, así que ninguno destaca | Decidiendo una postura: o se limpian todos y se activa `allWarningsAsErrors`, o se acepta el ruido explícitamente. Lo primero exige antes saber cuáles vienen de plugins y no se pueden arreglar |
-| D20 | **El aviso `KoinContext is not needed anymore` en `App.kt`.** Koin dice que `startKoin()` ya monta el contexto de Compose y que ese envoltorio sobra. Quitarlo cambia por dónde resuelven `koinInject` y `koinViewModel`, y eso **no se puede comprobar sin ejecutar la app** | En el mismo pase que la primera instalación en un dispositivo con estos cambios |
+| ~~D18~~ | ~~**Nada comprueba que el grafo de Koin resuelva.** Saldada a medias: falta el `platformModule` de Android.~~ **Saldada entera.** El defecto que la abrió lo demostró el primer arranque real en un dispositivo: `platformModule` registraba el executor de análisis como `ExecutorService` mientras los tres motores de cámara lo piden como `Executor`, y Koin resuelve por igualdad exacta de tipo. La app moría al componer la primera pantalla con `NoDefinitionFoundException`. **El compilador no puede verlo** —los `get()` son genéricos que se resuelven en ejecución— y el CI tampoco: compila, pasa lint, pasa R8 y publica un APK que revienta al abrirse. Es el mismo agujero que el criterio de salida de la Fase 1, visto desde el otro lado. **Saldada a medias, y la mitad que falta está dicha.** `KoinGraphTest` (`composeApp/src/desktopTest`) arranca el grafo real y **resuelve** cada tipo que la raíz de la app consume, agrupado por el ViewModel que lo pide. No usa `verify()` sino resolución de verdad, que es más fuerte: instancia en vez de reflexionar. Cubre `dataModule`, `domainModule` y los tres módulos de feature —comunes a las cuatro plataformas— más el `platformModule` de escritorio. En su primera ejecución destapó el defecto del driver de Room que no se aplicaba (SDD §11). La mitad que faltaba —el `platformModule` de **Android**, que es justo donde estaba el defecto original— la cubre ahora `AndroidKoinGraphTest` en `composeApp/src/androidUnitTest`, sobre Robolectric, con su tarea en el job de Android del CI | **Cerrada.** Lo que queda fuera es iOS y Web, y no por el mismo motivo: ahí falta ejecutar tests de esos targets, no falta el test |
+| D19 | **Los avisos del compilador no los lee nadie, y uno de ellos era un defecto de producción.** `This extension is shadowed by a member` llevaba apareciendo en cada build desde que existe `:core:database`, y señalaba el defecto del driver de Room que reventaba escritorio e iOS (SDD §11): un aviso correcto, visible en cada compilación y leído por nadie durante meses. Hoy el build emite además avisos de deprecación mezclados con ruido de terceros, así que ninguno destaca. **Uno menos:** el `KoinContext is not needed anymore` se fue al cerrar D20, y se fue por el camino largo —comprobando qué pasaba al quitarlo— que es el que esta deuda pide para el resto | Decidiendo una postura: o se limpian todos y se activa `allWarningsAsErrors`, o se acepta el ruido explícitamente. Lo primero exige antes saber cuáles vienen de plugins y no se pueden arreglar, y eso exige leer un build completo — que desde el entorno de desarrollo no se puede lanzar, porque no alcanza el maven de Google |
+| ~~D20~~ | ~~**El aviso `KoinContext is not needed anymore` en `App.kt`.** Quitarlo cambia por dónde resuelven `koinInject` y `koinViewModel`, y eso no se puede comprobar sin ejecutar la app.~~ **Saldada, y la premisa era falsa.** Sí se puede comprobar sin ejecutar la app, porque `koinInject` no es UI: es una función `@Composable` que lee un `CompositionLocal` y llama a `remember`, y eso lo resuelve el **runtime** de Compose, que es Kotlin puro y no sabe nada de pantallas. `ComposeKoinContextTest` monta una `Composition` con un `Applier` que no aplica nada —no hay árbol de nodos que construir, lo que interesa ocurre *durante* la composición— y comprueba que `koinInject` devuelve la misma instancia que `koin.get()`, para un tipo de los módulos comunes y otro que depende del `platformModule`. Leyendo koin-compose se ve por qué: `LocalKoinScopeContext` declara como valor por defecto `KoinPlatform.getKoin().scopeRegistry.rootScope`, que es exactamente lo que `KoinContext` proveía a mano — el envoltorio era una identidad. Pero eso es leer la librería, y leyendo la librería también estaba bien el `build()` de Room que no se llamaba nunca | **Cerrada.** Con ella se va uno de los avisos que D19 señala como ruido |
 | D21 | **El selector de idioma en iOS está sin verificar.** El actual escribe `AppleLanguages` en `NSUserDefaults`, que es el mecanismo estándar; si Compose lee `preferredLanguages` el cambio es inmediato, si lee `currentLocale` no lo será hasta reabrir. Ver ADR-0011 | Cuando haya un iPhone. Es lo primero que hay que mirar de la UI de iOS |

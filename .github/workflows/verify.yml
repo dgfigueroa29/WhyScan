@@ -52,6 +52,11 @@ jobs:
             **/build/reports/tests/**
           if-no-files-found: ignore
 
+  # Nota sobre el baseline profile: **no se genera aquí**. Generarlo exige arrancar un emulador y
+  # recorrer la app, unos quince minutos que no deciden si un cambio entra o no. Vive en
+  # `baseline-profile.yml` y se lanza a mano, igual que iOS. Lo que sí comprueba este workflow es
+  # que el cableado del plugin no rompe la build: `assembleRelease` consume el perfil versionado.
+
   android:
     name: Android
     runs-on: ubuntu-latest
@@ -68,6 +73,12 @@ jobs:
 
       - name: Ensamblar debug
         run: ./gradlew :androidApp:assembleDebug
+
+      # El grafo de Koin de **Android**, que es donde estuvo el defecto D18 y donde el CI llevaba
+      # todo el proyecto sin mirar. Va en este job y no en `checks` porque necesita el SDK de
+      # Android; Robolectric pone el resto, así que sigue sin hacer falta emulador.
+      - name: Tests unitarios de Android
+        run: ./gradlew :composeApp:testDebugUnitTest
 
       - name: Lint
         run: ./gradlew :androidApp:lintDebug
