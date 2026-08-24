@@ -85,7 +85,7 @@ androidxActivityCompose = "1.13.0"
 androidxCoreKtx = "1.18.0"
 # La que pide Koin 4.2.2; subirla más alto haría que Gradle resolviera por encima de lo que espera.
 #noinspection NewerVersionAvailable
-lifecycle = "2.9.6"
+lifecycle = "2.11.0"
 
 # DI
 koin = "4.2.2"
