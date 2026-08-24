@@ -176,10 +176,13 @@ private fun AppScaffold(navigator: Navigator, advancedMode: Boolean) {
             // continuidad que faltaba sin sugerir una dirección que aquí no existe: la barra
             // inferior no es una pila, así que deslizar de lado contaría una jerarquía falsa.
             //
-            // Efecto colateral que conviene saber: durante los ~300 ms de la transición conviven
-            // las dos pantallas en la composición. El escáner apaga su sesión al salir de ella, así
-            // que la cámara sigue viva ese instante de más. Es el mismo apagado de siempre, un poco
-            // más tarde.
+            // Efecto colateral que conviene saber, con el número correcto: `AnimatedContent` compone
+            // la pantalla nueva de inmediato y deja que la vieja termine su salida, así que las dos
+            // conviven en la composición durante los **90 ms** que dura el `fadeOut` — no los 300 ms
+            // de la transición entera, que incluye una entrada que empieza cuando la salida ya
+            // acabó. El escáner apaga su sesión en el `onDispose` de la pantalla, de modo que la
+            // cámara sigue viva esos 90 ms de más. Es el mismo apagado de siempre, un pelo más
+            // tarde.
             AnimatedContent(
                 targetState = current,
                 transitionSpec = { fadeThrough() },
