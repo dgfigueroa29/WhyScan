@@ -827,6 +827,40 @@ defecto `KoinPlatform.getKoin().scopeRegistry.rootScope`, exactamente el scope q
 proveía a mano. Pero leyendo la librería también estaba bien el `build()` de Room que no se llamaba
 nunca (§11), así que aquí no se da nada por bueno leyendo: se compone y se mira qué sale.
 
+### Y la cuarta, que es la que cierra el hueco: `AppCompositionTest`
+
+Las tres anteriores comprueban que el grafo **resuelve**. Resolver no es componer. Entre
+`koin.get<X>()` y una pantalla en marcha están los `CompositionLocal`, los `koinViewModel`, el tema,
+el idioma, los efectos de arranque de cada pantalla y la navegación — y nada de eso lo ejercita
+pedirle un tipo al grafo. Es exactamente la franja donde vivieron los dos defectos caros de este
+proyecto: el `Executor` mal declarado mataba la app **al componer la primera pantalla**, y el driver
+de Room reventaba **al abrirla**.
+
+`AppCompositionTest` (`composeApp/src/desktopTest`) compone `App()` entera con el grafo real y cambia
+de destino. Es el "montaje" que el criterio de salida de la Fase 1 daba por bueno sin que nadie lo
+mirara.
+
+Tres decisiones de forma, que valen más escritas que deducidas:
+
+- **`LocalLifecycleOwner` y `LocalViewModelStoreOwner` se proveen a mano.** En la app los pone la
+  plataforma: Android los trae de la `ComponentActivity` y escritorio de la ventana. En un test no
+  hay ni una cosa ni la otra, así que se declaran explícitamente en vez de confiar en lo que el arnés
+  monte por su cuenta. El ciclo de vida arranca en `RESUMED` porque `collectAsStateWithLifecycle`
+  solo colecta a partir de `STARTED`: con menos, el test pasaría sin haber leído nunca las
+  preferencias, que es la primera dependencia que `App()` pide.
+- **Se navega llamando al `Navigator`, no pulsando la barra inferior.** Las etiquetas salen de
+  `composeResources`, que se cargan de forma asíncrona; un test que dependa de encontrarlas mide la
+  carga de recursos en vez de lo que dice medir.
+- **Se cambia a Ajustes y no a Historial.** El historial consulta Room, y abrir la base de datos es un
+  riesgo de entorno ajeno a lo que aquí se comprueba. Que Room esté bien cableado ya lo dicen los
+  otros dos tests.
+
+**Qué no dice este test, para que no se lea como más de lo que es.** No dice que la app arranque en
+**Android**: `MainActivity`, `enableEdgeToEdge` y el préstamo de los `ActivityResultLauncher` son
+código de plataforma, fuera de `App()`, y siguen sin quien los ejecute. Y no dice que nada se **vea**
+bien: `runComposeUiTest` compone y mide, no juzga. Componer no es dibujar, y los píxeles siguen
+necesitando ojos.
+
 **Un caso de uso por operación no es una regla.** `ScannerViewModel` llegó a tener doce
 colaboradores por seguirla al pie de la letra, y cuatro de ellos eran la misma idea: tres casos de
 uso de una línea sobre `ScanPreferencesRepository` más el propio repositorio, inyectado aparte

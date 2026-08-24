@@ -43,9 +43,19 @@ con su estado real; los tests de `:core:domain` y `:core:data` pasan en CI.
 > ese tiempo: compilaba, pasaba lint, pasaba R8 y publicaba un APK que reventaba al abrirse.
 >
 > Vale la pena quedarse con la forma del fallo y no solo con el fallo: **todo lo que este proyecto
-> comprueba son piezas, y nada comprueba el montaje.** Arreglado el defecto, el criterio sigue sin
-> tener quien lo verifique de forma automática; lo que cambió es que ahora se sabe, y que D18
-> propone la comprobación que sí cabe sin emulador.
+> comprueba son piezas, y nada comprueba el montaje.**
+>
+> **Eso ya no es del todo cierto, y conviene decir exactamente cuánto.** `AppCompositionTest` compone
+> `App()` entera con el grafo real —tema, idioma, `CompositionLocal`, `koinViewModel`, los efectos de
+> arranque de cada pantalla— y cambia de destino, en un test JVM normal sobre escritorio. Es el
+> montaje, y es lo más cerca que este proyecto ha estado de su propio criterio de salida sin arrancar
+> la app.
+>
+> Lo que ese test **no** dice: que la app arranque en **Android**. `MainActivity`, `enableEdgeToEdge`
+> y el préstamo de los `ActivityResultLauncher` son código de plataforma que sigue sin quien lo
+> ejecute; el grafo de Android sí está cubierto, por `AndroidKoinGraphTest`. Y no dice que nada se
+> **vea** bien: componer no es dibujar. El criterio de la Fase 1 pasa de no tener ninguna red a
+> tenerla en su parte común, que es la mayor.
 
 ---
 
@@ -309,6 +319,11 @@ con sus latencias en la portada, ni una app llamada "TestScanner" sin icono.
       Kotlin puro. `ComposeKoinContextTest` monta una `Composition` con un `Applier` que no aplica
       nada —no hay árbol que construir, interesa el efecto de componer— y comprueba que `koinInject`
       devuelve **la misma instancia** que `koin.get()`. Ni Skiko, ni ventana, ni emulador
+- [x] **`AppCompositionTest`: la app se monta, y ahora hay quien lo comprueba.** No estaba en la lista
+      de esta ronda —salió de tirar del hilo que abrió D20— y es lo que más lejos llega de todo lo que
+      hay. Los otros tests dicen que el grafo resuelve; este dice que `App()` **compone**, con el tema,
+      el idioma, los `CompositionLocal`, los `koinViewModel`, los efectos de arranque de cada pantalla
+      y el cambio de destino. Es la franja donde vivieron los dos defectos caros del proyecto
 - [ ] Objetivos táctiles y `enableEdgeToEdge` **mirados con los ojos** en un dispositivo (queda
       pendiente desde la Fase 5)
 
@@ -386,6 +401,7 @@ y qué lo compensa:
 | Que ZXing (Java) **lea de verdad** un QR y un EAN-13 desde píxeles, filtre por formato y distinga "no hay código" de "no es una imagen" | Lo mismo en los motores que necesitan cámara |
 | Que el **grafo de Koin resuelva** de verdad, en las cuatro plataformas menos iOS y Web: `KoinGraphTest` arranca los módulos comunes más el `platformModule` de escritorio, y `AndroidKoinGraphTest` hace lo mismo con el de **Android** sobre Robolectric | Lo mismo para iOS y Web. iOS necesita ejecutar tests de Kotlin/Native en un runner macOS; Web, el target wasmJs |
 | Que `koinInject` resuelva **componiendo de verdad**, sin envoltorio y sin UI: `ComposeKoinContextTest` monta una `Composition` con el runtime de Compose y compara la instancia con la del grafo | Que la pantalla se **vea** bien: el runtime compone, no dibuja |
+| Que **`App()` se monte entera**: `AppCompositionTest` compone la raíz con el grafo real —tema, idioma, `CompositionLocal`, `koinViewModel`, los efectos de arranque de cada pantalla— y cambia de destino. Es lo más cerca que este proyecto ha estado de "la app arranca" sin arrancarla | Que se **vea** bien, y que el arranque de **Android** funcione: `MainActivity`, `enableEdgeToEdge` y el préstamo de los `ActivityResultLauncher` siguen sin quien los ejecute |
 | Que el proyecto **compile** para Android, Escritorio y Web, incluida la build de release con R8 | Que la app **arranque** y lea un código: sigue haciendo falta un dispositivo |
 
 El riesgo que queda es el de siempre en este tipo de app: el código de cámara solo se prueba

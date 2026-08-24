@@ -50,6 +50,7 @@ el comparador en paralelo y las latencias por lectura.
 | Lecturas repetidas | ✅ suprimidas en el dominio con ventana de dos segundos. Antes, tres segundos apuntando a un QR escribían noventa filas en el historial |
 | Que el grafo de Koin resuelva | ✅ **D18 cerrada**: `KoinGraphTest` cubre los módulos comunes y escritorio, y `AndroidKoinGraphTest` el `platformModule` de Android sobre Robolectric — sin emulador |
 | Transiciones entre pantallas | ✅ *fade through* de Material 3 al cambiar de destino, en lugar del corte seco que había |
+| Que la app **se monte** | ✅ `AppCompositionTest` compone `App()` entera con el grafo real y cambia de destino, sin emulador ni ventana. Es el hueco que este README describía desde la Fase 1 — cubierto en su parte común, no en el arranque de Android |
 | Baseline profile | 🚧 cableado listo y comprobado en CI ([ADR-0012](docs/adr/ADR-0012-baseline-profile.md)); **falta lanzar la grabación**, que necesita un emulador y vive en el workflow `Baseline profile (manual)` |
 | Accesibilidad (RNF-05) | ✅ contraste AA **verificado por test** (56 pares, los dos temas), y semántica para lectores de pantalla |
 | Privacidad (RNF-03) | ✅ auditada: sin trazas, sin cliente HTTP, sin analítica, sin permiso `INTERNET` y **sin copia de seguridad del sistema** — `allowBackup` estaba en `true` y el historial se subía a Drive, contradiciendo lo que la app dice en Ajustes |
@@ -119,8 +120,16 @@ Lo que queda fuera por ahora, y por qué:
 > de Compose, que es Kotlin puro: `ComposeKoinContextTest` monta una `Composition` con un `Applier`
 > que no aplica nada y comprueba que sale la misma instancia que del grafo.
 >
-> Lo que sigue sin cubrir: que la app se abra y lea un código, que necesita un dispositivo, y que la
-> pantalla **se vea** bien, que necesita ojos.
+> **Y el hueco grande —"nada comprueba el montaje"— dejó de estar entero.** `AppCompositionTest`
+> compone `App()` de verdad con el grafo real: el tema, el idioma, los `CompositionLocal`, los
+> `koinViewModel`, los efectos de arranque de cada pantalla y el cambio de destino. Corre en el mismo
+> test JVM de escritorio, sin ventana. Los dos defectos caros de este proyecto vivían justo ahí,
+> entre piezas que por separado estaban bien.
+>
+> Lo que sigue sin cubrir, dicho sin rebajarlo: el arranque de **Android** —`MainActivity`,
+> `enableEdgeToEdge`, el préstamo de los launchers— que es código de plataforma y no de `App()`; que
+> la app lea un código, que necesita un dispositivo; y que la pantalla **se vea** bien, que necesita
+> ojos. Componer no es dibujar.
 >
 > Hasta que se activó Actions nada de esto se había compilado nunca —el entorno de desarrollo no
 > alcanza el maven de Google—, y el primer CI encontró **doce fallos encadenados**, desde el
