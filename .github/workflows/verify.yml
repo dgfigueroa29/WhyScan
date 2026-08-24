@@ -21,6 +21,11 @@ jobs:
   checks:
     name: Detekt y tests del núcleo
     runs-on: ubuntu-latest
+    # Los cuatro jobs llevan tope. El margen por defecto es de **seis horas**, y lo que se cuelga en
+    # una build no suele fallar: se queda esperando. Desde que hay un test que compone la app de
+    # verdad (`AppCompositionTest`), un flujo que no se calla dejaría el runner ahí toda la tarde.
+    # Los números son holgados respecto a lo que tarda cada job hoy, no ajustados.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -60,6 +65,7 @@ jobs:
   android:
     name: Android
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     needs: checks
     steps:
       - uses: actions/checkout@v4
@@ -105,6 +111,7 @@ jobs:
   desktop:
     name: Desktop
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: checks
     steps:
       - uses: actions/checkout@v4
@@ -121,6 +128,7 @@ jobs:
   web:
     name: Web (Wasm)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: checks
     steps:
       - uses: actions/checkout@v4

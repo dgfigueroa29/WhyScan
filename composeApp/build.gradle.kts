@@ -90,6 +90,22 @@ kotlin {
 
         val desktopMain by getting
 
+        // Componer la raíz de la app de verdad (`AppCompositionTest`). Escritorio es la única de
+        // las cuatro plataformas donde eso se puede hacer en un test JVM normal, sin emulador ni
+        // navegador.
+        //
+        // Los dos artefactos de lifecycle se nombran aquí aunque ya estén en el classpath de
+        // ejecución: llegan como `implementation` de los módulos de feature, que no es transitivo
+        // para compilar, y el test los usa a la cara para proveer el `LifecycleOwner` y el
+        // `ViewModelStoreOwner` que en la app pone la plataforma.
+        val desktopTest by getting {
+            dependencies {
+                implementation(compose.uiTest)
+                implementation(libs.lifecycle.runtime.compose)
+                implementation(libs.lifecycle.viewmodel.compose)
+            }
+        }
+
         androidMain.dependencies {
             // Los motores de Android se enlazan SOLO aquí: el binario de iOS, Desktop y Web no
             // debe cargar ML Kit ni Play Services (RNF-06).
