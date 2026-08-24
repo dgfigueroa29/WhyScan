@@ -33,14 +33,14 @@ jobs:
     timeout-minutes: 60
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
 
       # Sin esto el emulador arranca por software y tarda tanto que el propio macrobenchmark
       # descarta las medidas. Los runners de Linux traen KVM, pero el nodo `/dev/kvm` solo lo puede
@@ -57,7 +57,7 @@ jobs:
 
       # Lo que hay que llevarse. La tarea escribe aquí directamente; el artefacto existe para poder
       # mirarlo sin reproducir la ejecución.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: baseline-profile
           path: androidApp/src/**/generated/baselineProfiles/*.txt
