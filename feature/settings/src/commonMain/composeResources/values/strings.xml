@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Settings strings. Unqualified `values/`, so English is the fallback for every locale. -->
+<?xml version="1.0" encoding="utf-8"?><!-- Settings strings. Unqualified `values/`, so English is the fallback for every locale. -->
 <resources>
     <string name="settings_appearance">Appearance</string>
     <string name="settings_theme">Theme</string>

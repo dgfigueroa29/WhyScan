@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
     Capa monocroma para los iconos temáticos de Android 13+.
 
     Cuando el usuario activa "icono temático", el sistema descarta fondo y primer plano y pinta
@@ -17,14 +16,14 @@
 
     <path
         android:pathData="M30,45 L30,30 L45,30 M63,30 L78,30 L78,45 M78,63 L78,78 L63,78 M45,78 L30,78 L30,63"
-        android:strokeColor="#000000"
         android:strokeWidth="6"
+        android:strokeColor="#000000"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
 
     <path
         android:pathData="M40.5,54 L67.5,54"
-        android:strokeColor="#000000"
         android:strokeWidth="7.2"
+        android:strokeColor="#000000"
         android:strokeLineCap="round" />
 </vector>

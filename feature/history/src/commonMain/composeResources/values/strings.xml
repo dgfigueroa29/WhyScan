@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- History strings. See the note in the same file under :feature:scanner for why English is the
+<?xml version="1.0" encoding="utf-8"?><!-- History strings. See the note in the same file under :feature:scanner for why English is the
      unqualified default and Spanish lives in `values-es/`. -->
 <resources>
     <string name="history_empty">Nothing scanned yet</string>

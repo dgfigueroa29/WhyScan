@@ -8,6 +8,7 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
+import androidx.annotation.OptIn
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageProxy
 import androidx.camera.view.LifecycleCameraController
@@ -82,6 +83,7 @@ class MlKitCameraXEngine(
         else -> EngineAvailability.Available
     }
 
+    @OptIn(ExperimentalGetImage::class)
     override fun scan(request: ScanRequest): Flow<ScanEvent> = callbackFlow {
         val startedAtMillis = time.nowMillis()
         trySend(ScanEvent.SessionStarted(id))

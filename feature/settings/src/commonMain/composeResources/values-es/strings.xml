@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Textos de Ajustes. Solo lo ven los dispositivos en español; el respaldo está en `values/`. -->
+<?xml version="1.0" encoding="utf-8"?><!-- Textos de Ajustes. Solo lo ven los dispositivos en español; el respaldo está en `values/`. -->
 <resources>
     <string name="settings_appearance">Aspecto</string>
     <string name="settings_theme">Tema</string>

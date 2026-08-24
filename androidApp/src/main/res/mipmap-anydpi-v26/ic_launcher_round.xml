@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
     Icono adaptativo (API 26+). `monochrome` es lo que da soporte a los iconos temáticos de
     Android 13+; sin esa línea la app se queda a todo color en una pantalla teñida.
 -->

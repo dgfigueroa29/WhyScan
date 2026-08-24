@@ -11,6 +11,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.whyscan.core.designsystem.Spacing
+import com.whyscan.feature.settings.WhatsNew.ENTRIES
 import com.whyscan.feature.settings.resources.Res
 import com.whyscan.feature.settings.resources.news_dismiss
 import com.whyscan.feature.settings.resources.news_dyslexia_body

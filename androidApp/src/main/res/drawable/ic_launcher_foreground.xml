@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
     Capa de primer plano del icono adaptativo: la marca de WhyScan, la misma forma que dibuja
     `WhyScanMark` en `:core:designsystem`. Están duplicadas porque viven en dos mundos que no se
     hablan —Compose y el sistema de recursos de Android—, y por eso ambas llevan esta nota: quien
@@ -19,15 +18,15 @@
     <!-- Las cuatro esquinas del encuadre, en un solo trazo con cuatro subtrayectos. -->
     <path
         android:pathData="M30,45 L30,30 L45,30 M63,30 L78,30 L78,45 M78,63 L78,78 L63,78 M45,78 L30,78 L30,63"
-        android:strokeColor="#FFFFFF"
         android:strokeWidth="6"
+        android:strokeColor="#FFFFFF"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
 
     <!-- La línea de lectura, más gruesa: a igual grosor se perdía dentro del encuadre. -->
     <path
         android:pathData="M40.5,54 L67.5,54"
-        android:strokeColor="#FFFFFF"
         android:strokeWidth="7.2"
+        android:strokeColor="#FFFFFF"
         android:strokeLineCap="round" />
 </vector>

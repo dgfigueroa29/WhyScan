@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
     Existe para que el sistema sepa que la app tiene español: sin un `values-es/`, Android considera
     que WhyScan solo habla inglés y el selector de idioma por app de Android 13+ ni la ofrece.
     El nombre en sí no cambia — es una marca — pero la carpeta sí tiene que estar.

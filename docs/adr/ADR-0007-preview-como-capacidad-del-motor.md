@@ -55,10 +55,12 @@ Compose.
 ## Consecuencias
 
 **Positivas**
+
 - `:feature:scanner` no depende de ningún módulo de motor y no lo hará nunca.
 - El 100 % del diseño visual sigue siendo compartido; solo la superficie de vídeo es nativa.
 
 **Negativas y su gestión**
+
 - **Los módulos de motor con cámara dependen de Compose.** Es real y se asume: son módulos de
   plataforma, no de dominio. Los motores sin preview (`:engines:manual`, y el OCR sobre imagen de la
   Fase 4) no lo hacen, porque la dependencia está en `:core:scanner-ui` y no en el SPI.

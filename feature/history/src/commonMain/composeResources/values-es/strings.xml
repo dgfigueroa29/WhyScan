@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Textos del historial (deuda D5). Ver la nota del mismo fichero en :feature:scanner. -->
+<?xml version="1.0" encoding="utf-8"?><!-- Textos del historial (deuda D5). Ver la nota del mismo fichero en :feature:scanner. -->
 <resources>
     <string name="history_empty">Todavía no escaneaste nada</string>
     <string name="history_filter_all">Todos</string>

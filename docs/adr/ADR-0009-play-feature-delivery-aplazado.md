@@ -54,11 +54,13 @@ que no exige tienda ni reflexión.
 ## Consecuencias
 
 **Positivas**
+
 - No se parte la estructura KMP por una optimización que hoy no se puede medir ni ejercitar.
 - El incumplimiento queda registrado y acotado, en vez de esconderse tras un requisito marcado como
   hecho.
 
 **Negativas y su gestión**
+
 - El APK de Android carga con los cuatro motores aunque el usuario use uno. Se acepta a sabiendas
   mientras la app no se distribuya: hoy no hay ningún usuario pagando ese coste.
 - El día que se retome habrá más motores que mover. Lo mitiga la propia arquitectura: un motor ya
@@ -67,8 +69,8 @@ que no exige tienda ni reflexión.
 
 ## Alternativas descartadas
 
-| Alternativa | Motivo |
-|---|---|
-| Convertir los motores a `dynamic-feature` ahora | Incompatible con KMP; y sin distribución por Play no se ejercitaría |
-| Variantes de producto (con y sin ML Kit) | Es la opción más probable **después** de medir, no antes: hoy no se sabe qué variante haría falta |
-| Confiar en que R8 elimine lo que no se usa | No puede: los motores se registran explícitamente en el grafo de Koin, así que son alcanzables por definición |
+| Alternativa                                     | Motivo                                                                                                        |
+|-------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
+| Convertir los motores a `dynamic-feature` ahora | Incompatible con KMP; y sin distribución por Play no se ejercitaría                                           |
+| Variantes de producto (con y sin ML Kit)        | Es la opción más probable **después** de medir, no antes: hoy no se sabe qué variante haría falta             |
+| Confiar en que R8 elimine lo que no se usa      | No puede: los motores se registran explícitamente en el grafo de Koin, así que son alcanzables por definición |

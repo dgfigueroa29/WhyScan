@@ -135,6 +135,7 @@ def check_kotlin_file(path: str) -> None:
 
 def strip_string_literals(text: str) -> str:
     """Vacía las cadenas conservando lo interpolado, que es código de verdad."""
+
     def interpolations(match: re.Match[str]) -> str:
         return " " + " ".join(re.findall(r"\$\{([^}]*)\}", match.group(0))) + " "
 
@@ -201,7 +202,8 @@ def check_labels_resolve(path: str, text: str) -> None:
         # La etiqueta puede venir de una llamada —`launch {`— o de una etiqueta explícita —`bucle@`—.
         if re.search(rf"\b{re.escape(label)}\s*(?:\(|\{{|@)", text.replace(f"return@{label}", "")):
             continue
-        report(path, f"la etiqueta '{label}' de un return@ no corresponde a ninguna lambda del archivo")
+        report(path,
+               f"la etiqueta '{label}' de un return@ no corresponde a ninguna lambda del archivo")
 
 
 def check_privacy_guarantee() -> None:

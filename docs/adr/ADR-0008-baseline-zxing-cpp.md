@@ -3,7 +3,8 @@
 - **Estado:** Aceptada
 - **Fecha:** 2026-07-31
 - **Resuelve:** riesgo R9 del SDD §15
-- **Corrige:** la fila `ZXING_CPP` de `docs/ENGINES.md`, que declaraba Desktop como plataforma soportada
+- **Corrige:** la fila `ZXING_CPP` de `docs/ENGINES.md`, que declaraba Desktop como plataforma
+  soportada
 
 ## Contexto
 
@@ -15,16 +16,16 @@ variables y G5 deja de ser medible.
 El riesgo R9 se registró al no encontrar ningún binding KMP publicado. Esa afirmación era
 **incompleta**. Inventario real de `repo1.maven.org`, comprobado el 2026-07-31:
 
-| Artefacto | Última versión | Targets | API |
-|---|---|---|---|
-| `io.github.zxing-cpp:android` | 3.1.1 | Android (arm64-v8a, armeabi-v7a, x86, x86_64) | `zxingcpp.BarcodeReader` con `Options`/`Result` anidados; `read(ImageProxy)` y `read(Bitmap, Rect, Int)` |
-| `io.github.zxing-cpp:kotlin-native` | 3.1.1 | iOS arm64/x64/simulatorArm64, macOS, tvOS, watchOS, linux, androidNative | paquete `zxingcpp`: `BarcodeReader`, `Barcode`, `BarcodeFormat`, `ImageView`; el cinterop **ya viene hecho y publicado** |
+| Artefacto                           | Última versión | Targets                                                                  | API                                                                                                                      |
+|-------------------------------------|----------------|--------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|
+| `io.github.zxing-cpp:android`       | 3.1.1          | Android (arm64-v8a, armeabi-v7a, x86, x86_64)                            | `zxingcpp.BarcodeReader` con `Options`/`Result` anidados; `read(ImageProxy)` y `read(Bitmap, Rect, Int)`                 |
+| `io.github.zxing-cpp:kotlin-native` | 3.1.1          | iOS arm64/x64/simulatorArm64, macOS, tvOS, watchOS, linux, androidNative | paquete `zxingcpp`: `BarcodeReader`, `Barcode`, `BarcodeFormat`, `ImageView`; el cinterop **ya viene hecho y publicado** |
 
 > El proyecto no usa el target `iosX64` aunque zxing-cpp sí lo publique: quien no lo publica es
 > Compose Multiplatform 1.11.1, y declarar ese target rompía la resolución de dependencias de
 > `commonMain` en todos los módulos con Compose. Lo descubrió el primer CI.
-| JVM / Desktop | — | **no existe publicación** | — |
-| wasmJs | — | **no existe publicación** | — |
+> | JVM / Desktop | — | **no existe publicación** | — |
+> | wasmJs | — | **no existe publicación** | — |
 
 Es decir: el baseline sí existe justamente en las dos plataformas donde hay algo que comparar.
 Desktop hoy no tiene **ningún** motor de cámara —solo entrada manual—, así que ahí no hay
@@ -45,7 +46,8 @@ la otra los expone como tipos de primer nivel), así que el módulo no puede ser
 el **decodificador** sea el mismo, no que el binding lo sea.
 
 **Desktop y Web quedan fuera del baseline, explícitamente.** No es una omisión pendiente: no hay
-artefacto, y forzarlo con otro decodificador rompería la premisa. Cuando Desktop necesite decodificar
+artefacto, y forzarlo con otro decodificador rompería la premisa. Cuando Desktop necesite
+decodificar
 —que será con RF-07, escaneo desde imagen, en la Fase 4— el candidato es `com.google.zxing:core`, y
 entrará al catálogo **como un motor distinto**, con su propio `ScannerEngineId`. Un decodificador
 distinto con el nombre de otro convierte la tabla comparativa en ruido.
@@ -80,6 +82,7 @@ sería inatribuible. Se descarta mientras exista un artefacto que lo evita.
 ## Consecuencias
 
 **Positivas**
+
 - El baseline existe en Android e iOS sin escribir ni una línea de código nativo.
 - `zxing-cpp` 3.1.1 trae simbologías que ni ML Kit ni Vision leen (DataBar, DX Film Edge, Code 39
   extendido), así que el motor no solo sirve de control: amplía la cobertura real de G3.
@@ -87,6 +90,7 @@ sería inatribuible. Se descarta mientras exista un artefacto que lo evita.
   pipeline de `:engines:mlkit-camerax`.
 
 **Negativas y su gestión**
+
 - **Dos adaptadores, no uno.** Se asume: el SPI ya está diseñado para eso, y el contrato común lo
   verifica `BarcodeScannerEngineContractTest` en ambas plataformas.
 - **Subir Kotlin sin poder compilar aún.** El bump se hace como primer paso de la Fase 3 y con CI

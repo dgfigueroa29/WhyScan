@@ -55,7 +55,8 @@ def declared_versions() -> dict[str, str]:
     versions: dict[str, str] = {}
     versions_block = re.search(r"\[versions\](.*?)(?=^\[)", text, re.S | re.M)
     if versions_block:
-        for name, value in re.findall(r'^\s*([\w\-]+)\s*=\s*"([^"]+)"', versions_block.group(1), re.M):
+        for name, value in re.findall(r'^\s*([\w\-]+)\s*=\s*"([^"]+)"', versions_block.group(1),
+                                      re.M):
             versions[name] = value
 
     libraries_block = re.search(r"\[libraries\](.*?)(?=^\[|\Z)", text, re.S | re.M)
@@ -100,7 +101,8 @@ def main(paths: list[str]) -> int:
     # Fallo cerrado: si el informe no tiene ni una línea de dependencia, es que el comando de Gradle
     # no dio lo que se esperaba, y un chequeo que aprueba porque no leyó nada es peor que ninguno.
     if not re.search(r"[\w.\-]+:[\w.\-]+:[\w.\-+]+", report):
-        print("el informe no contiene ninguna dependencia: ¿falló el comando de Gradle?", file=sys.stderr)
+        print("el informe no contiene ninguna dependencia: ¿falló el comando de Gradle?",
+              file=sys.stderr)
         return 2
 
     declared = declared_versions()

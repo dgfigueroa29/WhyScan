@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
   Nada de esta app sale del dispositivo por la vía del sistema.
 
   `android:allowBackup="false"` apaga la copia en la nube, pero **no basta desde Android 12**: la
@@ -18,10 +17,14 @@
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <exclude domain="root" path="." />
+        <exclude
+            domain="root"
+            path="." />
     </cloud-backup>
 
     <device-transfer>
-        <exclude domain="root" path="." />
+        <exclude
+            domain="root"
+            path="." />
     </device-transfer>
 </data-extraction-rules>

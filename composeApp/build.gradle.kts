@@ -149,6 +149,19 @@ android {
     compileSdk = libs.versions.compileSdk.get().toInt()
     defaultConfig {
         minSdk = libs.versions.minSdk.get().toInt()
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    packaging {
+        resources {
+            excludes.add("META-INF/{AL2.0,LGPL2.1}")
+            excludes.add("META-INF/versions/9/previous-compilation-data.bin")
+            excludes.add("META-INF/*.kotlin_module")
+            excludes.add("**/META-INF/LICENSE*")
+            excludes.add("**/META-INF/NOTICE*")
+            excludes.add("**/META-INF/*.kotlin_module")
+            excludes.add("META-INF/MANIFEST.MF")
+        }
     }
 
     // Robolectric necesita el manifiesto y los recursos fusionados para levantar su `Application`.

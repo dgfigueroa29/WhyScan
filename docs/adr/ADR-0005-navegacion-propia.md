@@ -30,10 +30,12 @@ backstack en un `StateFlow`, con manejo del botón atrás por plataforma.
 ## Consecuencias
 
 **Positivas**
+
 - Cero dependencias, cero sorpresas de versión, comportamiento totalmente bajo nuestro control.
 - La navegación es testeable como lógica pura.
 
 **Negativas y su gestión**
+
 - No hay deep links, restauración de estado ni transiciones estándar. Aceptable en Fase 1; ninguno
   es requisito hasta la Fase 3.
 - Riesgo real de que el navegador propio crezca por acumulación hasta convertirse en una librería
@@ -44,7 +46,8 @@ backstack en un `StateFlow`, con manejo del botón atrás por plataforma.
 ## Revisión (Fase 2)
 
 El grafo pasó de uno a **tres destinos**: escanear, comparar e historial. La decisión se mantiene:
-tres destinos con una barra inferior no justifican una dependencia, y el `Navigator` sigue siendo una
+tres destinos con una barra inferior no justifican una dependencia, y el `Navigator` sigue siendo
+una
 clase de 30 líneas testeable sin Compose. Android ya le cede el botón atrás del sistema.
 
 El umbral de la revisión no cambia: **seis destinos o la primera necesidad de deep links** obligan a
@@ -56,7 +59,8 @@ Se ejecutó la revisión programada. El grafo sigue en **tres destinos** y no ha
 necesidad de deep links, así que **el umbral no se alcanza y la navegación propia se mantiene**.
 
 Lo que sí resultó ser un defecto real es la otra mitad de la deuda: **no había restauración de
-estado**. Al recrearse la Activity, el usuario volvía a la pantalla de escaneo desde donde estuviera,
+estado**. Al recrearse la Activity, el usuario volvía a la pantalla de escaneo desde donde
+estuviera,
 porque el backstack vivía solo en memoria. Conviene ser precisos sobre la causa: esto no era
 consecuencia de tener navegación propia — `navigation-compose` tampoco guarda el backstack solo—
 sino de no haberlo guardado nunca.
@@ -120,8 +124,8 @@ que una que delegue en una librería, y este episodio es el primer dato real a f
 
 ## Alternativas descartadas
 
-| Alternativa | Motivo |
-|---|---|
-| `navigation-compose` multiplataforma | API aún en movimiento; se adoptará en Fase 3, cuando el grafo lo justifique |
-| Voyager | Buena API, pero impone su propio modelo de ScreenModel que compite con nuestro MVI |
-| Decompose | Potente y correcto, pero su modelo de componentes es una decisión arquitectónica mayor que no queremos tomar antes de tener el SPI validado |
+| Alternativa                          | Motivo                                                                                                                                      |
+|--------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
+| `navigation-compose` multiplataforma | API aún en movimiento; se adoptará en Fase 3, cuando el grafo lo justifique                                                                 |
+| Voyager                              | Buena API, pero impone su propio modelo de ScreenModel que compite con nuestro MVI                                                          |
+| Decompose                            | Potente y correcto, pero su modelo de componentes es una decisión arquitectónica mayor que no queremos tomar antes de tener el SPI validado |

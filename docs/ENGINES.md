@@ -7,16 +7,16 @@ esta tabla — hay un test que verifica que los IDs y las fases no divergen.
 
 ## Tabla maestra
 
-| ID | Nombre | Plataformas | Fuente | Fase | Dependencia |
-|---|---|---|---|:---:|---|
-| `GMS_CODE_SCANNER` | Google Code Scanner | Android | Cámara (UI propia) | 2 ✅ | `com.google.android.gms:play-services-code-scanner` |
-| `MLKIT_CAMERAX` | ML Kit + CameraX | Android | Cámara | 2 ✅ | `com.google.mlkit:barcode-scanning` + `androidx.camera:*` |
-| `VISION_IOS` | Vision / AVFoundation | iOS | Cámara | 3 ✅ | Framework del sistema |
-| `ZXING_CPP` | ZXing-cpp | Android, iOS | Cámara + imagen | 3 ✅ | `io.github.zxing-cpp:android` (Android) y `:kotlin-native` (iOS) — [ADR-0008](adr/ADR-0008-baseline-zxing-cpp.md) |
-| `ZXING_JAVA` | ZXing (Java) | Desktop | Imagen | 5 ✅ | `com.google.zxing:core` |
-| `BROWSER_DETECTOR` | BarcodeDetector API | Web | Cámara + imagen | 4 ✅ | API del navegador |
-| `MLKIT_OCR` | ML Kit Text Recognition | Android, iOS | Cámara + imagen | 4 ✅ Android | `com.google.mlkit:text-recognition` |
-| `MANUAL_INPUT` | Entrada manual | Todas | Teclado | **1** | Ninguna |
+| ID                 | Nombre                  | Plataformas  | Fuente             |    Fase     | Dependencia                                                                                                       |
+|--------------------|-------------------------|--------------|--------------------|:-----------:|-------------------------------------------------------------------------------------------------------------------|
+| `GMS_CODE_SCANNER` | Google Code Scanner     | Android      | Cámara (UI propia) |     2 ✅     | `com.google.android.gms:play-services-code-scanner`                                                               |
+| `MLKIT_CAMERAX`    | ML Kit + CameraX        | Android      | Cámara             |     2 ✅     | `com.google.mlkit:barcode-scanning` + `androidx.camera:*`                                                         |
+| `VISION_IOS`       | Vision / AVFoundation   | iOS          | Cámara             |     3 ✅     | Framework del sistema                                                                                             |
+| `ZXING_CPP`        | ZXing-cpp               | Android, iOS | Cámara + imagen    |     3 ✅     | `io.github.zxing-cpp:android` (Android) y `:kotlin-native` (iOS) — [ADR-0008](adr/ADR-0008-baseline-zxing-cpp.md) |
+| `ZXING_JAVA`       | ZXing (Java)            | Desktop      | Imagen             |     5 ✅     | `com.google.zxing:core`                                                                                           |
+| `BROWSER_DETECTOR` | BarcodeDetector API     | Web          | Cámara + imagen    |     4 ✅     | API del navegador                                                                                                 |
+| `MLKIT_OCR`        | ML Kit Text Recognition | Android, iOS | Cámara + imagen    | 4 ✅ Android | `com.google.mlkit:text-recognition`                                                                               |
+| `MANUAL_INPUT`     | Entrada manual          | Todas        | Teclado            |    **1**    | Ninguna                                                                                                           |
 
 ---
 
@@ -24,25 +24,25 @@ esta tabla — hay un test que verifica que los IDs y las fases no divergen.
 
 Leyenda: ✅ soportado · ⚠️ parcial o dependiente de versión · ❌ no soportado
 
-| Formato | GMS | ML Kit | Vision | ZXing-cpp | ZXing Java | Browser | OCR | Manual |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| QR Code | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ |
-| Data Matrix | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ❌ | ✅ |
-| Aztec | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ❌ | ✅ |
-| PDF417 | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ❌ | ✅ |
-| EAN-13 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ |
-| EAN-8 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ |
-| UPC-A | ✅ | ✅ | ❌¹ | ✅ | ✅ | ✅ | ⚠️ | ✅ |
-| UPC-E | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ |
-| Code 39 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ |
-| Code 93 | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ✅ |
-| Code 128 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ✅ |
-| Codabar | ✅ | ✅ | ⚠️ | ✅ | ✅ | ⚠️ | ❌ | ✅ |
-| ITF | ✅ | ✅ | ✅ | ✅ | ✅ | ⚠️ | ⚠️ | ✅ |
-| DataBar / RSS | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ |
-| MaxiCode | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ✅ |
-| Micro QR | ❌ | ❌ | ✅ | ✅ | ❌⁶ | ❌ | ❌ | ✅ |
-| rMQR | ❌ | ❌ | ❌ | ✅ | ❌⁶ | ❌ | ❌ | ✅ |
+| Formato       | GMS | ML Kit | Vision | ZXing-cpp | ZXing Java | Browser | OCR | Manual |
+|---------------|:---:|:------:|:------:|:---------:|:----------:|:-------:|:---:|:------:|
+| QR Code       |  ✅  |   ✅    |   ✅    |     ✅     |     ✅      |    ✅    |  ❌  |   ✅    |
+| Data Matrix   |  ✅  |   ✅    |   ✅    |     ✅     |     ✅      |   ⚠️    |  ❌  |   ✅    |
+| Aztec         |  ✅  |   ✅    |   ✅    |     ✅     |     ✅      |   ⚠️    |  ❌  |   ✅    |
+| PDF417        |  ✅  |   ✅    |   ✅    |     ✅     |     ✅      |   ⚠️    |  ❌  |   ✅    |
+| EAN-13        |  ✅  |   ✅    |   ✅    |     ✅     |     ✅      |    ✅    | ⚠️  |   ✅    |
+| EAN-8         |  ✅  |   ✅    |   ✅    |     ✅     |     ✅      |    ✅    | ⚠️  |   ✅    |
+| UPC-A         |  ✅  |   ✅    |   ❌¹   |     ✅     |     ✅      |    ✅    | ⚠️  |   ✅    |
+| UPC-E         |  ✅  |   ✅    |   ✅    |     ✅     |     ✅      |    ✅    | ⚠️  |   ✅    |
+| Code 39       |  ✅  |   ✅    |   ✅    |     ✅     |     ✅      |    ✅    | ⚠️  |   ✅    |
+| Code 93       |  ✅  |   ✅    |   ✅    |     ✅     |     ✅      |   ⚠️    | ⚠️  |   ✅    |
+| Code 128      |  ✅  |   ✅    |   ✅    |     ✅     |     ✅      |    ✅    | ⚠️  |   ✅    |
+| Codabar       |  ✅  |   ✅    |   ⚠️   |     ✅     |     ✅      |   ⚠️    |  ❌  |   ✅    |
+| ITF           |  ✅  |   ✅    |   ✅    |     ✅     |     ✅      |   ⚠️    | ⚠️  |   ✅    |
+| DataBar / RSS |  ❌  |   ❌    |   ❌    |     ✅     |     ✅      |    ❌    |  ❌  |   ✅    |
+| MaxiCode      |  ❌  |   ❌    |   ❌    |     ✅     |     ✅      |    ❌    |  ❌  |   ✅    |
+| Micro QR      |  ❌  |   ❌    |   ✅    |     ✅     |     ❌⁶     |    ❌    |  ❌  |   ✅    |
+| rMQR          |  ❌  |   ❌    |   ❌    |     ✅     |     ❌⁶     |    ❌    |  ❌  |   ✅    |
 
 ¹ AVFoundation no tiene un tipo UPC-A: devuelve esos códigos como EAN-13 con un cero delante, que
 es lo que son. Declararlo como soportado sería prometer una distinción que el sistema no hace.
@@ -79,21 +79,21 @@ simbologías cuyo valor va impreso en texto (típicamente 1D de producto).
 
 ## Capacidades por motor
 
-| Capacidad | GMS | ML Kit | Vision | ZXing-cpp | ZXing Java | Browser | OCR | Manual |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| Cámara en vivo | ✅ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
-| Imagen estática | ❌ | ✅ | ⏳² | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Múltiples códigos a la vez | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| Escaneo continuo | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
-| UI propia del motor | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Linterna | ❌ | ✅ | ✅ | ✅ | ❌ | ❌³ | ✅ | ❌ |
-| Zoom | ❌ | ✅ | ✅ | ✅ | ❌ | ❌³ | ✅ | ❌ |
-| Puntos de esquina (normalizados) | ❌ | ✅ | ✅ | ✅ | ❌⁷ | ✅ | ✅ | ❌ |
-| Superficie de preview propia | ❌ | ✅ | ✅ | ✅ | ❌ | ✅⁴ | ✅ | ❌ |
-| Confianza reportada | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ |
-| Requiere permiso de cámara | ❌ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
-| Requiere red | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Descarga en tiempo de ejecución | ✅ | ⚠️ | ❌ | ❌ | ❌ | ❌ | ❌⁵ | ❌ |
+| Capacidad                        | GMS | ML Kit | Vision | ZXing-cpp | ZXing Java | Browser | OCR | Manual |
+|----------------------------------|:---:|:------:|:------:|:---------:|:----------:|:-------:|:---:|:------:|
+| Cámara en vivo                   |  ✅  |   ✅    |   ✅    |     ✅     |     ❌      |    ✅    |  ✅  |   ❌    |
+| Imagen estática                  |  ❌  |   ✅    |   ⏳²   |     ✅     |     ✅      |    ✅    |  ✅  |   ❌    |
+| Múltiples códigos a la vez       |  ❌  |   ✅    |   ✅    |     ✅     |     ✅      |    ✅    |  ✅  |   ❌    |
+| Escaneo continuo                 |  ❌  |   ✅    |   ✅    |     ✅     |     ❌      |    ✅    |  ✅  |   ❌    |
+| UI propia del motor              |  ✅  |   ❌    |   ❌    |     ❌     |     ❌      |    ❌    |  ❌  |   ❌    |
+| Linterna                         |  ❌  |   ✅    |   ✅    |     ✅     |     ❌      |   ❌³    |  ✅  |   ❌    |
+| Zoom                             |  ❌  |   ✅    |   ✅    |     ✅     |     ❌      |   ❌³    |  ✅  |   ❌    |
+| Puntos de esquina (normalizados) |  ❌  |   ✅    |   ✅    |     ✅     |     ❌⁷     |    ✅    |  ✅  |   ❌    |
+| Superficie de preview propia     |  ❌  |   ✅    |   ✅    |     ✅     |     ❌      |   ✅⁴    |  ✅  |   ❌    |
+| Confianza reportada              |  ❌  |   ❌    |   ❌    |     ❌     |     ❌      |    ❌    |  ✅  |   ❌    |
+| Requiere permiso de cámara       |  ❌  |   ✅    |   ✅    |     ✅     |     ❌      |    ✅    |  ✅  |   ❌    |
+| Requiere red                     |  ❌  |   ❌    |   ❌    |     ❌     |     ❌      |    ❌    |  ❌  |   ❌    |
+| Descarga en tiempo de ejecución  |  ✅  |   ⚠️   |   ❌    |     ❌     |     ❌      |    ❌    | ❌⁵  |   ❌    |
 
 `GMS_CODE_SCANNER` no requiere permiso de cámara porque el escaneo ocurre en un proceso de Google
 Play Services, fuera de la app. Es su ventaja distintiva y la razón de que encabece la prioridad
@@ -107,19 +107,21 @@ Orden por defecto cuando el usuario no ha fijado un motor. El selector recorre l
 los que no están `Available` y los que no cubren los formatos pedidos, y devuelve la cadena
 resultante como preferido + fallbacks.
 
-| Plataforma | Cadena por defecto |
-|---|---|
-| Android | `GMS_CODE_SCANNER` → `MLKIT_CAMERAX` → `ZXING_CPP` → `MLKIT_OCR` → `MANUAL_INPUT` |
-| iOS | `VISION_IOS` → `ZXING_CPP` → `MLKIT_OCR` → `MANUAL_INPUT` |
-| Desktop | `ZXING_JAVA` (solo imagen) → `MANUAL_INPUT` |
-| Web | `BROWSER_DETECTOR` → `MANUAL_INPUT` |
+| Plataforma | Cadena por defecto                                                                |
+|------------|-----------------------------------------------------------------------------------|
+| Android    | `GMS_CODE_SCANNER` → `MLKIT_CAMERAX` → `ZXING_CPP` → `MLKIT_OCR` → `MANUAL_INPUT` |
+| iOS        | `VISION_IOS` → `ZXING_CPP` → `MLKIT_OCR` → `MANUAL_INPUT`                         |
+| Desktop    | `ZXING_JAVA` (solo imagen) → `MANUAL_INPUT`                                       |
+| Web        | `BROWSER_DETECTOR` → `MANUAL_INPUT`                                               |
 
 La cadena resultante no llega cruda al ViewModel: pasa por los decoradores del dominio. Por motor se
-filtran los formatos, se aplican los límites del `ScanRequest` y se interpretan los valores; sobre la
+filtran los formatos, se aplican los límites del `ScanRequest` y se interpretan los valores; sobre
+la
 cadena entera se aplican el plazo y **la supresión de lecturas repetidas**. Ese último importa para
 entender qué reporta un motor y qué no:
 
-> Ningún motor evita repetir un código, y no es un defecto suyo — para ML Kit o Vision, un código que
+> Ningún motor evita repetir un código, y no es un defecto suyo — para ML Kit o Vision, un código
+> que
 > sigue delante de la lente es un código que sigue ahí. A treinta frames por segundo eso son decenas
 > de lecturas idénticas. `DistinctDetectionsScannerEngine` suprime la repetición del mismo par
 > (formato, valor) dentro de una ventana de dos segundos.

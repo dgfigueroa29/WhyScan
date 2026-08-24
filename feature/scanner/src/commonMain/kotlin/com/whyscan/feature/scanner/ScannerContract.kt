@@ -65,8 +65,9 @@ data class ScannerState(
     /** La entrada manual se muestra solo si el motor activo se alimenta de texto. */
     val isManualEntryActive: Boolean get() = activeEngineId == ScannerEngineId.ManualInput
 
-    private val activeCapabilities get() =
-        catalog.firstOrNull { it.id == activeEngineId }?.descriptor?.capabilities
+    private val activeCapabilities
+        get() =
+            catalog.firstOrNull { it.id == activeEngineId }?.descriptor?.capabilities
 
     /**
      * Los controles de cámara se derivan de las capacidades declaradas, no de una lista de motores

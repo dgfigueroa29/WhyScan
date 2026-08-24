@@ -68,7 +68,8 @@ def percentage(covered: int, total: int) -> float:
 def read_module(module: str) -> tuple[int, int, list[tuple[str, int, int]]]:
     path = report_path(module)
     if not os.path.exists(path):
-        print(f"no existe {os.path.relpath(path, REPO)}: ¿corrió `:{module.replace('/', ':')}:koverXmlReport`?")
+        print(
+            f"no existe {os.path.relpath(path, REPO)}: ¿corrió `:{module.replace('/', ':')}:koverXmlReport`?")
         raise SystemExit(2)
 
     root = ElementTree.parse(path).getroot()
@@ -78,7 +79,8 @@ def read_module(module: str) -> tuple[int, int, list[tuple[str, int, int]]]:
     for package in root.findall("package"):
         package_covered, package_total = line_counter(package)
         if package_total >= MIN_LINES_TO_REPORT:
-            packages.append((package.get("name", "?").replace("/", "."), package_covered, package_total))
+            packages.append(
+                (package.get("name", "?").replace("/", "."), package_covered, package_total))
 
     return covered, total, packages
 

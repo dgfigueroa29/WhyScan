@@ -18,7 +18,7 @@
 # 8.13.2 al abrir el proyecto en Android Studio por primera vez. Gradle 8.14.5 cumple de sobra el
 # mínimo que AGP 8.13 pide, y el CI ensambla debug, pasa lint y ensambla release con R8 sobre esta
 # versión, así que se queda.
-kotlin = "2.3.20"
+kotlin = "2.4.10"
 agp = "8.13.2"
 composeMultiplatform = "1.11.1"
 jvmTarget = "17"
@@ -81,6 +81,7 @@ androidxActivityCompose = "1.13.0"
 # 1.18.0 y no 1.15.0, que es lo que decía antes: el grafo ya resolvía 1.18.0 por otra vía, así
 # que lo declarado era una versión que no usaba nadie. Lo destapó `tools/check_resolved_versions.py`
 # en su primera ejecución, que es exactamente para lo que existe (deuda D24).
+#noinspection GradleDependency
 androidxCoreKtx = "1.18.0"
 # La que pide Koin 4.2.2; subirla más alto haría que Gradle resolviera por encima de lo que espera.
 #noinspection NewerVersionAvailable
@@ -103,14 +104,14 @@ turbine = "1.2.1"
 # `androidUnitTest` monte el grafo de Koin de Android, que es donde estaba el defecto D18. No
 # contradice la decisión D6 de no tener tests instrumentados: eso descarta lo que exige dispositivo,
 # y esto corre en el mismo job que el resto de tests.
-robolectric = "4.16"
+robolectric = "4.16.1"
 
 # Quality
 detekt = "1.23.8"
 # Mide la cobertura de `:core:domain` y `:core:data`, que es donde el SDD §13.1 pone un objetivo.
 # Solo esos dos: la cobertura de la UI no dice nada útil y perseguirla empuja a escribir tests que
 # recorren líneas sin comprobar nada.
-kover = "0.9.1"
+kover = "0.9.9"
 
 # Fase 2+ — declarados aquí para que el catálogo sea la única fuente de versiones
 playServicesCodeScanner = "16.1.0"

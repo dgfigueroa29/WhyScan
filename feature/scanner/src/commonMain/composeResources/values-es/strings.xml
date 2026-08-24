@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
   Textos de la pantalla de escaneo y de la de comparación (deuda D5).
 
   Los recursos de Compose son por módulo: cada feature tiene los suyos y no hay un fichero global

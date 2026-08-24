@@ -77,8 +77,7 @@ class ZXingCppEngine(
             AVAuthorizationStatusAuthorized -> EngineAvailability.Available
 
             AVAuthorizationStatusNotDetermined,
-            AVAuthorizationStatusDenied,
-            -> EngineAvailability.RequiresPermission(Permission.Camera)
+            AVAuthorizationStatusDenied, -> EngineAvailability.RequiresPermission(Permission.Camera)
 
             AVAuthorizationStatusRestricted -> EngineAvailability.Unsupported(
                 "El acceso a la cámara está restringido por el dispositivo",
