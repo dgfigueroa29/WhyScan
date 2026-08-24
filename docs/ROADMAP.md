@@ -332,19 +332,28 @@ con sus latencias en la portada, ni una app llamada "TestScanner" sin icono.
 
 ### Antes de la ficha de Play, esto va primero
 
-Lo de abajo es trámite de tienda. Lo de esta lista no, y por eso va antes: son las tres cosas que
-solo se pueden hacer **con la app en la mano**, y ninguna es opcional para publicar algo que alguien
-va a instalar.
+Lo de abajo es trámite de tienda. Lo de esta lista no. Se hizo el repaso a propósito antes de tocar
+nada de Play, y salió algo que no estaba en ninguna lista:
 
-1. **Instalar y abrir la app en un dispositivo real con estos cambios.** No es una formalidad: el
-   único arranque real que ha tenido este proyecto destapó un defecto que ningún CI podía ver (D18), y
-   la sesión siguiente destapó otro de meses en la persistencia. Hay tres cambios nuevos sin mirar con
-   los ojos — la pantalla sin `KoinContext`, la transición entre destinos y el edge-to-edge de la
-   Fase 5.
-2. **Objetivos táctiles y `enableEdgeToEdge`** (RNF-05, pendiente desde la Fase 5). Es la clase de
-   cosa que no rompe, se ve mal, y se ve mal precisamente en la primera pantalla.
-3. **Generar el baseline profile** lanzando `baseline-profile.yml`. Es un clic y quince minutos de
-   runner, y es lo que separa "la app arranca" de "la app arranca rápido la primera vez".
+- [x] **`allowBackup` estaba en `true`, y la app le dice al usuario lo contrario.** Ajustes afirma que
+      "Scanly no pide permiso de internet, así que lo que escaneás no puede salir del dispositivo".
+      Con Auto Backup encendido eso era **falso**: el historial de Room vive en `databases/` y las
+      preferencias en `shared_prefs/`, dos de los directorios que el sistema copia a Google Drive por
+      defecto. Y lo hace **el sistema**, desde fuera del proceso, sin necesitar el permiso `INTERNET`
+      que la app no declara — que era justamente la garantía en la que se apoyaba la auditoría de
+      privacidad (RNF-03). Es el mismo error de forma que D18 y que el driver de Room: **la garantía
+      se comprobó en el sitio equivocado**, mirando solo lo que hace el código propio. Corregido con
+      `allowBackup="false"` **y** `dataExtractionRules`, que hacen falta los dos: desde Android 12 el
+      atributo solo apaga la copia en la nube y la transferencia entre dispositivos se gobierna desde
+      el XML. Coste aceptado y dicho: el historial no sobrevive a un cambio de teléfono
+- [ ] **Instalar y abrir la app en un dispositivo real con estos cambios.** No es una formalidad: el
+      único arranque real que ha tenido este proyecto destapó un defecto que ningún CI podía ver (D18),
+      y la revisión siguiente destapó otro de meses en la persistencia. Hay cosas nuevas sin mirar con
+      los ojos — la pantalla sin `KoinContext` y la transición entre destinos
+- [ ] **Objetivos táctiles y `enableEdgeToEdge`** (RNF-05, pendiente desde la Fase 5). Es la clase de
+      cosa que no rompe, se ve mal, y se ve mal precisamente en la primera pantalla
+- [ ] **Generar el baseline profile** lanzando `baseline-profile.yml`. Un clic y quince minutos de
+      runner, y es lo que separa "la app arranca" de "la app arranca rápido la primera vez"
 
 Solo después tiene sentido pelearse con la ficha.
 
@@ -410,4 +419,5 @@ Registrada de forma explícita para que no se olvide:
 | ~~D18~~ | ~~**Nada comprueba que el grafo de Koin resuelva.** Saldada a medias: falta el `platformModule` de Android.~~ **Saldada entera.** El defecto que la abrió lo demostró el primer arranque real en un dispositivo: `platformModule` registraba el executor de análisis como `ExecutorService` mientras los tres motores de cámara lo piden como `Executor`, y Koin resuelve por igualdad exacta de tipo. La app moría al componer la primera pantalla con `NoDefinitionFoundException`. **El compilador no puede verlo** —los `get()` son genéricos que se resuelven en ejecución— y el CI tampoco: compila, pasa lint, pasa R8 y publica un APK que revienta al abrirse. Es el mismo agujero que el criterio de salida de la Fase 1, visto desde el otro lado. **Saldada a medias, y la mitad que falta está dicha.** `KoinGraphTest` (`composeApp/src/desktopTest`) arranca el grafo real y **resuelve** cada tipo que la raíz de la app consume, agrupado por el ViewModel que lo pide. No usa `verify()` sino resolución de verdad, que es más fuerte: instancia en vez de reflexionar. Cubre `dataModule`, `domainModule` y los tres módulos de feature —comunes a las cuatro plataformas— más el `platformModule` de escritorio. En su primera ejecución destapó el defecto del driver de Room que no se aplicaba (SDD §11). La mitad que faltaba —el `platformModule` de **Android**, que es justo donde estaba el defecto original— la cubre ahora `AndroidKoinGraphTest` en `composeApp/src/androidUnitTest`, sobre Robolectric, con su tarea en el job de Android del CI | **Cerrada.** Lo que queda fuera es iOS y Web, y no por el mismo motivo: ahí falta ejecutar tests de esos targets, no falta el test |
 | D19 | **Los avisos del compilador no los lee nadie, y uno de ellos era un defecto de producción.** `This extension is shadowed by a member` llevaba apareciendo en cada build desde que existe `:core:database`, y señalaba el defecto del driver de Room que reventaba escritorio e iOS (SDD §11): un aviso correcto, visible en cada compilación y leído por nadie durante meses. Hoy el build emite además avisos de deprecación mezclados con ruido de terceros, así que ninguno destaca. **Uno menos:** el `KoinContext is not needed anymore` se fue al cerrar D20, y se fue por el camino largo —comprobando qué pasaba al quitarlo— que es el que esta deuda pide para el resto | Decidiendo una postura: o se limpian todos y se activa `allWarningsAsErrors`, o se acepta el ruido explícitamente. Lo primero exige antes saber cuáles vienen de plugins y no se pueden arreglar, y eso exige leer un build completo — que desde el entorno de desarrollo no se puede lanzar, porque no alcanza el maven de Google |
 | ~~D20~~ | ~~**El aviso `KoinContext is not needed anymore` en `App.kt`.** Quitarlo cambia por dónde resuelven `koinInject` y `koinViewModel`, y eso no se puede comprobar sin ejecutar la app.~~ **Saldada, y la premisa era falsa.** Sí se puede comprobar sin ejecutar la app, porque `koinInject` no es UI: es una función `@Composable` que lee un `CompositionLocal` y llama a `remember`, y eso lo resuelve el **runtime** de Compose, que es Kotlin puro y no sabe nada de pantallas. `ComposeKoinContextTest` monta una `Composition` con un `Applier` que no aplica nada —no hay árbol de nodos que construir, lo que interesa ocurre *durante* la composición— y comprueba que `koinInject` devuelve la misma instancia que `koin.get()`, para un tipo de los módulos comunes y otro que depende del `platformModule`. Leyendo koin-compose se ve por qué: `LocalKoinScopeContext` declara como valor por defecto `KoinPlatform.getKoin().scopeRegistry.rootScope`, que es exactamente lo que `KoinContext` proveía a mano — el envoltorio era una identidad. Pero eso es leer la librería, y leyendo la librería también estaba bien el `build()` de Room que no se llamaba nunca | **Cerrada.** Con ella se va uno de los avisos que D19 señala como ruido |
+| D22 | **Una migración de esquema borra el historial del usuario.** `buildBundled()` cierra con `fallbackToDestructiveMigration(dropAllTables = true)`, que hoy no hace daño —la base va por la versión 1 y nunca ha cambiado— pero es una bomba de relojería en cuanto la app esté instalada en teléfonos ajenos: la primera vez que se añada una columna, Room tirará la tabla en vez de migrarla y el usuario perderá lo que tenía sin enterarse. No se cambia ahora porque quitarlo hoy sustituye una pérdida silenciosa por un cierre inesperado, y no hay ninguna migración que escribir todavía. Lo que sí está: `room { schemaDirectory(...) }` exporta el esquema, que es el requisito para poder escribirla | En el mismo cambio que suba `@Database(version = 2)`: escribir la `Migration` y quitar el fallback. Antes no hay nada que hacer; después es tarde |
 | D21 | **El selector de idioma en iOS está sin verificar.** El actual escribe `AppleLanguages` en `NSUserDefaults`, que es el mecanismo estándar; si Compose lee `preferredLanguages` el cambio es inmediato, si lee `currentLocale` no lo será hasta reabrir. Ver ADR-0011 | Cuando haya un iPhone. Es lo primero que hay que mirar de la UI de iOS |

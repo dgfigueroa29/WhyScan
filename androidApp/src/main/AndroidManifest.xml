@@ -18,9 +18,30 @@
         android:name="android.hardware.camera"
         android:required="false" />
 
+    <!--
+        `allowBackup="false"`, y no es una precaución genérica: lo que había era `true` —el valor por
+        defecto, puesto sin pensarlo— y **contradecía lo que la app le dice al usuario**.
+
+        La pantalla de Ajustes afirma que "Scanly no pide permiso de internet, así que lo que escaneás
+        no puede salir del dispositivo". Con Auto Backup activado eso es falso, y de la forma más
+        difícil de ver: quien sube los datos **no es la app**, es el sistema. El historial de Room
+        vive en `databases/` y las preferencias en `shared_prefs/`, que son dos de los directorios que
+        Auto Backup copia a Google Drive por defecto. No hace falta `INTERNET` para eso, porque la
+        transferencia la hace el servicio de copias del sistema desde fuera del proceso de la app.
+
+        Es decir: la garantía más fuerte de la auditoría de privacidad (RNF-03) —no declarar
+        `INTERNET`— no cubría este camino, y nadie lo había mirado. Sale al revisar qué queda por
+        hacer antes de publicar, que es exactamente el momento en el que hay que mirarlo: después de
+        la primera subida, cambiar esto significa cambiarle al usuario un comportamiento que ya tenía.
+
+        El coste está aceptado y dicho: el historial **no sobrevive a un cambio de teléfono**. Para un
+        registro local de lo que uno ha escaneado, perderlo al cambiar de móvil es una sorpresa más
+        pequeña que encontrárselo en Drive cuando la app promete que no puede salir de aquí.
+    -->
     <application
         android:name=".TestScannerApplication"
-        android:allowBackup="true"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:localeConfig="@xml/locales_config"

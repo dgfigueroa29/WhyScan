@@ -957,6 +957,10 @@ Garantías de privacidad (RNF-03), verificables en revisión de código:
 - El historial guarda el **valor decodificado**, nunca la imagen.
 - El caso `RequiresDownload` (ML Kit) se comunica explícitamente al usuario antes de descargar.
 - La app declara `android:usesCleartextTraffic="false"` y no incluye SDK de analítica de terceros.
+- La app declara `android:allowBackup="false"` y unas `dataExtractionRules` que excluyen todo: ni la
+  copia en la nube ni la transferencia entre dispositivos se llevan el historial. Es la única de
+  estas garantías que no depende de lo que la app haga sino de lo que el **sistema** haría por su
+  cuenta — ver el hallazgo 3.
 
 #### Auditoría, con lo que se comprobó y lo que salió
 
@@ -971,6 +975,7 @@ los dos hallazgos.
 | Permisos declarados | Solo `CAMERA`, con `uses-feature` no obligatorio. **No se declara `INTERNET`**, que es la garantía más fuerte: aunque alguien añadiera una llamada de red, en Android no saldría |
 | Lo que se persiste | La tabla de Room y el DTO de Web guardan valor, formato, motor, fuente, instante y latencia. No hay campo donde quepa un píxel |
 | Lo que sale del dispositivo | Solo por acción explícita del usuario: compartir, abrir un enlace o exportar el historial a un archivo que él elige |
+| Lo que el **sistema** copia por su cuenta | **Nada, desde esta revisión.** Antes, todo: ver el hallazgo 3 |
 
 **Hallazgo 1 — `fetch` en el motor de Web.** El decodificador del navegador llama a `fetch`, que es
 exactamente lo que una auditoría busca. Resultó ser sobre un **data URL** construido en el momento a
@@ -983,6 +988,38 @@ líneas en vez de razonando sobre el llamante.
 Android, pero es una garantía silenciosa: no aparece en ninguna parte y el próximo que añada una
 dependencia puede reintroducirla sin darse cuenta. Queda anotado aquí como la invariante que hay que
 defender.
+
+**Hallazgo 3 — `allowBackup="true"`, y la app decía lo contrario.** Salió al revisar qué quedaba
+pendiente antes de publicar, que es el momento exacto en el que había que mirarlo: después de la
+primera subida, cambiar esto le cambia al usuario un comportamiento que ya tenía.
+
+El manifiesto declaraba `android:allowBackup="true"` —el valor por defecto, puesto sin pensarlo— y la
+pantalla de Ajustes afirma, textualmente, que *"Scanly no pide permiso de internet, así que lo que
+escaneás no puede salir del dispositivo"*. Con Auto Backup activado eso **era falso**: el historial
+de Room vive en `databases/` y las preferencias en `shared_prefs/`, dos de los directorios que Auto
+Backup copia a Google Drive por defecto.
+
+Lo interesante del defecto es su forma, porque es la misma que la de D18 y la del driver de Room:
+**la garantía se comprobó en el sitio equivocado.** La auditoría verificó que la app no tiene cliente
+HTTP, no declara `INTERNET` y no escribe trazas — todo cierto, y todo sobre lo que *la app* hace.
+Aquí quien sube los datos no es la app, es el sistema, desde fuera del proceso y sin necesitar
+ninguno de los permisos que la app declara. Una invariante que solo se defiende mirando el código
+propio no cubre lo que hace la plataforma por debajo.
+
+La corrección son dos cosas, y hacen falta las dos:
+
+- `android:allowBackup="false"`, que apaga la copia en la nube en todas las versiones.
+- `android:dataExtractionRules="@xml/data_extraction_rules"`, porque **desde Android 12
+  `allowBackup` dejó de cubrirlo todo**: la transferencia entre dispositivos —la de configurar un
+  teléfono nuevo desde el viejo— se gobierna desde ese archivo, y sin él el historial viajaría
+  igualmente en ese traspaso. El archivo excluye `root` además de los dominios sueltos: excluir por
+  dominios obliga a acertar con la lista y a revisarla cada vez que se guarde algo nuevo.
+
+El coste está aceptado y dicho: **el historial no sobrevive a un cambio de teléfono.** Para un
+registro local de lo que uno ha escaneado, perderlo al cambiar de móvil es una sorpresa más pequeña
+que encontrárselo en Drive cuando la app promete que no puede salir de aquí. Tiene además una
+consecuencia directa en el trámite de Play: el formulario de seguridad de datos pregunta si los datos
+se transfieren fuera del dispositivo, y ahora la respuesta "no" es verdad.
 
 ---
 

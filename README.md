@@ -52,7 +52,7 @@ el comparador en paralelo y las latencias por lectura.
 | Transiciones entre pantallas | ✅ *fade through* de Material 3 al cambiar de destino, en lugar del corte seco que había |
 | Baseline profile | 🚧 cableado listo y comprobado en CI ([ADR-0012](docs/adr/ADR-0012-baseline-profile.md)); **falta lanzar la grabación**, que necesita un emulador y vive en el workflow `Baseline profile (manual)` |
 | Accesibilidad (RNF-05) | ✅ contraste AA **verificado por test** (56 pares, los dos temas), y semántica para lectores de pantalla |
-| Privacidad (RNF-03) | ✅ auditada: sin trazas, sin cliente HTTP, sin analítica y sin permiso `INTERNET` |
+| Privacidad (RNF-03) | ✅ auditada: sin trazas, sin cliente HTTP, sin analítica, sin permiso `INTERNET` y **sin copia de seguridad del sistema** — `allowBackup` estaba en `true` y el historial se subía a Drive, contradiciendo lo que la app dice en Ajustes |
 | ZXing en Java (Desktop) | ✅ el único decodificador de escritorio; **verificado de verdad**, decodificando imágenes generadas en el test |
 
 El catálogo muestra las ocho alternativas con su estado real; los motores aún no implementados se
