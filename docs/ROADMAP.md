@@ -379,6 +379,34 @@ que unificar costaba lo mismo antes que después salvo por ese detalle. Se hizo 
 > migración a propósito — la app nunca se ha distribuido, así que los únicos afectados son los
 > dispositivos de desarrollo, y una migración para eso sería código muerto desde el día uno.
 
+### Ronda 6 — una marca que distingue en vez de agrupar ✅
+
+Ver [ADR-0013](adr/ADR-0013-la-marca-sale-del-objeto.md). El sistema de diseño estaba bien
+construido; lo que no se había examinado era sobre qué se construyó. El símbolo eran **cuatro
+esquinas de encuadre y una línea de lectura** —el icono `QrCodeScanner` que Material ya trae y que
+usan otras doscientas apps de la tienda— y el color era el azul por defecto de Tailwind. En una ficha
+de Play, junto a sus competidores, eso no distingue: **agrupa**.
+
+- [x] **La marca es el módulo fugado**: el patrón de localización de un QR —los cuadrados anidados de
+      sus esquinas— con el anillo abierto y el módulo central ya fuera. Es el átomo más reconocible de
+      un código, casi nadie lo usa, y rompe a propósito una regla real: un patrón de localización es
+      siempre concéntrico y siempre cerrado
+- [x] **La forma, en sus tres copias**: el `ImageVector` de Compose, el primer plano del icono
+      adaptativo y la capa monocroma
+- [x] **Los PNG regenerados**: los cinco pares de `mipmap-*` (el icono real en API 24-25, que no
+      entienden iconos adaptativos) y el 512×512 de la ficha. Si no, esas tres superficies se habrían
+      quedado con la marca vieja sin que nada avisara
+- [x] **Paleta nueva: grafito cálido y un único acento esmeralda.** Los 56 pares del `ContrastTest`
+      medidos antes de escribir una sola constante — cero fallos
+- [x] **El color de arranque**, en Android (`values/` y `values-night/`) y en Web (`theme-color` y el
+      fondo del `body`): tiene que coincidir con el `background` del tema o se ve un destello de otro
+      color entre que el sistema pinta la ventana y Compose pinta la primera pantalla
+
+> **Lo que se descartó, que es parte de la decisión.** Una marca hecha con la inicial del nombre —la
+> salida cómoda: una letra no dice nada del producto y la copia cualquiera— y un signo de
+> interrogación jugando con el nombre, que compite con «ayuda» en una cuadrícula de aplicaciones.
+> Cerradas esas dos, la única dirección honesta era mirar el objeto que la app lee.
+
 ### Antes de la ficha de Play, esto va primero
 
 Lo de abajo es trámite de tienda. Lo de esta lista no. Se hizo el repaso a propósito antes de tocar

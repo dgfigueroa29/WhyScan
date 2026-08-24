@@ -49,7 +49,7 @@ el comparador en paralelo y las latencias por lectura.
 | Acciones sobre el resultado (RF-13) | ✅ copiar, compartir y abrir, según el significado del código |
 | Navegación | ✅ propia, con backstack que sobrevive a que el sistema mate el proceso |
 | Build de release con R8 | ✅ `minify` y `shrinkResources`, con `assembleRelease` en CI |
-| Marca, icono y tema | ✅ WhyScan: icono adaptativo con capa monocroma, paleta con los ~30 roles de Material 3, escala tipográfica y de formas propias |
+| Marca, icono y tema | ✅ **El módulo fugado**: el patrón de localización de un QR con el anillo abierto y su módulo central ya fuera ([ADR-0013](docs/adr/ADR-0013-la-marca-sale-del-objeto.md)). Grafito cálido con un único acento esmeralda, los ~30 roles de Material 3 declarados, icono adaptativo con capa monocroma y escala tipográfica y de formas propias |
 | Selector de tema claro/oscuro | ✅ Sistema / Claro / Oscuro, persistido, con las barras del sistema siguiendo al tema **de la app** |
 | Idiomas inglés y español | ✅ los cuatro catálogos en `values/` (inglés, respaldo de cualquier idioma) y `values-es/`, con selector propio ([ADR-0011](docs/adr/ADR-0011-idioma-de-la-app-por-encima-del-sistema.md)) y `localeConfig` para el selector por app de Android 13+ |
 | Pantalla de escaneo | ✅ cámara a pantalla completa con el resultado en una hoja que la empuja, no que la tapa; la sesión arranca sola y se apaga al salir ([ADR-0010](docs/adr/ADR-0010-dos-disposiciones-de-la-pantalla-de-escaneo.md)) |

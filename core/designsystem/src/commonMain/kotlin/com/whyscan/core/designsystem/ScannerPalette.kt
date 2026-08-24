@@ -15,7 +15,7 @@ package com.whyscan.core.designsystem
  * —morados y granates— cada uno que no se le pase. Eso no es teórico: aquí ya había pasado con los
  * `on*`, y seguía pasando con los `*Container`. Un `FilterChip` seleccionado se pinta con
  * `secondaryContainer`; como nadie lo declaraba, **los chips de formato y el de la linterna salían
- * morados** en una app cuya marca es azul. Lo mismo la `Card` (`surfaceContainerLow`), el
+ * morados** en una app cuya marca no lo es. Lo mismo la `Card` (`surfaceContainerLow`), el
  * `NavigationBar` (`surfaceContainer`) y el indicador del ítem activo (`secondaryContainer`).
  *
  * Declararlos todos cuesta un fichero largo y elimina la clase entera de defecto.
@@ -26,105 +26,117 @@ object ScannerPalette {
     data class ColorPair(val name: String, val foreground: Int, val background: Int)
 
     /**
-     * Claro: azul de marca sobre neutros fríos (familia *slate*).
+     * Claro: esmeralda de marca sobre neutros de **grafito cálido** — papel y tinta, no acero.
      *
-     * El neutro no es gris puro sino ligeramente azulado. Sobre un visor de cámara, que casi siempre
-     * trae dominante cálida, un gris frío separa mejor la UI de la imagen.
+     * El neutro no es gris puro: lleva una pizca de amarillo. Es la decisión que hace que la app se
+     * lea como un documento y no como un instrumento, que es lo que corresponde a un producto cuyo
+     * trabajo no es escanear sino **decirte qué es lo que acabas de escanear**.
+     *
+     * **Un solo acento.** Toda la energía cromática está en el esmeralda y el resto es papel y
+     * tinta; por eso, cuando el esmeralda aparece, significa algo. `secondary` es el mismo verde
+     * apagado —no un segundo color de marca— y `tertiary` es ámbar porque tiene un trabajo
+     * **semántico**: avisar. No compite, señala.
      */
     object Light {
-        const val PRIMARY = 0xFF2563EB.toInt()
+        const val PRIMARY = 0xFF07704E.toInt()
         const val ON_PRIMARY = 0xFFFFFFFF.toInt()
-        const val PRIMARY_CONTAINER = 0xFFDBE6FF.toInt()
-        const val ON_PRIMARY_CONTAINER = 0xFF0A2472.toInt()
+        const val PRIMARY_CONTAINER = 0xFFC6EFDD.toInt()
+        const val ON_PRIMARY_CONTAINER = 0xFF00281A.toInt()
 
-        const val SECONDARY = 0xFF0F766E.toInt()
+        const val SECONDARY = 0xFF2C6152.toInt()
         const val ON_SECONDARY = 0xFFFFFFFF.toInt()
-        const val SECONDARY_CONTAINER = 0xFFCCF3EE.toInt()
-        const val ON_SECONDARY_CONTAINER = 0xFF04322D.toInt()
+        const val SECONDARY_CONTAINER = 0xFFD6E8DF.toInt()
+        const val ON_SECONDARY_CONTAINER = 0xFF0B2019.toInt()
 
-        const val TERTIARY = 0xFFB45309.toInt()
+        const val TERTIARY = 0xFF8A5A00.toInt()
         const val ON_TERTIARY = 0xFFFFFFFF.toInt()
-        const val TERTIARY_CONTAINER = 0xFFFDECC8.toInt()
-        const val ON_TERTIARY_CONTAINER = 0xFF452505.toInt()
+        const val TERTIARY_CONTAINER = 0xFFFBE7C4.toInt()
+        const val ON_TERTIARY_CONTAINER = 0xFF3A2600.toInt()
 
         const val ERROR = 0xFFB3261E.toInt()
         const val ON_ERROR = 0xFFFFFFFF.toInt()
         const val ERROR_CONTAINER = 0xFFF9DEDC.toInt()
         const val ON_ERROR_CONTAINER = 0xFF410E0B.toInt()
 
-        const val BACKGROUND = 0xFFF8FAFC.toInt()
-        const val ON_BACKGROUND = 0xFF0F172A.toInt()
+        const val BACKGROUND = 0xFFFAF9F7.toInt()
+        const val ON_BACKGROUND = 0xFF1B1917.toInt()
         const val SURFACE = 0xFFFFFFFF.toInt()
-        const val ON_SURFACE = 0xFF0F172A.toInt()
-        const val SURFACE_VARIANT = 0xFFE7EBF0.toInt()
-        const val ON_SURFACE_VARIANT = 0xFF3F4A5A.toInt()
+        const val ON_SURFACE = 0xFF1B1917.toInt()
+        const val SURFACE_VARIANT = 0xFFE8E5E0.toInt()
+        const val ON_SURFACE_VARIANT = 0xFF4A4744.toInt()
 
         // Los cinco niveles de contenedor de Material 3. Son la jerarquía de elevación **por color**
         // que sustituyó a las sombras: una tarjeta dentro de otra se distingue por tono y no por
         // sombra, y eso es justo lo que hace legible una pantalla en modo oscuro.
         const val SURFACE_CONTAINER_LOWEST = 0xFFFFFFFF.toInt()
-        const val SURFACE_CONTAINER_LOW = 0xFFF8FAFC.toInt()
-        const val SURFACE_CONTAINER = 0xFFF1F5F9.toInt()
-        const val SURFACE_CONTAINER_HIGH = 0xFFE9EEF4.toInt()
-        const val SURFACE_CONTAINER_HIGHEST = 0xFFE2E8F0.toInt()
+        const val SURFACE_CONTAINER_LOW = 0xFFFAF9F7.toInt()
+        const val SURFACE_CONTAINER = 0xFFF1EFEC.toInt()
+        const val SURFACE_CONTAINER_HIGH = 0xFFEAE7E2.toInt()
+        const val SURFACE_CONTAINER_HIGHEST = 0xFFE3DFDA.toInt()
 
-        const val OUTLINE = 0xFF6B7789.toInt()
-        const val OUTLINE_VARIANT = 0xFFC7CFDA.toInt()
+        const val OUTLINE = 0xFF74706B.toInt()
+        const val OUTLINE_VARIANT = 0xFFCFCAC4.toInt()
         const val SCRIM = 0xFF000000.toInt()
 
         // Lo que usa el Snackbar: fondo oscuro en tema claro. Sin declararlos, el mensaje de
         // "Copiado" —el feedback más frecuente de toda la app— salía con la paleta de fábrica.
-        const val INVERSE_SURFACE = 0xFF1E293B.toInt()
-        const val INVERSE_ON_SURFACE = 0xFFF1F5F9.toInt()
-        const val INVERSE_PRIMARY = 0xFF93B4FF.toInt()
+        const val INVERSE_SURFACE = 0xFF2A2724.toInt()
+        const val INVERSE_ON_SURFACE = 0xFFF1EFEC.toInt()
+        const val INVERSE_PRIMARY = 0xFF5FD9A5.toInt()
     }
 
-    /** Oscuro: el azul se aclara y los neutros bajan a un azul casi negro, no a gris. */
+    /**
+     * Oscuro: el esmeralda se aclara y los neutros bajan a una tinta casi negra que conserva el
+     * sesgo cálido, no a gris neutro.
+     *
+     * Es el tema en el que esta app vive de verdad: se usa apuntando a algo, casi siempre con poca
+     * luz, y encima de una imagen de cámara. El claro no es menos importante, pero es el secundario.
+     */
     object Dark {
-        const val PRIMARY = 0xFF93B4FF.toInt()
-        const val ON_PRIMARY = 0xFF0B1020.toInt()
-        const val PRIMARY_CONTAINER = 0xFF1E3A8A.toInt()
-        const val ON_PRIMARY_CONTAINER = 0xFFD8E4FF.toInt()
+        const val PRIMARY = 0xFF5FD9A5.toInt()
+        const val ON_PRIMARY = 0xFF00301F.toInt()
+        const val PRIMARY_CONTAINER = 0xFF0A5238.toInt()
+        const val ON_PRIMARY_CONTAINER = 0xFFC6EFDD.toInt()
 
-        const val SECONDARY = 0xFF5EEAD4.toInt()
-        const val ON_SECONDARY = 0xFF06302B.toInt()
-        const val SECONDARY_CONTAINER = 0xFF115E56.toInt()
-        const val ON_SECONDARY_CONTAINER = 0xFFB8F5EA.toInt()
+        const val SECONDARY = 0xFFA9CFBF.toInt()
+        const val ON_SECONDARY = 0xFF12312A.toInt()
+        const val SECONDARY_CONTAINER = 0xFF2A4A40.toInt()
+        const val ON_SECONDARY_CONTAINER = 0xFFC9E8DC.toInt()
 
-        const val TERTIARY = 0xFFFCD34D.toInt()
-        const val ON_TERTIARY = 0xFF3A2A00.toInt()
-        const val TERTIARY_CONTAINER = 0xFF7A5310.toInt()
-        const val ON_TERTIARY_CONTAINER = 0xFFFDEFC4.toInt()
+        const val TERTIARY = 0xFFF0C070.toInt()
+        const val ON_TERTIARY = 0xFF3A2600.toInt()
+        const val TERTIARY_CONTAINER = 0xFF6B4A0C.toInt()
+        const val ON_TERTIARY_CONTAINER = 0xFFFBE7C4.toInt()
 
         const val ERROR = 0xFFFFB4AB.toInt()
         const val ON_ERROR = 0xFF601410.toInt()
         const val ERROR_CONTAINER = 0xFF8C1D18.toInt()
         const val ON_ERROR_CONTAINER = 0xFFF9DEDC.toInt()
 
-        const val BACKGROUND = 0xFF0B1020.toInt()
-        const val ON_BACKGROUND = 0xFFE6EAF2.toInt()
-        const val SURFACE = 0xFF141A2A.toInt()
-        const val ON_SURFACE = 0xFFE6EAF2.toInt()
-        const val SURFACE_VARIANT = 0xFF232B3E.toInt()
-        const val ON_SURFACE_VARIANT = 0xFFC2CADB.toInt()
+        const val BACKGROUND = 0xFF121110.toInt()
+        const val ON_BACKGROUND = 0xFFEDEAE6.toInt()
+        const val SURFACE = 0xFF1A1817.toInt()
+        const val ON_SURFACE = 0xFFEDEAE6.toInt()
+        const val SURFACE_VARIANT = 0xFF2B2825.toInt()
+        const val ON_SURFACE_VARIANT = 0xFFC9C4BE.toInt()
 
-        const val SURFACE_CONTAINER_LOWEST = 0xFF070B16.toInt()
-        const val SURFACE_CONTAINER_LOW = 0xFF141A2A.toInt()
-        const val SURFACE_CONTAINER = 0xFF1A2233.toInt()
-        const val SURFACE_CONTAINER_HIGH = 0xFF232B3E.toInt()
-        const val SURFACE_CONTAINER_HIGHEST = 0xFF2C354A.toInt()
+        const val SURFACE_CONTAINER_LOWEST = 0xFF0C0B0A.toInt()
+        const val SURFACE_CONTAINER_LOW = 0xFF1A1817.toInt()
+        const val SURFACE_CONTAINER = 0xFF221F1D.toInt()
+        const val SURFACE_CONTAINER_HIGH = 0xFF2B2825.toInt()
+        const val SURFACE_CONTAINER_HIGHEST = 0xFF35312E.toInt()
 
-        const val OUTLINE = 0xFF8A94A8.toInt()
-        const val OUTLINE_VARIANT = 0xFF3A4459.toInt()
+        const val OUTLINE = 0xFF8C877F.toInt()
+        const val OUTLINE_VARIANT = 0xFF45413D.toInt()
         const val SCRIM = 0xFF000000.toInt()
 
-        const val INVERSE_SURFACE = 0xFFE6EAF2.toInt()
-        const val INVERSE_ON_SURFACE = 0xFF141A2A.toInt()
+        const val INVERSE_SURFACE = 0xFFEDEAE6.toInt()
+        const val INVERSE_ON_SURFACE = 0xFF1A1817.toInt()
 
-        // Un tono más oscuro que el `primary` del tema claro (`#2563EB`): sobre el `inverseSurface`
-        // de este tema —que es casi blanco— aquel se quedaba en 4.29:1 y no llegaba a AA. Es
+        // Un verde bastante más oscuro que el `primary` del tema claro: sobre el `inverseSurface`
+        // de este tema —que es casi blanco— aquel se quedaba corto y no llegaba a AA. Es
         // exactamente el par que nadie mira: el botón de acción de un Snackbar en modo oscuro.
-        const val INVERSE_PRIMARY = 0xFF1D4ED8.toInt()
+        const val INVERSE_PRIMARY = 0xFF08643F.toInt()
     }
 
     /**

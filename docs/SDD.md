@@ -1655,18 +1655,32 @@ incógnita pendiente en iOS están en
 
 #### La marca
 
-`WhyScanMark` es un `ImageVector` dibujado en código —cuatro esquinas de encuadre y la línea de
-lectura— y no una imagen empaquetada, por dos motivos: se tiñe con el color del tema, así que
-funciona en claro y en oscuro sin dos archivos; y es **la misma forma** que el icono de lanzador de
-Android, con lo que la app y su icono no se pueden separar por descuido.
+`WhyScanMark` es **el módulo fugado**: un *patrón de localización* —los cuadrados anidados que toda
+esquina de un QR lleva para que un lector sepa dónde empieza el código— con el anillo abierto por una
+esquina y el módulo central ya fuera, atravesando la brecha. El razonamiento completo, y las cuatro
+alternativas descartadas, están en [ADR-0013](adr/ADR-0013-la-marca-sale-del-objeto.md).
+
+Lo que sustituyó merece quedar dicho, porque explica el criterio: antes eran **cuatro esquinas de
+encuadre y una línea de lectura**, que es el icono `QrCodeScanner` que Material ya trae y el que usan
+otras doscientas apps de la tienda. En una ficha de Play un símbolo así no distingue, **agrupa**.
+
+Es un `ImageVector` dibujado en código y no una imagen empaquetada, por dos motivos: se tiñe con el
+color del tema, así que funciona en claro y en oscuro sin dos archivos; y es **la misma forma** que
+el icono de lanzador, con lo que la app y su icono no se pueden separar por descuido.
 
 El icono adaptativo lleva capa `monochrome`, que es lo que da soporte a los iconos temáticos de
 Android 13+, y hay PNG de respaldo para API 24 y 25, que no entienden iconos adaptativos. El
 contenido ocupa 48 dp centrados en el lienzo de 108: sus esquinas quedan a 33,9 dp del centro, por
 debajo de los 36 del radio seguro, así que no se recorta ni con máscara redonda.
 
-**Antes de esto no había icono en absoluto** — el manifiesto no declaraba `android:icon` y Android
-ponía su robot por defecto. Es un bloqueo duro de Play, y de los que ningún CI detecta.
+**Una restricción que hay que respetar al tocar la forma.** La brecha del anillo termina en 10.4 y el
+módulo empieza en 13.4, en la rejilla de 24. Esa holgura no es estética: en la capa monocroma las dos
+piezas se pintan del **mismo color**, así que acercarlas las funde en una mancha y la marca deja de
+contar nada. Por eso el anillo va en trazo y el módulo en macizo — la diferencia entre línea y mancha
+es lo que las separa cuando el color desaparece.
+
+**Antes de todo esto no había icono en absoluto** — el manifiesto no declaraba `android:icon` y
+Android ponía su robot por defecto. Es un bloqueo duro de Play, y de los que ningún CI detecta.
 
 ### 9.10 Ciclo de vida de la sesión de escaneo
 
@@ -1730,3 +1744,4 @@ ocupar memoria en una pantalla donde nadie se desplaza cien lecturas hacia abajo
 | [ADR-0010](adr/ADR-0010-dos-disposiciones-de-la-pantalla-de-escaneo.md) | La pantalla de escaneo tiene dos disposiciones —producto y banco de pruebas— y no una con condicionales |
 | [ADR-0011](adr/ADR-0011-idioma-de-la-app-por-encima-del-sistema.md) | El idioma de la app se fija cambiando el locale de la plataforma: `LocalComposeEnvironment` es `internal` |
 | [ADR-0012](adr/ADR-0012-baseline-profile.md) | El baseline profile se graba en un emulador declarado, se versiona y se lanza a mano: es un artefacto, no un criterio |
+| [ADR-0013](adr/ADR-0013-la-marca-sale-del-objeto.md) | La marca sale del objeto que la app lee —el patrón de localización de un QR— y no del nombre ni de la categoría |
