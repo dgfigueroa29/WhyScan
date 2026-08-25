@@ -7,7 +7,8 @@
 
 La app arranca en Compose Multiplatform, monta un grafo de Koin con cinco motores y abre Room. Todo
 eso es código que ART **interpreta** la primera vez que se ejecuta: sin un baseline profile, el
-primer arranque tras instalar —y el primero tras cada actualización— paga la traducción entera. Es el
+primer arranque tras instalar —y el primero tras cada actualización— paga la traducción entera. Es
+el
 arranque que decide si alguien deja la app instalada, y es además el único que Play mide en Android
 vitals.
 
@@ -15,20 +16,25 @@ Un baseline profile es la lista de clases y métodos que ART compila por adelant
 la distribuye dentro del AAB. No se escribe a mano: se **graba** ejecutando la app y anotando por
 dónde pasa.
 
-Ahí está el problema de este proyecto. Grabar exige ejecutar, y este repositorio decidió en la Fase 2
-que **no habría tests instrumentados**, porque sin emulador en CI un test que exige dispositivo es un
+Ahí está el problema de este proyecto. Grabar exige ejecutar, y este repositorio decidió en la Fase
+2
+que **no habría tests instrumentados**, porque sin emulador en CI un test que exige dispositivo es
+un
 test que nadie ejecuta (deuda D6). El baseline profile parece caer del mismo lado.
 
 No cae, y la diferencia importa: **un test instrumentado es un criterio, una grabación es un
-artefacto.** Un test que nadie ejecuta da una falsa sensación de red; un archivo que se genera cuando
-hace falta y se versiona no engaña a nadie sobre lo que cubre. El motivo de D6 era la falsedad, no el
+artefacto.** Un test que nadie ejecuta da una falsa sensación de red; un archivo que se genera
+cuando
+hace falta y se versiona no engaña a nadie sobre lo que cubre. El motivo de D6 era la falsedad, no
+el
 emulador.
 
 ## Decisión
 
 Tres decisiones, y las tres son sobre *cuándo* y *dónde*, no sobre *si*.
 
-**1. Se graba sobre un Gradle Managed Device y no sobre un dispositivo enchufado.** El perfil depende
+**1. Se graba sobre un Gradle Managed Device y no sobre un dispositivo enchufado.** El perfil
+depende
 de por dónde pasa el código, así que dos dispositivos distintos dan dos perfiles distintos y ninguno
 es "el" perfil. Con un emulador declarado en la build —Pixel 6, API 34, imagen `aosp`— la grabación
 es reproducible por cualquiera y no depende de qué tenga nadie sobre la mesa. `useConnectedDevices`
@@ -43,7 +49,8 @@ el fallback también forma parte del arranque real.
 `automaticGenerationDuringBuild` queda en `false`. Si `assembleRelease` arrancara un emulador, nadie
 podría ensamblar la app sin uno, y el job de Android del CI dejaría de existir tal como está.
 
-**3. La generación vive en un workflow manual, `baseline-profile.yml`.** El mismo trato que iOS y por
+**3. La generación vive en un workflow manual, `baseline-profile.yml`.** El mismo trato que iOS y
+por
 el mismo motivo: no es un criterio para aceptar o rechazar un cambio. Generar un perfil no comprueba
 nada — arranca un emulador y escribe un archivo. Se relanza cuando cambia el camino que graba (una
 pantalla nueva, un motor nuevo, una versión de Compose), no en cada pull request. Lo que `Verify` sí
@@ -53,7 +60,8 @@ comprueba en cada cambio es que el cableado del plugin no rompe la build.
 
 Dos recorridos, en `:baselineprofile`:
 
-- **`startup`**, marcado con `includeInStartupProfile`. Alimenta además el *startup profile*, que AGP
+- **`startup`**, marcado con `includeInStartupProfile`. Alimenta además el *startup profile*, que
+  AGP
   usa para reordenar el DEX y poner junto lo que se toca al abrir.
 - **`navigation`**: escáner → historial → ajustes → escáner. El comparador de motores no entra: vive
   detrás del modo avanzado y no es camino de nadie que abra la app a leer un código.
@@ -87,10 +95,10 @@ de todos los arranques menos el primero y el único que llega a encender la cám
 
 ## Alternativas descartadas
 
-| Alternativa | Motivo |
-|---|---|
-| No tener baseline profile | El coste del primer arranque en Compose es real y medible; no tenerlo es una decisión también, y peor |
-| Generarlo en cada PR dentro de `Verify` | Un cuarto de hora por cambio para producir un archivo que casi siempre sale igual |
-| Generarlo sobre un dispositivo enchufado | El perfil cambiaría según quién lance la tarea; no es reproducible |
-| Escribir el perfil a mano | Se puede, y es adivinar: la lista real tiene miles de entradas y cambia con cada versión de Compose |
+| Alternativa                                  | Motivo                                                                                                                                                  |
+|----------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|
+| No tener baseline profile                    | El coste del primer arranque en Compose es real y medible; no tenerlo es una decisión también, y peor                                                   |
+| Generarlo en cada PR dentro de `Verify`      | Un cuarto de hora por cambio para producir un archivo que casi siempre sale igual                                                                       |
+| Generarlo sobre un dispositivo enchufado     | El perfil cambiaría según quién lance la tarea; no es reproducible                                                                                      |
+| Escribir el perfil a mano                    | Se puede, y es adivinar: la lista real tiene miles de entradas y cambia con cada versión de Compose                                                     |
 | Confiar solo en los *cloud profiles* de Play | Llegan después, se construyen con datos de usuarios reales y no cubren el primer arranque de la primera versión, que es justo el que se quiere arreglar |

@@ -1,5 +1,3 @@
-import org.gradle.api.artifacts.VersionCatalogsExtension
-
 /** Shell de aplicación Android. Solo lo usa `:androidApp`. */
 plugins {
     id("com.android.application")
