@@ -12,11 +12,16 @@ name: Baseline profile (manual)
 # Lo que sí comprueba `Verify` en cada cambio es que el cableado del plugin no rompe la build: la
 # build de release consume el perfil ya versionado en `androidApp/src/release/generated/`.
 #
-# Cómo lanzarlo: pestaña Actions → "Baseline profile (manual)" → Run workflow. Al terminar, descarga
-# el artefacto `baseline-profile`, copia su contenido a
-# `androidApp/src/release/generated/baselineProfiles/` y haz commit. La tarea ya deja el archivo ahí
-# —`saveInSrc` viene activado por defecto—, así que en la práctica basta con copiar lo que el paso
-# final imprime como diferencia.
+# Cómo lanzarlo: pestaña Actions → "Baseline profile (manual)" → Run workflow, eligiendo la rama.
+# **El perfil se commitea solo, en esa misma rama.** Antes esto era un paso manual —descargar el
+# artefacto, copiarlo y hacer commit— y por eso el perfil nunca llegó a existir: la tarea escribe el
+# archivo dentro del runner, que se destruye al terminar, así que el trabajo se perdía salvo que
+# alguien con el repositorio delante lo rescatara a mano. Un artefacto generado que hay que mover a
+# mano es un artefacto que no se mueve.
+#
+# Commitea en la rama que se eligió al lanzarlo y nunca en otra, así que lanzarlo sobre `main`
+# escribe en `main`: si eso no es lo que se quiere, se lanza sobre una rama. El artefacto se sigue
+# subiendo, que sirve para mirar el perfil sin repetir la ejecución.
 
 on:
   workflow_dispatch:
@@ -28,6 +33,10 @@ jobs:
   generate:
     name: Generar el perfil
     runs-on: ubuntu-latest
+
+    # Lo único que este workflow escribe es el perfil generado, y lo escribe en su propia rama.
+    permissions:
+      contents: write
     # Un emulador arrancando desde cero, dos recorridos y la compilación de release sin R8. Con el
     # margen por defecto de seis horas, un cuelgue del emulador se come un runner entero.
     timeout-minutes: 60
@@ -68,3 +77,25 @@ jobs:
       - name: Qué ha cambiado
         if: always()
         run: git --no-pager diff --stat -- androidApp/src
+
+      - name: Commitear el perfil
+        run: |
+          set -euo pipefail
+          # Acotado a `androidApp/src` a propósito: es donde `saveInSrc` deja el perfil y lo único
+          # que este workflow tiene permiso moral para tocar. La build no escribe nada más ahí que
+          # `.gitignore` no excluya ya.
+          git add -A -- androidApp/src
+          # `--quiet` sale con 1 cuando hay algo preparado, así que sin este `if` explícito `set -e`
+          # haría fallar el job justo en el caso bueno.
+          if git diff --cached --quiet; then
+            echo "El perfil no ha cambiado: el camino de arranque sigue siendo el mismo."
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit \
+            -m "chore(baselineprofile): regenerar el perfil de arranque" \
+            -m "Generado por el workflow 'Baseline profile (manual)'. Es una grabacion, no una decision: se rehace cuando cambia el camino de arranque."
+          # Sin `--force-with-lease`: un push que falle por estar la rama desactualizada está
+          # diciendo la verdad —alguien empujó mientras el emulador grababa— y pisarlo sería peor.
+          git push origin "HEAD:${GITHUB_REF_NAME}"
