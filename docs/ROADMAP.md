@@ -490,9 +490,8 @@ sea explícita.
   en un dispositivo: leer la revisión del estado observado la daba por `null` durante la primera
   composición, así que a un usuario con novedades pendientes se le habrían marcado como vistas
   antes de que llegara su valor de disco
-- [ ] **Baseline Profile.** Es la optimización con mejor relación resultado/esfuerzo en Android y
-  encaja mal con lo que este proyecto puede hacer sin dispositivo, así que conviene decidirlo con
-  datos del punto anterior y no antes
+- [x] ~~**Baseline Profile.**~~ Se aplazó aquí para decidirlo con datos y se resolvió en la Ronda 7:
+  módulo, cableado, ADR-0013 y —desde esta revisión— el perfil generado y versionado
 
 **Deuda de calidad que ya se puede ver**
 
@@ -603,7 +602,7 @@ salió, ordenado por lo que costaría equivocarse.
   aplica nada y comprueba que `koinInject` devuelve la misma instancia que `koin.get()`, para un
   tipo de los módulos comunes y otro que depende del `platformModule`
 
-### Ronda 7 — arranque: el baseline profile 🔜
+### Ronda 7 — arranque: el baseline profile ✅
 
 - [x] **Baseline profile** (ver [ADR-0013](adr/ADR-0013-baseline-profile.md)). La app arranca
   Compose, monta el grafo de Koin con cinco motores y abre Room: todo eso lo **interpreta** ART la
@@ -617,11 +616,21 @@ salió, ordenado por lo que costaría equivocarse.
   perfil del repositorio cuando lo haya y sigue adelante cuando no. La **grabación** vive en
   `baseline-profile.yml` y se lanza a mano, igual que iOS y por el mismo motivo: no es un criterio
   para aceptar un cambio, es un artefacto
-- [ ] **Lanzar el workflow y commitear el perfil generado.** Es lo único de esta ronda que sigue sin
-  hacerse, y conviene decir por qué con precisión: el entorno de desarrollo **no alcanza el maven
-  de Google**, así que aquí no se puede ni resolver el plugin, y mucho menos arrancar un emulador.
-  Un clic en Actions → "Baseline profile (manual)" lo produce. Hasta entonces el perfil no existe
-  y la app arranca como arrancaba: el cableado no miente sobre eso
+- [x] **El perfil existe.** `baseline-prof.txt` (31.575 líneas) y `startup-prof.txt` (27.831) en
+  `androidApp/src/release/generated/baselineProfiles/`, que es de donde los toma la build de
+  release. La grabación recorrió la app de verdad y no solo el framework: 2.325 entradas de
+  `com/whyscan` —`AppKt`, `Navigator`, el repositorio de preferencias, los destinos— junto a 14.205
+  de Compose, 418 de Room y 367 de Koin, que son exactamente las tres cosas que ADR-0013 señala
+  como el coste del primer arranque
+- [x] **Y el workflow lo commitea solo, que es lo que hacía falta para que existiera.** Lo que lo
+  mantuvo pendiente no fue el emulador: fue el último paso, que era manual. El propio workflow
+  decía "descarga el artefacto, cópialo a `androidApp/src/…` y haz commit", y la tarea escribe ese
+  archivo **dentro del runner**, que se destruye al terminar. Así que cada ejecución producía el
+  perfil y lo tiraba, salvo que alguien con el repositorio delante lo rescatara a mano. Un
+  artefacto generado que hay que mover a mano es un artefacto que no se mueve — y este llevaba una
+  ronda entera sin moverse. Ahora el job hace `git commit` sobre la rama en la que se lanzó, y solo
+  si el perfil cambió: que no cambie también es información, quiere decir que el camino de arranque
+  sigue siendo el mismo
 
 ### Ronda 8 — una marca que distingue en vez de agrupar ✅
 
@@ -678,8 +687,9 @@ nada de Play, y salió algo que no estaba en ninguna lista:
 - [ ] **Objetivos táctiles y `enableEdgeToEdge`** (RNF-05, pendiente desde la Fase 5). Es la clase
   de
   cosa que no rompe, se ve mal, y se ve mal precisamente en la primera pantalla
-- [ ] **Generar el baseline profile** lanzando `baseline-profile.yml`. Un clic y quince minutos de
-  runner, y es lo que separa "la app arranca" de "la app arranca rápido la primera vez"
+- [x] **Generar el baseline profile.** Hecho: el perfil está versionado y `baseline-profile.yml` lo
+  regenera y lo commitea solo. Es lo que separa "la app arranca" de "la app arranca rápido la
+  primera vez" — con la salvedad de siempre, que **cuánto** más rápido solo lo dice un dispositivo
 
 Solo después tiene sentido pelearse con la ficha.
 
