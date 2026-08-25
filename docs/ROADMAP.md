@@ -3,6 +3,23 @@
 Cada fase es entregable e independientemente verificable. Una fase no se cierra hasta que su
 criterio de salida se cumple en CI.
 
+> ## El foco es Android. iOS no se toca hasta nuevo aviso
+>
+> Esto **manda sobre todo lo que hay más abajo**, incluidas las casillas sin marcar. Un pendiente de
+> iOS —de la Fase 3 o de la parte de iOS de cualquier otra fase— no es trabajo disponible: es
+> trabajo aplazado. No se retoma por iniciativa propia, ni aunque sea lo que mejor se pueda hacer
+> sin dispositivo; **poder hacerlo no lo convierte en prioridad**. Lo desbloquea el dueño del
+> proyecto diciéndolo, no el roadmap.
+>
+> El motivo lleva escrito desde la Fase 3 y sigue valiendo: sin dispositivos Apple no se puede
+> *probar* nada de esa plataforma, y enlazar el framework no acerca la app a la tienda. Android es
+> lo que se publica.
+>
+> **Se registró después de saltárselo.** El OCR de iOS de la Fase 4 se implementó en agosto de 2026
+> con este documento ya diciendo que iOS estaba despriorizado; el trabajo quedó hecho y en verde,
+> pero la elección fue equivocada. Queda aquí y en `CLAUDE.md` para que el criterio no dependa de
+> volver a leer la Fase 3.
+
 ---
 
 ## Fase 1 — Fundaciones ✅ (entregable actual)
