@@ -27,7 +27,7 @@ jobs:
     # Los números son holgados respecto a lo que tarda cada job hoy, no ajustados.
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Antes que nada y antes que Java: tarda segundos, no necesita Gradle y comprueba cosas que no
       # comprueba nadie más —la paridad de los catálogos de recursos entre idiomas, las claves
@@ -37,12 +37,12 @@ jobs:
       - name: Comprobaciones sin compilador
         run: python3 tools/checks.py
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
 
       - name: Detekt
         run: ./gradlew detekt
@@ -94,7 +94,7 @@ jobs:
 
       - name: Publicar informes
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: informes-checks
           path: |
@@ -114,14 +114,14 @@ jobs:
     timeout-minutes: 45
     needs: checks
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
 
       - name: Ensamblar debug
         run: ./gradlew :androidApp:assembleDebug
@@ -134,7 +134,7 @@ jobs:
       - name: Ensamblar release (R8)
         run: ./gradlew :androidApp:assembleRelease
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: apk-debug
           path: androidApp/build/outputs/apk/debug/*.apk
@@ -142,7 +142,7 @@ jobs:
 
       # El mapping es lo que hace legible una traza de release. Sin él, un fallo en producción es
       # una pila de nombres de una letra.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: r8-mapping
           path: androidApp/build/outputs/mapping/release/mapping.txt
@@ -154,14 +154,14 @@ jobs:
     timeout-minutes: 20
     needs: checks
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
 
       - run: ./gradlew :composeApp:desktopJar
 
@@ -171,14 +171,14 @@ jobs:
     timeout-minutes: 20
     needs: checks
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
 
       - run: ./gradlew :composeApp:wasmJsBrowserDistribution
 
