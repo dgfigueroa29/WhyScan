@@ -1,6 +1,7 @@
 package com.whyscan.platform
 
 import com.whyscan.core.platform.PlatformActions
+import com.whyscan.core.platform.isOpenableUri
 import java.awt.Desktop
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
@@ -24,6 +25,10 @@ class DesktopPlatformActions : PlatformActions {
     override suspend fun share(text: String): Boolean = false
 
     override suspend fun openUrl(url: String): Boolean = runCatching {
+        // La lista blanca de esquemas, comprobada donde se ejecuta y no solo donde se decide.
+        // `Desktop.browse` sobre un `file:` abriría el explorador de archivos del usuario.
+        if (!isOpenableUri(url)) return false
+
         // `isDesktopSupported` es false en entornos headless y en algunos escritorios de Linux;
         // sin comprobarlo, `getDesktop()` lanza.
         if (!Desktop.isDesktopSupported()) return false

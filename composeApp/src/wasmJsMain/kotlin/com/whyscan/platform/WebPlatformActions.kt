@@ -4,6 +4,7 @@
 package com.whyscan.platform
 
 import com.whyscan.core.platform.PlatformActions
+import com.whyscan.core.platform.isOpenableUri
 
 private fun jsCanShare(): Boolean = js("typeof navigator !== 'undefined' && !!navigator.share")
 
@@ -36,7 +37,11 @@ class WebPlatformActions : PlatformActions {
 
     override suspend fun share(text: String): Boolean = jsShare(text)
 
-    // `noopener` no es cosmético: sin él la pestaña abierta puede manipular la nuestra vía
+    // Dos capas, y en Web la de arriba es la que más falta hace: `window.open("javascript:…")`
+    // **ejecuta** ese código en el contexto de la página. Es el único sitio de las cuatro
+    // plataformas donde un esquema equivocado no abre otra app sino que corre dentro de la nuestra.
+    //
+    // `noopener` tampoco es cosmético: sin él la pestaña abierta puede manipular la nuestra vía
     // `window.opener`, y el destino de un QR es contenido en el que no se puede confiar.
-    override suspend fun openUrl(url: String): Boolean = jsOpen(url)
+    override suspend fun openUrl(url: String): Boolean = isOpenableUri(url) && jsOpen(url)
 }

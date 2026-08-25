@@ -677,28 +677,45 @@ segunda parte también se escribe —abajo, en cada ronda— porque saber dónde
 escrutinio vale tanto como saber dónde sí, y porque una auditoría que solo enumera defectos invita a
 tocar cosas que funcionan.
 
-### Ronda 9 — seguridad y privacidad 🚧
+### Ronda 9 — seguridad y privacidad ✅
 
-- [ ] **El portapapeles enseña lo que se copia, y a veces eso es una contraseña.** `AndroidPlatformActions.copyToClipboard`
-  llama a `setPrimaryClip` sin marcar el contenido como sensible. Desde Android 13 el sistema
-  muestra una **previsualización flotante con el texto copiado**, así que copiar un QR de WiFi
-  —cuyo `rawValue` es literalmente `WIFI:T:WPA;S:red;P:clave;;`— pinta la contraseña en pantalla,
-  encima de cualquier app, delante de quien esté mirando. Se cierra poniendo el extra
-  `android.content.extra.IS_SENSITIVE` en la `ClipDescription`.
+- [x] **El portapapeles ya no enseña lo que se copia.** `copyToClipboard` marca el contenido con el
+  extra `android.content.extra.IS_SENSITIVE`, así que Android 13+ deja de pintar la
+  **previsualización flotante** con el texto copiado. Sin eso, copiar un QR de WiFi —cuyo `rawValue`
+  es literalmente `WIFI:T:WPA;S:red;P:clave;;`— enseñaba la contraseña encima de cualquier app,
+  delante de quien estuviera mirando la pantalla.
   **Es exactamente la forma del hallazgo del backup de la Ronda 5**, y por eso importa más que su
-  tamaño: la garantía de privacidad de este producto se apoya en no tener `INTERNET`, y esto
-  —igual que el backup— **no lo hace la app**, lo hace un proceso del sistema al que ese permiso le
-  da igual. Van dos puertas del mismo tipo; conviene asumir que hay más y buscarlas por ahí.
-  *Pendiente de comprobar en dispositivo:* que la capa del fabricante respete el extra por debajo
-  de API 33, donde la constante existe pero el comportamiento no está garantizado.
-- [ ] **La lista blanca de URLs vive en el dominio y no en la frontera.** `parseUrl` solo clasifica
-  como enlace lo que empieza por `http://`, `https://` o `www.`, y esa es **la** decisión de
-  seguridad de un lector de códigos: el atacante controla el contenido entero y la víctima solo
-  apunta la cámara. Pero `AndroidPlatformActions.openUrl` acepta cualquier `String` y hace
-  `Intent.ACTION_VIEW` con él. Hoy no llega nada más porque nadie lo llama de otro modo; eso es una
-  propiedad del grafo de llamadas, no del método, y un `intent://` o un `content://` que entrara por
-  ahí en el futuro no encontraría ninguna puerta cerrada. Repetir la comprobación en el borde cuesta
-  tres líneas y deja de depender de que nadie se equivoque aguas arriba.
+  tamaño: la garantía de privacidad de este producto se apoya en no tener `INTERNET`, y esto —igual
+  que el backup— **no lo hacía la app**, lo hacía un proceso del sistema al que ese permiso le da
+  igual. Van dos puertas del mismo tipo; conviene asumir que hay más y buscarlas por ahí.
+  Se marca **siempre** y no solo cuando el valor parece secreto, porque el usuario ya está viendo el
+  valor en pantalla justo encima del botón: la previsualización no le informa de nada y su peor caso
+  es una credencial a la vista. Con esa asimetría, clasificar qué es sensible añadiría una decisión
+  que puede equivocarse a cambio de no ganar nada.
+  Y no se afirma: `AndroidPlatformActionsTest` lo comprueba con Robolectric, que da un
+  `ClipboardManager` de verdad en la JVM y corre en cada pull request.
+- [x] **La lista blanca de esquemas se comprueba en el borde, no solo en el dominio.**
+  `isOpenableUri` en `:core:platform` acepta los seis esquemas que `ResultActionsFactory` puede
+  producir —`http`, `https`, `mailto`, `tel`, `sms`, `geo`— y rechaza todo lo demás fallando
+  cerrado. Lo consultan las implementaciones de Android, Escritorio y Web antes de entregarle nada
+  al sistema.
+  Lo que había antes no era un agujero abierto: era que **lo único que impedía que llegara un
+  `javascript:` o un `intent://` era que nadie llamaba a `openUrl` de otro modo**, y eso es una
+  propiedad del grafo de llamadas, no del método. Se cumplía hoy y dejaba de cumplirse el día que
+  alguien añadiera un camino, sin que nada avisara.
+  **Donde más falta hacía era en Web**, y no se vio hasta escribirlo: `window.open("javascript:…")`
+  no abre otra app, **ejecuta** ese código dentro de nuestra página. Es la única de las cuatro
+  plataformas donde el esquema equivocado no es un problema de otro.
+  La lista queda escrita dos veces, una en cada lado de una separación que debe existir —el dominio
+  no sabe que hay un sistema operativo—, así que `OpenableUriDriftTest` ata las dos: comprueba que
+  todo lo que el dominio ofrece abrir pasa el borde, y falla en las dos direcciones.
+- [ ] **Falta iOS, y es una línea.** `IosPlatformActions.openUrl` sigue sin la guarda. No se tocó
+  por la regla de arriba —iOS no se toca por iniciativa propia— y no por falta de importancia; se
+  cierra en cuanto la plataforma se desbloquee. Queda escrito para que la asimetría no se descubra
+  por sorpresa.
+
+*Sin comprobar en dispositivo:* que la capa del fabricante respete el extra del portapapeles por
+debajo de API 33, donde la constante existe desde antes que su documentación.
 
 **Mirado y correcto, para no volver a gastar escrutinio ahí.** El manifiesto está bien y no por
 casualidad: sin `INTERNET`, `allowBackup="false"` con `dataExtractionRules`,
