@@ -186,12 +186,23 @@ Android e iOS sobre el mismo set de imágenes de referencia.
   código que nadie consiguió decodificar;
   **(3)** `usesLanguageCorrection = false`. La corrección lingüística está entrenada para arreglar
   texto, y sobre trece cifras solo puede inventar. Con `recognitionLevel = .accurate`, que cuesta
-  caro por frame y por eso el motor descarta frames tarde a propósito
+  caro por frame y por eso el motor descarta frames tarde a propósito.
+  **Dos tandas de `iOS (manual)`, y la primera dejó algo que merece quedar escrito**: los diez
+  errores estaban todos en un archivo y eran todos la misma cosa —**cinterop no traduce igual todos
+  los `NS_ENUM`**—. Los de AVFoundation que usa el resto del proyecto (`AVAuthorizationStatus…`)
+  son declaraciones de nivel superior; los de UIKit (`UIDeviceOrientation`, `UIImageOrientation`)
+  **no existen sueltas** y hay que cualificarlas por su tipo; y los `kCGImagePropertyOrientation*`
+  de ImageIO vuelven a ser de nivel superior, aunque su tipo sí se importe. Es la tercera vez en
+  este proyecto que el fallo de Kotlin/Native es "importé como una cosa lo que cinterop genera como
+  otra" —las dos anteriores fueron los miembros de AVFoundation y el `Dispatchers.IO` de
+  `:core:database`—, y ninguna de las tres la puede ver nada que no compile para iOS. Lo demás
+  —`performRequests`, `VNImageRequestHandler`, `topCandidates` y las cuatro esquinas de
+  `VNRecognizedTextObservation`— compiló a la primera
 - [ ] Lo que sigue sin comprobarse del OCR de iOS, dicho aparte del cableado: que **lea**. El job
-  `iOS (manual)` enlaza el framework, y eso cubre la superficie de cinterop —que es donde han
-  estado todos los fallos de este proyecto en Kotlin/Native— pero no que Vision encuentre los
-  dígitos, ni que la orientación con la que se le pasan los frames sea la correcta. Hace falta un
-  iPhone, igual que el resto de la Fase 3
+  `iOS (manual)` enlaza el framework entero con el motor dentro —comprobado, en verde—, y eso cubre
+  la superficie de cinterop, que es donde han estado todos los fallos de este proyecto en
+  Kotlin/Native. No cubre que Vision encuentre los dígitos, ni que la orientación con la que se le
+  pasan los frames sea la correcta. Hace falta un iPhone, igual que el resto de la Fase 3
 - [x] Escaneo desde imagen/galería (RF-07) con selector en las cuatro plataformas: *photo picker*
   en Android, `UIImagePickerController` en iOS, `JFileChooser` en escritorio e `<input
       type=file>` en Web. Ninguno pide permisos: los cuatro corren fuera de la app y devuelven solo
