@@ -663,6 +663,132 @@ de Play, junto a sus competidores, eso no distingue: **agrupa**.
 > interrogación jugando con el nombre, que compite con «ayuda» en una cuadrícula de aplicaciones.
 > Cerradas esas dos, la única dirección honesta era mirar el objeto que la app lee.
 
+---
+
+## Auditoría por pilares — rondas 9 a 14 🚧
+
+Una ronda por pilar, abiertas a la vez y cerrables por separado. El criterio para que algo entre
+aquí es que **se pueda señalar el archivo y la línea**: lo que solo se puede intuir sin un
+dispositivo ya tiene su sitio en "Pendiente para publicar" y no se disfraza de hallazgo.
+
+Conviene decir lo que esta auditoría **no** es. No es una lista de buenas prácticas contrastada
+contra la app: es lo que quedó después de mirar el código y descartar lo que ya estaba bien. Esa
+segunda parte también se escribe —abajo, en cada ronda— porque saber dónde **no** hace falta gastar
+escrutinio vale tanto como saber dónde sí, y porque una auditoría que solo enumera defectos invita a
+tocar cosas que funcionan.
+
+### Ronda 9 — seguridad y privacidad 🚧
+
+- [ ] **El portapapeles enseña lo que se copia, y a veces eso es una contraseña.** `AndroidPlatformActions.copyToClipboard`
+  llama a `setPrimaryClip` sin marcar el contenido como sensible. Desde Android 13 el sistema
+  muestra una **previsualización flotante con el texto copiado**, así que copiar un QR de WiFi
+  —cuyo `rawValue` es literalmente `WIFI:T:WPA;S:red;P:clave;;`— pinta la contraseña en pantalla,
+  encima de cualquier app, delante de quien esté mirando. Se cierra poniendo el extra
+  `android.content.extra.IS_SENSITIVE` en la `ClipDescription`.
+  **Es exactamente la forma del hallazgo del backup de la Ronda 5**, y por eso importa más que su
+  tamaño: la garantía de privacidad de este producto se apoya en no tener `INTERNET`, y esto
+  —igual que el backup— **no lo hace la app**, lo hace un proceso del sistema al que ese permiso le
+  da igual. Van dos puertas del mismo tipo; conviene asumir que hay más y buscarlas por ahí.
+  *Pendiente de comprobar en dispositivo:* que la capa del fabricante respete el extra por debajo
+  de API 33, donde la constante existe pero el comportamiento no está garantizado.
+- [ ] **La lista blanca de URLs vive en el dominio y no en la frontera.** `parseUrl` solo clasifica
+  como enlace lo que empieza por `http://`, `https://` o `www.`, y esa es **la** decisión de
+  seguridad de un lector de códigos: el atacante controla el contenido entero y la víctima solo
+  apunta la cámara. Pero `AndroidPlatformActions.openUrl` acepta cualquier `String` y hace
+  `Intent.ACTION_VIEW` con él. Hoy no llega nada más porque nadie lo llama de otro modo; eso es una
+  propiedad del grafo de llamadas, no del método, y un `intent://` o un `content://` que entrara por
+  ahí en el futuro no encontraría ninguna puerta cerrada. Repetir la comprobación en el borde cuesta
+  tres líneas y deja de depender de que nadie se equivoque aguas arriba.
+
+**Mirado y correcto, para no volver a gastar escrutinio ahí.** El manifiesto está bien y no por
+casualidad: sin `INTERNET`, `allowBackup="false"` con `dataExtractionRules`,
+`usesCleartextTraffic="false"`, un único `exported="true"` que es el `MAIN`/`LAUNCHER`, y
+`uses-feature` de cámara declarado como no obligatorio. `percentEncode` cubre `mailto:`, `tel:` y
+`sms:`. El CSV neutraliza fórmulas y el texto plano no, con un test que fija por qué. Nada de esto
+hizo falta tocarlo.
+
+### Ronda 10 — accesibilidad 🚧
+
+- [ ] **El lector de pantalla lee el código como un número, no como un código.** Las etiquetas
+  habladas interpolan el valor crudo: `a11y_copy_value` recibe `detection.barcode.rawValue` tal
+  cual (`ScannerResults.kt:382`, `:363`, `:404`), así que TalkBack pronuncia un EAN-13 como *"siete
+  billones quinientos un mil…"*. Para cualquier app eso sería un detalle; para **esta** es el
+  producto: el motivo entero de que el valor vaya en monoespaciada es que alguien lo coteja
+  **carácter a carácter** contra una etiqueta impresa, y a quien usa TalkBack se le está negando
+  justo eso. La salida es separar los caracteres al hablarlos —una función pura, en `commonMain`, con
+  su test en `commonTest`—, no un cambio de UI. Es el hallazgo más barato de arreglar de toda la
+  auditoría y el que más cambia para quien lo necesita.
+
+**Mirado y correcto.** Los seis `contentDescription = null` son **todos** decorativos y cinco llevan
+escrito por qué: el icono repite lo que dice el texto de al lado, y anunciarlo haría que el lector
+recorriera cada ítem dos veces. Es la decisión correcta y está tomada a conciencia, no por olvido —
+que es el caso habitual cuando se ve un `null` ahí. No hay un solo `Modifier.clickable` propio en
+todo el proyecto, así que los 48 dp de objetivo táctil los pone Material y no dependen de nadie.
+`ContrastTest` mide 56 pares en los dos temas.
+
+**Lo que esta ronda no puede cerrar:** TalkBack de verdad, los objetivos táctiles medidos y el
+comportamiento con la escala tipográfica al máximo. Eso sigue necesitando un teléfono y ya está en
+su bloque.
+
+### Ronda 11 — internacionalización 🚧
+
+- [ ] **No hay un solo `<plurals>` en los cuatro catálogos, y hay cadenas que cuentan cosas.** El
+  caso visible es `history_clear_body`: *"Se van a eliminar %1$d lecturas, con sus notas"*. Con una
+  sola lectura dice **"Se van a eliminar 1 lecturas"**, y lo dice en el único diálogo irreversible
+  de la app — el sitio donde peor sienta que el texto parezca descuidado, porque es donde el usuario
+  está decidiendo si confiar. El inglés tiene el mismo defecto (`1 scans will be deleted`). Compose
+  Multiplatform resuelve esto con `pluralStringResource`; el trabajo es mecánico y `tools/checks.py`
+  tendrá que aprender a comprobar la paridad de los plurales igual que ya comprueba la de las
+  cadenas.
+- [ ] **La fecha del historial fija el orden día-mes-año.** `history_date` es `%1$d de %2$s de %3$d`
+  en castellano y `%1$d %2$s %3$d` en inglés. Componer la fecha a mano fue una decisión razonable
+  —no hay formateador de fechas común en KMP— pero el inglés **es el respaldo de todo idioma que no
+  sea español**, así que un teléfono en inglés estadounidense ve "25 August 2026" en vez de "August
+  25, 2026", y uno en alemán ve la fecha en inglés con orden británico. Es menor y hay que decir por
+  qué: se equivoca en el orden, no en el dato.
+
+**Mirado y correcto.** 203 claves con paridad inglés/español comprobada en CI antes que ninguna otra
+cosa, y el inglés en la carpeta sin calificador para que sea el respaldo real. Eso ya evita el
+defecto grande —un idioma con huecos— que es el que rompe pantallas.
+
+### Ronda 12 — resiliencia 🚧
+
+Esta ronda se abre **sin hallazgos bloqueantes**, y decirlo es el resultado: se buscó el fallo y no
+está.
+
+- Los quince `launchCatching` cubren lo que toca disco. Quedan dos `viewModelScope.launch` crudos y
+  los dos están bien: uno lleva `.catch` **sobre el flujo** —que intercepta lo de aguas arriba y deja
+  subir un defecto propio, y está razonado en el código—, y el otro solo emite a un `SharedFlow`.
+- Las tres previews de Android atan el controlador de cámara al `LifecycleOwner`, así que irse a
+  segundo plano suelta la cámara sin que nadie tenga que acordarse.
+- [ ] **Lo único que queda es un hueco de conocimiento, no un defecto conocido:** la *sesión* de
+  escaneo sigue viva en segundo plano aunque la cámara se desate, porque `DisposableEffect` no se
+  dispara al minimizar. No se le conoce consecuencia —sin frames no hay trabajo— pero tampoco hay
+  nada que lo compruebe, y "no se le conoce consecuencia" es precisamente lo que se dijo del driver
+  de Room y del `Executor` de Koin. Vale una comprobación explícita, no una reescritura.
+
+### Ronda 13 — verificación 🚧
+
+- [ ] **El suelo de cobertura deja fuera las máquinas de estados.** `tools/coverage.py` exige 80 % en
+  `:core:domain` y `:core:data`, que es donde estaba el agujero cuando se escribió. Pero los cuatro
+  ViewModels —scanner (483 líneas), history (231), comparison (140), settings (87)— viven en
+  `:feature:*`, **fuera del gate**. Tienen tests (once ficheros), así que esto no es "no está
+  probado": es que **nadie sabe el número**, que es literalmente el reproche con el que se abrió la
+  medición de cobertura en la Ronda 5. El defecto se repite un módulo más allá. Añadirlos al gate es
+  una línea del script; lo que hay que decidir antes es el umbral, porque un ViewModel tiene ramas de
+  UI que no son lo mismo que la lógica de dominio.
+
+### Ronda 14 — rendimiento: sin baseline no hay ronda 🚧
+
+- [ ] **No se abre con hallazgos a propósito.** Con el baseline profile ya generado, lo único que
+  queda por decir del arranque es **cuánto** mejora, y eso exige medir contra un punto de partida en
+  un dispositivo. Cualquier afirmación que se escribiera aquí hoy —recomposiciones de más, tamaño
+  del APK, latencia por motor— sería una intuición con formato de dato. El proyecto ya tiene el
+  instrumento para lo primero (`:baselineprofile` con macrobenchmark) y para lo último
+  (`EngineScoreboard`, que mide latencia por motor **dentro de la app**). Lo que falta es el
+  teléfono, y hasta entonces esta ronda existe para que el hueco tenga nombre en vez de parecer que
+  nadie lo miró.
+
 ### Antes de la ficha de Play, esto va primero
 
 Lo de abajo es trámite de tienda. Lo de esta lista no. Se hizo el repaso a propósito antes de tocar
