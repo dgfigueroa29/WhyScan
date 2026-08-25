@@ -19,7 +19,7 @@ kotlin {
             implementation(project(":core:platform"))
             api(project(":core:designsystem"))
 
-            implementation(compose.components.resources)
+            implementation(libs.compose.components.resources)
 
             // Agrupar por día exige saber en qué día cayó un instante, y eso es zona horaria y
             // calendario. Ver la nota del catálogo de versiones.

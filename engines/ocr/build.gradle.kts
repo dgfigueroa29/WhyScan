@@ -32,7 +32,7 @@ kotlin {
             api(project(":core:scanner-ui"))
         }
         androidMain.dependencies {
-            implementation(compose.ui)
+            implementation(libs.compose.ui)
             implementation(libs.lifecycle.runtime.compose)
             implementation(libs.mlkit.text.recognition)
             implementation(libs.camerax.core)
@@ -43,7 +43,7 @@ kotlin {
         iosMain.dependencies {
             // Nada más: Vision, AVFoundation y Core Graphics vienen con el sistema. Es la razón de
             // que en iOS el OCR no tenga el coste de binario que tiene en Android.
-            implementation(compose.ui)
+            implementation(libs.compose.ui)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

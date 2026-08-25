@@ -10,8 +10,8 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             api(project(":core:scanner-api"))
-            api(compose.runtime)
-            api(compose.ui)
+            api(libs.compose.runtime)
+            api(libs.compose.ui)
         }
     }
 }

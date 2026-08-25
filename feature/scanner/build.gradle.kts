@@ -23,7 +23,7 @@ kotlin {
             api(project(":core:scanner-ui"))
             api(project(":core:designsystem"))
 
-            implementation(compose.components.resources)
+            implementation(libs.compose.components.resources)
 
             implementation(libs.lifecycle.viewmodel)
             implementation(libs.lifecycle.viewmodel.compose)

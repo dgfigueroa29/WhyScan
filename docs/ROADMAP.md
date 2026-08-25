@@ -746,34 +746,52 @@ está cubierta.
 
 ---
 
-## D19, primera pieza: los accesores `compose.*` de los scripts de build
+## D19, los accesores `compose.*` de los scripts de build — cerrados
 
-Un fallo de CI dejó ver lo que desde el entorno de desarrollo no se puede leer, porque no alcanza el
-maven de Google y ninguna tarea de Gradle se puede lanzar. Vale la pena escribirlo mientras está a
-mano, que es justo lo que D19 reprocha no haber hecho antes.
-
-Cada `implementation(compose.algo)` de los scripts de build emite:
+Cada `implementation(compose.algo)` emitía esto, y eran **27 de los 44 avisos** del inventario:
 
 ```
 w: composeApp/build.gradle.kts:57:36: 'runtime: String' is deprecated. Specify dependency directly
 ```
 
-Y así con `foundation`, `animation`, `material3`, `components` y `resources` en `:composeApp`, más
-`runtime` en `:androidApp`. Los demás módulos no aparecían en ese log porque la build se cayó antes
-de configurarlos, así que la lista completa es más larga: el convention plugin
-`whyscan.kmp.compose` los usa también.
+Ahora hay coordenadas explícitas en el catálogo de versiones y **26 sustituciones** en doce scripts.
+Lo que no se tocó, porque no estaba deprecado ni es un `String`: `compose.desktop.currentOs`, el
+bloque `compose.resources { }` y el bloque `compose.desktop { }`.
 
-Tres cosas que conviene tener claras antes de arreglarlo:
+**Lo que bloqueaba esto era creer que había que adivinar las coordenadas, y no había que adivinar
+nada.** El razonamiento anterior decía —con buen criterio— que acertarlas sin poder compilar
+rompería el build entero. La salida no era compilar: era **leerlas**. Están dentro de
+`org.jetbrains.compose:compose-gradle-plugin:1.11.1`, en la clase `ComposePlugin$Dependencies`, que
+es literalmente lo que los accesores devolvían; y el jar se descarga de Maven Central, que **sí** se
+alcanza desde el entorno de desarrollo aunque el maven de Google no. Media hora de mirar en vez de
+una tanda de CI a ciegas.
 
-- **No son errores, aunque Gradle los cuente como tales.** El compilador los emite como `w:`; cuando
-  *además* hay un error de verdad en el mismo script, el informe de "Script compilation errors" los
-  lista todos juntos y suma. Eso es lo que hizo que un fallo por otra cosa pareciera ocho.
-- **El arreglo lo dice el propio aviso**: "Specify dependency directly", es decir, coordenadas
-  explícitas en vez del accesor del plugin. No es una línea: hay que decidir de dónde sale la
-  versión
-  para no dispersar por los módulos lo que hoy centraliza el plugin de Compose.
-- **Es una familia, no el total.** D19 sigue abierta: falta el resto del build y falta la postura
-  —limpiar y activar `allWarningsAsErrors`, o aceptar el ruido por escrito—.
+Menos mal que se miró, porque **dos de las ocho no siguen la versión del plugin** y ninguna de las
+dos se habría acertado:
+
+- **`material3` va en 1.9.0, no en 1.11.1.** No existe un `org.jetbrains.compose.material3:material3`
+  1.11.1 publicado: el artefacto salta de `1.11.0-alpha07` a `1.12.0-alpha01`. Escribir la versión
+  del plugin ahí habría roto la resolución, que es exactamente el desastre que se temía.
+- **`material-icons-extended` está clavado en 1.7.3** y no recibe más actualizaciones. Eso lo decía
+  ya el segundo aviso que D19 dejó vivo; ahora está escrito junto a la coordenada, con la salida que
+  propone el propio plugin —migrar a Material Symbols como recursos vectoriales—.
+
+De propina se fue un `@file:OptIn(ExperimentalComposeLibrary::class)` de `:composeApp`: existía solo
+para poder escribir `compose.uiTest`, y lo experimental era el accesor, no el artefacto.
+
+Dos cosas que conviene no perder:
+
+- **Nunca fueron errores, aunque Gradle los contara como tales.** El compilador los emite como `w:`;
+  cuando *además* hay un error de verdad en el mismo script, el informe de "Script compilation
+  errors" los lista todos juntos y suma. Eso es lo que hizo que un fallo por otra cosa pareciera
+  ocho.
+- **Y el convention plugin no los usaba.** Este documento afirmaba que `whyscan.kmp.compose` también
+  los tenía, y no: son once líneas que solo aplican tres plugins. Era una suposición razonable sobre
+  un archivo que nadie volvió a abrir, escrita con el mismo tono que los hechos comprobados.
+
+**Lo que queda de D19 es la postura, no la limpieza.** Con estos 27 fuera, el inventario baja a 17
+avisos. Activar `allWarningsAsErrors` vuelve a ser una decisión discutible en vez de imposible, y es
+lo único que sigue abierto.
 
 ---
 

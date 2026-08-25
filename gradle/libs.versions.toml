@@ -22,6 +22,11 @@ kotlin = "2.4.10"
 #noinspection AndroidGradlePluginVersion
 agp = "8.13.2"
 composeMultiplatform = "1.11.1"
+# Las dos piezas de Compose que NO van a la versión del plugin. No es un descuido: es lo que
+# declara `ComposePlugin$Dependencies` dentro del propio plugin 1.11.1, y el motivo de cada una
+# está junto a su coordenada en `[libraries]`. Al subir `composeMultiplatform` hay que releerlo.
+composeMaterial3 = "1.9.0"
+composeMaterialIcons = "1.7.3"
 jvmTarget = "17"
 
 # Android SDK
@@ -140,6 +145,39 @@ zxingcpp = "3.1.1"
 zxingJava = "3.5.4"
 
 [libraries]
+# Compose Multiplatform, con coordenadas explícitas.
+#
+# Antes esto se escribía `implementation(compose.material3)`, con los accesores que instala el
+# plugin. El propio compilador pedía dejar de hacerlo —"'material3: String' is deprecated. Specify
+# dependency directly"— en 27 de los 44 avisos que D19 inventarió.
+#
+# **Los números no se dedujeron: se leyeron del plugin.** Las coordenadas están dentro de
+# `org.jetbrains.compose:compose-gradle-plugin:1.11.1`, en `ComposePlugin$Dependencies`, que es lo
+# que los accesores devolvían. Importaba mirarlo porque **dos no siguen la versión del plugin**, y
+# ninguna de las dos se habría acertado a ojo:
+#
+#   - `material3` va en **1.9.0**. No existe un `org.jetbrains.compose.material3:material3:1.11.1`
+#     publicado: el artefacto salta de `1.11.0-alpha07` a `1.12.0-alpha01`. Escribir 1.11.1 aquí
+#     habría roto la resolución entera.
+#   - `material-icons-extended` está **clavado en 1.7.3** y no recibe más actualizaciones. Lo dice
+#     el propio plugin en el mensaje de deprecación del accesor, que además propone la salida:
+#     migrar a Material Symbols como recursos vectoriales. Ese aviso es uno de los dos que D19 dejó
+#     vivos a propósito, y ahora está aquí en vez de en un log que nadie lee.
+#
+# **El coste de esto, dicho:** hasta ahora el plugin era quien sabía qué versión de cada pieza va
+# con cada versión de Compose, y ese conocimiento pasa a estar aquí. Al subir `composeMultiplatform`
+# hay que volver a leer `ComposePlugin$Dependencies` de la versión nueva en lugar de suponer que
+# todo sube junto — porque, como se ve arriba, no sube junto. A cambio, Dependabot ve estas
+# dependencias, que antes le eran invisibles.
+compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "composeMultiplatform" }
+compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "composeMultiplatform" }
+compose-animation = { module = "org.jetbrains.compose.animation:animation", version.ref = "composeMultiplatform" }
+compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "composeMultiplatform" }
+compose-ui-test = { module = "org.jetbrains.compose.ui:ui-test", version.ref = "composeMultiplatform" }
+compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "composeMultiplatform" }
+compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "composeMaterial3" }
+compose-material-icons-extended = { module = "org.jetbrains.compose.material:material-icons-extended", version.ref = "composeMaterialIcons" }
+
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-coroutines-swing = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-swing", version.ref = "coroutines" }

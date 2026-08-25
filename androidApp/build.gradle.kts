@@ -79,7 +79,7 @@ dependencies {
     implementation(libs.koin.android)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.core.ktx)
-    implementation(compose.runtime)
+    implementation(libs.compose.runtime)
 
     // Instala el baseline profile que viaja en el APK/AAB.
     //

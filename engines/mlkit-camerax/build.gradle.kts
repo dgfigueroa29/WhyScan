@@ -20,7 +20,7 @@ kotlin {
             api(project(":core:scanner-ui"))
         }
         androidMain.dependencies {
-            implementation(compose.ui)
+            implementation(libs.compose.ui)
             implementation(libs.lifecycle.runtime.compose)
             implementation(libs.mlkit.barcode.scanning)
             implementation(libs.camerax.core)
