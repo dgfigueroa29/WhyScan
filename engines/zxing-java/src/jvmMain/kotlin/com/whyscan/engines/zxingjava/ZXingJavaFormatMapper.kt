@@ -50,7 +50,7 @@ internal object ZXingJavaFormatMapper {
      * Formatos de ZXing correspondientes a los pedidos, o `null` si no hay ninguno.
      *
      * `null` significa "no restrinjas": ZXing prueba entonces todas sus simbologías y el filtrado
-     * fino lo aplica el dominio, que es quien garantiza el mismo comportamiento en los ocho motores.
+     * fino lo aplica el dominio, que es quien garantiza el mismo comportamiento en todos los motores.
      */
     fun toZXingFormats(formats: Set<BarcodeFormat>): List<ZXingFormat>? =
         formats.flatMap { toZXing[it].orEmpty() }.distinct().ifEmpty { null }

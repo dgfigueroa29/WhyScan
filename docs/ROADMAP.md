@@ -166,13 +166,32 @@ Android e iOS sobre el mismo set de imágenes de referencia.
 
 - [x] `:engines:browser-detector` — `BarcodeDetector` con detección de soporte del navegador y de
   contexto seguro, más decodificación de imagen estática vía `createImageBitmap`
-- [x] `:engines:mlkit-ocr` — Text Recognition en Android + `OcrCodeInterpreter`: lee el número
+- [x] `:engines:ocr` — Text Recognition en Android + `OcrCodeInterpreter`: lee el número
   impreso bajo el código y solo lo emite si el dígito de control cuadra
 - [x] Preview de Web (D14): el `<video>` vive en el documento, sobre el canvas, y el composable solo
   le dice qué rectángulo ocupar. Tapa el overlay, y eso pasa a ser una capacidad declarada
   (`occludesOverlay`) en vez de un dibujo invisible
-- [ ] OCR en iOS: ML Kit se distribuye por CocoaPods, que este proyecto no usa. La alternativa sin
-  dependencias es `VNRecognizeTextRequest` del framework Vision, reutilizando `OcrCodeInterpreter`
+- [x] **OCR en iOS, con el reconocedor del sistema.** ML Kit se distribuye por CocoaPods, que este
+  proyecto no usa, así que iOS va por `VNRecognizeTextRequest` del framework Vision — cero
+  dependencias nuevas y cero bytes de modelo en el binario. Reutiliza `OcrCodeInterpreter`
+  entero: **toda la parte que decide algo es la misma que en Android**, y con ella sus tests.
+  Tres decisiones que no eran obvias y que conviene tener escritas:
+  **(1)** es un **motor propio del catálogo** (`VISION_OCR`) y no un `actual` de `MLKIT_OCR`. Son
+  dos reconocedores de dos fabricantes; presentarlos como uno haría que el comparador atribuyera a
+  ML Kit lo que leyó Vision, que es el mismo error que D13 evitó con zxing-java. De paso se
+  corrige algo que llevaba desde la Fase 4: `MLKIT_OCR` **declaraba iOS**, así que el catálogo
+  prometía en un iPhone un motor que solo podía responder `NotImplemented`;
+  **(2)** `AVCaptureVideoDataOutput` y no la salida de metadatos, por lo mismo que zxing-cpp — la
+  de metadatos entrega códigos ya decodificados, y el objeto de este motor es precisamente el
+  código que nadie consiguió decodificar;
+  **(3)** `usesLanguageCorrection = false`. La corrección lingüística está entrenada para arreglar
+  texto, y sobre trece cifras solo puede inventar. Con `recognitionLevel = .accurate`, que cuesta
+  caro por frame y por eso el motor descarta frames tarde a propósito
+- [ ] Lo que sigue sin comprobarse del OCR de iOS, dicho aparte del cableado: que **lea**. El job
+  `iOS (manual)` enlaza el framework, y eso cubre la superficie de cinterop —que es donde han
+  estado todos los fallos de este proyecto en Kotlin/Native— pero no que Vision encuentre los
+  dígitos, ni que la orientación con la que se le pasan los frames sea la correcta. Hace falta un
+  iPhone, igual que el resto de la Fase 3
 - [x] Escaneo desde imagen/galería (RF-07) con selector en las cuatro plataformas: *photo picker*
   en Android, `UIImagePickerController` en iOS, `JFileChooser` en escritorio e `<input
       type=file>` en Web. Ninguno pide permisos: los cuatro corren fuera de la app y devuelven solo
@@ -673,7 +692,7 @@ y qué lo compensa:
 
 | Se comprueba sin dispositivo                                                                                                                                                                                                                                                              | Sigue sin comprobarse                                                                                                                                                         |
 |-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Que el descriptor de los ocho motores es coherente: IDs únicos, fases válidas, sin prometer control de cámara con UI propia (`ScannerEngineCatalogTest`)                                                                                                                                  | Que el motor **lea** un código real                                                                                                                                           |
+| Que el descriptor de los nueve motores es coherente: IDs únicos, fases válidas, sin prometer control de cámara con UI propia (`ScannerEngineCatalogTest`)                                                                                                                                  | Que el motor **lea** un código real                                                                                                                                           |
 | Que la selección, el fallback, los límites de petición y el plazo se comportan según el contrato, incluida la cadena completa que llega al ViewModel                                                                                                                                      | Que la cámara arranque, y que se libere al cancelar                                                                                                                           |
 | Que lo declarado tenga quien lo cumpla, en todo lo instanciable sin `Context`                                                                                                                                                                                                             | Lo mismo en los motores de Android e iOS, que necesitan `Context` o `AVCaptureSession`                                                                                        |
 | Que ZXing (Java) **lea de verdad** un QR y un EAN-13 desde píxeles, filtre por formato y distinga "no hay código" de "no es una imagen"                                                                                                                                                   | Lo mismo en los motores que necesitan cámara                                                                                                                                  |

@@ -93,7 +93,7 @@ include(":engines:vision-ios")
 include(":engines:zxing-cpp")
 include(":engines:zxing-java")
 include(":engines:browser-detector")
-include(":engines:mlkit-ocr")
+include(":engines:ocr")
 
 // Features
 include(":feature:scanner")

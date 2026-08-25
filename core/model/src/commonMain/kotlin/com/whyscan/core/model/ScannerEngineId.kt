@@ -34,8 +34,18 @@ enum class ScannerEngineId(val id: String) {
     /** `BarcodeDetector` del navegador. Web. */
     BrowserDetector("browser_detector"),
 
-    /** ML Kit Text Recognition: lee el número impreso cuando el código está dañado. */
+    /** ML Kit Text Recognition: lee el número impreso cuando el código está dañado. Android. */
     MlKitOcr("mlkit_ocr"),
+
+    /**
+     * `VNRecognizeTextRequest` del framework Vision: el mismo oficio que [MlKitOcr], en iOS.
+     *
+     * Id propio y no un `actual` de [MlKitOcr] por el motivo de [ZXingJava]: son dos reconocedores
+     * de texto distintos, de dos fabricantes distintos, y solo comparten el intérprete que valida
+     * el dígito de control. Atribuir a ML Kit lo que leyó Vision falsearía la comparación entre
+     * motores, que es lo que la app existe para producir.
+     */
+    VisionOcr("vision_ocr"),
 
     /** Entrada manual por teclado. Siempre disponible; cierra la cadena de fallback. */
     ManualInput("manual_input"),

@@ -105,7 +105,7 @@ kotlin {
             // debe cargar ML Kit ni Play Services (RNF-06).
             implementation(project(":engines:gms-code-scanner"))
             implementation(project(":engines:mlkit-camerax"))
-            implementation(project(":engines:mlkit-ocr"))
+            implementation(project(":engines:ocr"))
             implementation(project(":engines:zxing-cpp"))
 
             // Room KMP no soporta wasmJs, así que la base de datos se enlaza en los tres targets
@@ -122,6 +122,7 @@ kotlin {
             // Motor de iOS: no debe enlazarse en ningún otro binario (RNF-06).
             implementation(project(":engines:vision-ios"))
             implementation(project(":engines:zxing-cpp"))
+            implementation(project(":engines:ocr"))
         }
 
         desktopMain.dependencies {

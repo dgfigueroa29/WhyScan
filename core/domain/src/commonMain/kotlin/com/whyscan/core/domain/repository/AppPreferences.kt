@@ -17,7 +17,7 @@ data class AppPreferences(
      * Modo avanzado: devuelve a la navegación el catálogo de motores, el comparador y las métricas.
      *
      * Está apagado por defecto porque el producto que se publica es un lector de códigos, y un
-     * usuario que abre la app por primera vez no tiene por qué encontrarse ocho motores con sus
+     * usuario que abre la app por primera vez no tiene por qué encontrarse nueve motores con sus
      * latencias. Lo que había antes no era otra app: era esta con el diagnóstico en la portada.
      */
     val advancedMode: Boolean = false,

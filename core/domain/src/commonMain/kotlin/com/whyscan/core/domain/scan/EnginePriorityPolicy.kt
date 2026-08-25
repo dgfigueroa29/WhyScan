@@ -22,10 +22,12 @@ object EnginePriorityPolicy {
             ScannerEngineId.MlKitOcr,
             ScannerEngineId.ManualInput,
         ),
+        // El OCR de iOS es `VisionOcr` y no `MlKitOcr`: ML Kit se distribuye por CocoaPods y este
+        // proyecto no los usa, así que allí el reconocedor de texto es el del sistema.
         ScannerPlatform.Ios to listOf(
             ScannerEngineId.VisionIos,
             ScannerEngineId.ZXingCpp,
-            ScannerEngineId.MlKitOcr,
+            ScannerEngineId.VisionOcr,
             ScannerEngineId.ManualInput,
         ),
         // ZXing en Java, no el port a C++: zxing-cpp no publica artefacto JVM (ADR-0008). Solo

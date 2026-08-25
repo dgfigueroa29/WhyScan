@@ -10,7 +10,7 @@ package com.whyscan.core.model
  * describe algo que ya pasó, así que nada de lo que haya dentro puede cambiar después.
  *
  * Una nota es lo contrario en las dos dimensiones: la escribe una persona y la escribe **más tarde**.
- * Meterla en [Detection] obligaría a los ocho motores, a los seis decoradores y a la suite de
+ * Meterla en [Detection] obligaría a todos los motores, a los seis decoradores y a la suite de
  * contrato a acarrear un campo que en toda esa mitad del sistema es siempre `null`, y dejaría un
  * modelo de dominio en el que "dos lecturas del mismo código son iguales" pasa a depender de si
  * alguien escribió algo. Aquí la separación cuesta un tipo y evita las dos cosas.

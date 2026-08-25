@@ -15,8 +15,17 @@ esta tabla — hay un test que verifica que los IDs y las fases no divergen.
 | `ZXING_CPP`        | ZXing-cpp               | Android, iOS | Cámara + imagen    |     3 ✅     | `io.github.zxing-cpp:android` (Android) y `:kotlin-native` (iOS) — [ADR-0008](adr/ADR-0008-baseline-zxing-cpp.md) |
 | `ZXING_JAVA`       | ZXing (Java)            | Desktop      | Imagen             |     5 ✅     | `com.google.zxing:core`                                                                                           |
 | `BROWSER_DETECTOR` | BarcodeDetector API     | Web          | Cámara + imagen    |     4 ✅     | API del navegador                                                                                                 |
-| `MLKIT_OCR`        | ML Kit Text Recognition | Android, iOS | Cámara + imagen    | 4 ✅ Android | `com.google.mlkit:text-recognition`                                                                               |
+| `MLKIT_OCR`        | ML Kit Text Recognition | Android      | Cámara + imagen    |     4 ✅     | `com.google.mlkit:text-recognition`                                                                               |
+| `VISION_OCR`       | Vision Text Recognition | iOS          | Cámara + imagen    |     4 ✅     | Framework del sistema                                                                                             |
 | `MANUAL_INPUT`     | Entrada manual          | Todas        | Teclado            |    **1**    | Ninguna                                                                                                           |
+
+**Los dos OCR son dos motores y no uno con dos implementaciones.** Hacen el mismo oficio —leer el
+número impreso bajo el código— y comparten `OcrCodeInterpreter`, que es quien valida el dígito de
+control y quien tiene los tests. Lo que no comparten es el reconocedor: ML Kit en Android,
+`VNRecognizeTextRequest` en iOS. Es el criterio de `ZXING_JAVA` frente a `ZXING_CPP` (D13):
+atribuirle a uno lo que leyó el otro falsearía justo la comparación que la app existe para hacer.
+Viven en el mismo módulo `engines/ocr/` porque el intérprete es común y porque así quitar el OCR del
+producto sigue siendo borrar una línea de `settings.gradle.kts`.
 
 ---
 
@@ -75,6 +84,11 @@ Las marcas ⚠️ del OCR reflejan que el motor no decodifica la simbología: **
 bajo el código** y el dominio infiere el formato validando su checksum. Solo funciona con
 simbologías cuyo valor va impreso en texto (típicamente 1D de producto).
 
+La columna **OCR** vale para los dos, `MLKIT_OCR` y `VISION_OCR`: declaran lo mismo porque lo que
+determina qué formatos salen no es el reconocedor sino `OcrCodeInterpreter`, que es común. Dónde se
+diferencian de verdad —qué dígitos acierta cada uno sobre una etiqueta arrugada— no se puede
+declarar en una tabla, y es exactamente lo que la pantalla "Comparar" existe para medir.
+
 ---
 
 ## Capacidades por motor
@@ -110,7 +124,7 @@ resultante como preferido + fallbacks.
 | Plataforma | Cadena por defecto                                                                |
 |------------|-----------------------------------------------------------------------------------|
 | Android    | `GMS_CODE_SCANNER` → `MLKIT_CAMERAX` → `ZXING_CPP` → `MLKIT_OCR` → `MANUAL_INPUT` |
-| iOS        | `VISION_IOS` → `ZXING_CPP` → `MLKIT_OCR` → `MANUAL_INPUT`                         |
+| iOS        | `VISION_IOS` → `ZXING_CPP` → `VISION_OCR` → `MANUAL_INPUT`                        |
 | Desktop    | `ZXING_JAVA` (solo imagen) → `MANUAL_INPUT`                                       |
 | Web        | `BROWSER_DETECTOR` → `MANUAL_INPUT`                                               |
 
