@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!--
+<?xml version="1.0" encoding="utf-8"?><!--
     Capa de primer plano del icono adaptativo: la marca de WhyScan —el módulo fugado—, la misma
     forma que dibuja `WhyScanMark` en `:core:designsystem`. Están duplicadas porque viven en dos
     mundos que no se hablan —Compose y el sistema de recursos de Android—, y por eso las tres copias
@@ -26,13 +25,13 @@
     <!-- El anillo del patrón de localización, abierto por la esquina inferior derecha. -->
     <path
         android:pathData="M38.6,33.1 L63.6,33.1 A5.5,5.5 0 0 1 69.1,38.6 L69.1,49.7 M49.7,69.1 L38.6,69.1 A5.5,5.5 0 0 1 33.1,63.6 L33.1,38.6 A5.5,5.5 0 0 1 38.6,33.1"
-        android:strokeColor="#FFFFFF"
         android:strokeWidth="6.1"
+        android:strokeColor="#FFFFFF"
         android:strokeLineCap="round"
         android:strokeLineJoin="round" />
 
     <!-- El módulo, ya fuera del anillo. -->
     <path
-        android:pathData="M63,58 L73,58 A5,5 0 0 1 78,63 L78,73 A5,5 0 0 1 73,78 L63,78 A5,5 0 0 1 58,73 L58,63 A5,5 0 0 1 63,58 Z"
-        android:fillColor="#5FD9A5" />
+        android:fillColor="#5FD9A5"
+        android:pathData="M63,58 L73,58 A5,5 0 0 1 78,63 L78,73 A5,5 0 0 1 73,78 L63,78 A5,5 0 0 1 58,73 L58,63 A5,5 0 0 1 63,58 Z" />
 </vector>

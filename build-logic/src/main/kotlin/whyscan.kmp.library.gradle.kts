@@ -1,5 +1,3 @@
-import org.gradle.api.artifacts.VersionCatalogsExtension
-
 /**
  * Librería Kotlin Multiplatform con los cuatro targets del proyecto.
  *

@@ -880,7 +880,8 @@ La historia original, que es de donde salió el criterio: `ScannerViewModel` lle
 
 ### D20: componer sin UI (`ComposeKoinContextTest`)
 
-D20 decía que quitar el `KoinContext { }` de `App.kt` "no se puede comprobar sin ejecutar la app". La
+D20 decía que quitar el `KoinContext { }` de `App.kt` "no se puede comprobar sin ejecutar la app".
+La
 premisa era falsa y vale la pena registrar por qué, porque el mismo razonamiento sirve para más
 cosas.
 
@@ -1160,14 +1161,16 @@ defender.
 pendiente antes de publicar, que es el momento exacto en el que había que mirarlo: después de la
 primera subida, cambiar esto le cambia al usuario un comportamiento que ya tenía.
 
-El manifiesto declaraba `android:allowBackup="true"` —el valor por defecto, puesto sin pensarlo— y la
+El manifiesto declaraba `android:allowBackup="true"` —el valor por defecto, puesto sin pensarlo— y
+la
 pantalla de Ajustes afirma, textualmente, que *"WhyScan no pide permiso de internet, así que lo que
 escaneás no puede salir del dispositivo"*. Con Auto Backup activado eso **era falso**: el historial
 de Room vive en `databases/` y las preferencias en `shared_prefs/`, dos de los directorios que Auto
 Backup copia a Google Drive por defecto.
 
 Lo interesante del defecto es su forma, porque es la misma que la de D18 y la del driver de Room:
-**la garantía se comprobó en el sitio equivocado.** La auditoría verificó que la app no tiene cliente
+**la garantía se comprobó en el sitio equivocado.** La auditoría verificó que la app no tiene
+cliente
 HTTP, no declara `INTERNET` y no escribe trazas — todo cierto, y todo sobre lo que *la app* hace.
 Aquí quien sube los datos no es la app, es el sistema, desde fuera del proceso y sin necesitar
 ninguno de los permisos que la app declara. Una invariante que solo se defiende mirando el código
@@ -1185,7 +1188,8 @@ La corrección son dos cosas, y hacen falta las dos:
 El coste está aceptado y dicho: **el historial no sobrevive a un cambio de teléfono.** Para un
 registro local de lo que uno ha escaneado, perderlo al cambiar de móvil es una sorpresa más pequeña
 que encontrárselo en Drive cuando la app promete que no puede salir de aquí. Tiene además una
-consecuencia directa en el trámite de Play: el formulario de seguridad de datos pregunta si los datos
+consecuencia directa en el trámite de Play: el formulario de seguridad de datos pregunta si los
+datos
 se transfieren fuera del dispositivo, y ahora la respuesta "no" es verdad.
 
 ---
@@ -1525,7 +1529,8 @@ veredicto no sirva como criterio, es que **no emite ninguno**. Arranca un emulad
 escribe un archivo con los métodos que ART debe compilar de antemano. Es una grabación, no una
 comprobación. Ver [ADR-0013](adr/ADR-0013-baseline-profile.md).
 
-Los tests unitarios de Android van en el job de `android` y no en `checks` porque necesitan el SDK de
+Los tests unitarios de Android van en el job de `android` y no en `checks` porque necesitan el SDK
+de
 Android; Robolectric pone el resto, así que siguen sin necesitar emulador.
 
 **Dos workflows no están en esta tabla, y los dos por el mismo motivo.** `ios.yml` y
@@ -1547,8 +1552,10 @@ es la situación en la que se coló el `Cannot access 'val IO': it is internal`.
 criterio, es que **no emite ningún veredicto**. Arranca un emulador, recorre la app y escribe un
 archivo con los métodos que ART debe compilar de antemano. Es una grabación, no una comprobación: no
 afirma nada y no puede fallar por lo que la app haga. Se relanza cuando cambia el camino que graba
-—una pantalla nueva, un motor nuevo, una versión de Compose—, no en cada PR, donde añadiría un cuarto
-de hora para producir casi siempre el mismo archivo. Lo que sí está en cada PR es que el cableado del
+—una pantalla nueva, un motor nuevo, una versión de Compose—, no en cada PR, donde añadiría un
+cuarto
+de hora para producir casi siempre el mismo archivo. Lo que sí está en cada PR es que el cableado
+del
 plugin no rompa la build: `assembleRelease` consume el perfil versionado sin arrancar nada. Ver
 [ADR-0013](adr/ADR-0013-baseline-profile.md).
 
@@ -1558,21 +1565,23 @@ esperaba leer— no aparecen en debug. Descubrirlos al preparar una release es t
 
 ### 13.6 Rendimiento del arranque: el baseline profile
 
-Es la única optimización de arranque que este proyecto puede hacer sin tocar arquitectura, y ataca un
+Es la única optimización de arranque que este proyecto puede hacer sin tocar arquitectura, y ataca
+un
 coste real: al abrir, la app monta Compose, resuelve un grafo de Koin con cinco motores y construye
-Room. Todo eso lo **interpreta** ART la primera vez que se ejecuta. Un baseline profile es la lista de
+Room. Todo eso lo **interpreta** ART la primera vez que se ejecuta. Un baseline profile es la lista
+de
 clases y métodos que ART compila por adelantado al instalar; Play la distribuye dentro del AAB, y es
 lo que separa "la app arranca" de "la app arranca rápido la primera vez" — que es justo el arranque
 que mide Android vitals y el que decide si alguien deja la app instalada.
 
 Las piezas y dónde vive cada una:
 
-| Pieza | Dónde | Qué hace |
-|---|---|---|
-| `:baselineprofile` | módulo `com.android.test` | Graba dos recorridos —arranque y navegación por las tres pantallas— sobre un Gradle Managed Device: Pixel 6, API 34, imagen `aosp` |
-| Plugin `androidx.baselineprofile` | `:androidApp` y `:baselineprofile` | Une productor y consumidor; crea las variantes `nonMinifiedRelease` (para grabar sin R8) y `benchmarkRelease` |
-| `androidx.profileinstaller` | `:androidApp` | Instala el perfil en Android 7-11, donde el sistema no lo hace solo. Con `minSdk` 24 eso es la mitad del rango, y la mitad más lenta |
-| `baseline-profile.yml` | CI | El botón que lanza la grabación. Manual, no en cada PR |
+| Pieza                             | Dónde                              | Qué hace                                                                                                                             |
+|-----------------------------------|------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
+| `:baselineprofile`                | módulo `com.android.test`          | Graba dos recorridos —arranque y navegación por las tres pantallas— sobre un Gradle Managed Device: Pixel 6, API 34, imagen `aosp`   |
+| Plugin `androidx.baselineprofile` | `:androidApp` y `:baselineprofile` | Une productor y consumidor; crea las variantes `nonMinifiedRelease` (para grabar sin R8) y `benchmarkRelease`                        |
+| `androidx.profileinstaller`       | `:androidApp`                      | Instala el perfil en Android 7-11, donde el sistema no lo hace solo. Con `minSdk` 24 eso es la mitad del rango, y la mitad más lenta |
+| `baseline-profile.yml`            | CI                                 | El botón que lanza la grabación. Manual, no en cada PR                                                                               |
 
 Tres decisiones que conviene no perder, con su razón, y el detalle en
 [ADR-0013](adr/ADR-0013-baseline-profile.md):
@@ -1886,7 +1895,8 @@ superficie con elevación.
 Se mantiene la decisión de **no usar `dynamicColorScheme`** (Material You). Un tema que cambia con
 el
 fondo de pantalla del usuario es incompatible con una UI que se superpone a un preview de cámara,
-donde el contraste tiene que estar garantizado (RNF-05) — y ahora, además, el esmeralda de WhyScan es
+donde el contraste tiene que estar garantizado (RNF-05) — y ahora, además, el esmeralda de WhyScan
+es
 parte del producto.
 
 #### Tipografía y formas
@@ -1975,12 +1985,14 @@ incógnita pendiente en iOS están en
 #### La marca
 
 `WhyScanMark` es **el módulo fugado**: un *patrón de localización* —los cuadrados anidados que toda
-esquina de un QR lleva para que un lector sepa dónde empieza el código— con el anillo abierto por una
+esquina de un QR lleva para que un lector sepa dónde empieza el código— con el anillo abierto por
+una
 esquina y el módulo central ya fuera, atravesando la brecha. El razonamiento completo, y las cuatro
 alternativas descartadas, están en [ADR-0014](adr/ADR-0014-la-marca-sale-del-objeto.md).
 
 Lo que sustituyó merece quedar dicho, porque explica el criterio: antes eran **cuatro esquinas de
-encuadre y una línea de lectura**, que es el icono `QrCodeScanner` que Material ya trae y el que usan
+encuadre y una línea de lectura**, que es el icono `QrCodeScanner` que Material ya trae y el que
+usan
 otras doscientas apps de la tienda. En una ficha de Play un símbolo así no distingue, **agrupa**.
 
 Es un `ImageVector` dibujado en código y no una imagen empaquetada, por dos motivos: se tiñe con el
@@ -1992,10 +2004,13 @@ Android 13+, y hay PNG de respaldo para API 24 y 25, que no entienden iconos ada
 contenido ocupa 48 dp centrados en el lienzo de 108: sus esquinas quedan a 33,9 dp del centro, por
 debajo de los 36 del radio seguro, así que no se recorta ni con máscara redonda.
 
-**Una restricción que hay que respetar al tocar la forma.** La brecha del anillo termina en 10.4 y el
-módulo empieza en 13.4, en la rejilla de 24. Esa holgura no es estética: en la capa monocroma las dos
+**Una restricción que hay que respetar al tocar la forma.** La brecha del anillo termina en 10.4 y
+el
+módulo empieza en 13.4, en la rejilla de 24. Esa holgura no es estética: en la capa monocroma las
+dos
 piezas se pintan del **mismo color**, así que acercarlas las funde en una mancha y la marca deja de
-contar nada. Por eso el anillo va en trazo y el módulo en macizo — la diferencia entre línea y mancha
+contar nada. Por eso el anillo va en trazo y el módulo en macizo — la diferencia entre línea y
+mancha
 es lo que las separa cuando el color desaparece.
 
 **Antes de todo esto no había icono en absoluto** — el manifiesto no declaraba `android:icon` y
@@ -2158,19 +2173,19 @@ de conveniencia usado como si fuera un dato.
 
 ## 16. Anexo — Decisiones registradas
 
-| ADR                                                                     | Decisión                                                                                                      |
-|-------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
-| [ADR-0001](adr/ADR-0001-compose-multiplatform.md)                       | Adoptar Compose Multiplatform en lugar de KMP + UI nativa                                                     |
-| [ADR-0002](adr/ADR-0002-scanner-engine-spi.md)                          | Modelar los motores como un SPI con capacidades declarativas                                                  |
-| [ADR-0003](adr/ADR-0003-koin-como-di.md)                                | Koin como contenedor de DI en lugar de Hilt                                                                   |
-| [ADR-0004](adr/ADR-0004-flow-como-api-de-sesion.md)                     | `Flow<ScanEvent>` como API de sesión de escaneo                                                               |
-| [ADR-0005](adr/ADR-0005-navegacion-propia.md)                           | Navegación propia mínima en la Fase 1 — revisada en la Fase 3: se mantiene, y se añade restauración de estado |
-| [ADR-0006](adr/ADR-0006-reestructuracion-del-build.md)                  | Reestructurar el build de una vez en lugar de migrar incrementalmente                                         |
-| [ADR-0007](adr/ADR-0007-preview-como-capacidad-del-motor.md)            | El preview de cámara es una capacidad del motor, no de la feature                                             |
-| [ADR-0008](adr/ADR-0008-baseline-zxing-cpp.md)                          | El baseline de comparación es zxing-cpp desde artefactos publicados, en Android e iOS                         |
-| [ADR-0009](adr/ADR-0009-play-feature-delivery-aplazado.md)              | Play Feature Delivery se aplaza: incompatible con KMP, exige Play Store y no hay medición                     |
-| [ADR-0010](adr/ADR-0010-dos-disposiciones-de-la-pantalla-de-escaneo.md) | La pantalla de escaneo tiene dos disposiciones —producto y banco de pruebas— y no una con condicionales       |
-| [ADR-0011](adr/ADR-0011-idioma-de-la-app-por-encima-del-sistema.md)     | El idioma de la app se fija cambiando el locale de la plataforma: `LocalComposeEnvironment` es `internal`     |
-| [ADR-0012](adr/ADR-0012-la-nota-es-del-historial-no-de-la-deteccion.md) | La nota del usuario es un tercer nivel del modelo (`HistoryEntry`) y no un campo de `Detection`               |
-| [ADR-0013](adr/ADR-0013-baseline-profile.md)                            | El baseline profile se graba en un emulador declarado, se versiona y se lanza a mano: es un artefacto, no un criterio|
-| [ADR-0014](adr/ADR-0014-la-marca-sale-del-objeto.md)                    | La marca sale del objeto que la app lee —el patrón de localización de un QR— y no del nombre ni de la categoría|
+| ADR                                                                     | Decisión                                                                                                              |
+|-------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------|
+| [ADR-0001](adr/ADR-0001-compose-multiplatform.md)                       | Adoptar Compose Multiplatform en lugar de KMP + UI nativa                                                             |
+| [ADR-0002](adr/ADR-0002-scanner-engine-spi.md)                          | Modelar los motores como un SPI con capacidades declarativas                                                          |
+| [ADR-0003](adr/ADR-0003-koin-como-di.md)                                | Koin como contenedor de DI en lugar de Hilt                                                                           |
+| [ADR-0004](adr/ADR-0004-flow-como-api-de-sesion.md)                     | `Flow<ScanEvent>` como API de sesión de escaneo                                                                       |
+| [ADR-0005](adr/ADR-0005-navegacion-propia.md)                           | Navegación propia mínima en la Fase 1 — revisada en la Fase 3: se mantiene, y se añade restauración de estado         |
+| [ADR-0006](adr/ADR-0006-reestructuracion-del-build.md)                  | Reestructurar el build de una vez en lugar de migrar incrementalmente                                                 |
+| [ADR-0007](adr/ADR-0007-preview-como-capacidad-del-motor.md)            | El preview de cámara es una capacidad del motor, no de la feature                                                     |
+| [ADR-0008](adr/ADR-0008-baseline-zxing-cpp.md)                          | El baseline de comparación es zxing-cpp desde artefactos publicados, en Android e iOS                                 |
+| [ADR-0009](adr/ADR-0009-play-feature-delivery-aplazado.md)              | Play Feature Delivery se aplaza: incompatible con KMP, exige Play Store y no hay medición                             |
+| [ADR-0010](adr/ADR-0010-dos-disposiciones-de-la-pantalla-de-escaneo.md) | La pantalla de escaneo tiene dos disposiciones —producto y banco de pruebas— y no una con condicionales               |
+| [ADR-0011](adr/ADR-0011-idioma-de-la-app-por-encima-del-sistema.md)     | El idioma de la app se fija cambiando el locale de la plataforma: `LocalComposeEnvironment` es `internal`             |
+| [ADR-0012](adr/ADR-0012-la-nota-es-del-historial-no-de-la-deteccion.md) | La nota del usuario es un tercer nivel del modelo (`HistoryEntry`) y no un campo de `Detection`                       |
+| [ADR-0013](adr/ADR-0013-baseline-profile.md)                            | El baseline profile se graba en un emulador declarado, se versiona y se lanza a mano: es un artefacto, no un criterio |
+| [ADR-0014](adr/ADR-0014-la-marca-sale-del-objeto.md)                    | La marca sale del objeto que la app lee —el patrón de localización de un QR— y no del nombre ni de la categoría       |
