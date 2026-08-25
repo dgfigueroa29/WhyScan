@@ -95,15 +95,32 @@ jobs:
       # dos finales y los dos son malos: o rompe CI el primer día, o se elige tan bajo que no exige
       # nada. Se mide, se mira, y el suelo se fija después con el dato delante — igual que se hizo
       # con dominio y datos.
+      #
+      # La tabla se publica además en el **resumen del run**, y no es cosmético: el log de este job
+      # pasa de las dos mil líneas y el número quedaba enterrado ahí dentro. Un dato que hay que
+      # excavar es un dato que nadie mira, y todo el sentido de medir cobertura es mirarla.
       - name: Cobertura del núcleo y de las features
         run: |
           ./gradlew \
             :core:domain:koverXmlReport :core:data:koverXmlReport \
             :feature:scanner:koverXmlReport :feature:history:koverXmlReport \
             :feature:settings:koverXmlReport
+
           python3 tools/coverage.py \
             core/domain=80 core/data=80 \
-            feature/scanner feature/history feature/settings
+            feature/scanner feature/history feature/settings | tee cobertura.txt
+          # El estado de `python3`, no el de `tee`, que siempre sale con cero.
+          status=${PIPESTATUS[0]}
+
+          {
+            echo '### Cobertura de líneas'
+            echo
+            echo '```text'
+            cat cobertura.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          exit "$status"
 
       - name: Publicar informes
         if: always()
