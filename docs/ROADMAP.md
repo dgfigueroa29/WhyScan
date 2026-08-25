@@ -724,17 +724,39 @@ casualidad: sin `INTERNET`, `allowBackup="false"` con `dataExtractionRules`,
 `sms:`. El CSV neutraliza fórmulas y el texto plano no, con un test que fija por qué. Nada de esto
 hizo falta tocarlo.
 
-### Ronda 10 — accesibilidad 🚧
+### Ronda 10 — accesibilidad ✅
 
-- [ ] **El lector de pantalla lee el código como un número, no como un código.** Las etiquetas
-  habladas interpolan el valor crudo: `a11y_copy_value` recibe `detection.barcode.rawValue` tal
-  cual (`ScannerResults.kt:382`, `:363`, `:404`), así que TalkBack pronuncia un EAN-13 como *"siete
-  billones quinientos un mil…"*. Para cualquier app eso sería un detalle; para **esta** es el
-  producto: el motivo entero de que el valor vaya en monoespaciada es que alguien lo coteja
-  **carácter a carácter** contra una etiqueta impresa, y a quien usa TalkBack se le está negando
-  justo eso. La salida es separar los caracteres al hablarlos —una función pura, en `commonMain`, con
-  su test en `commonTest`—, no un cambio de UI. Es el hallazgo más barato de arreglar de toda la
-  auditoría y el que más cambia para quien lo necesita.
+- [x] **El lector de pantalla ya lee el código como un código.** `spokenValue` en `:core:domain`
+  devuelve el valor con los caracteres separados cuando lo que hay es un código, y tal cual cuando
+  es prosa. Antes las etiquetas habladas interpolaban el `rawValue` crudo, así que TalkBack
+  pronunciaba un EAN-13 como *"siete billones quinientos un mil…"*. Para cualquier app eso sería un
+  detalle; para **esta** es el producto: el motivo entero de que el valor vaya en monoespaciada es
+  que alguien lo coteja **carácter a carácter** contra una etiqueta impresa, y a quien no ve la
+  pantalla se le estaba negando justo eso.
+  **El valor visible también lo lleva**, y ese era el sitio que faltaba en el hallazgo: se habían
+  mirado las etiquetas de los botones, pero el `Text` con el valor no tenía ninguna descripción, así
+  que era el primer sitio donde el lector se equivocaba.
+- [x] **Deletrear no siempre ayuda, y esa es la mitad de la decisión.** Una URL leída letra a letra
+  —`h t t p s d o s p u n t o s…`— no la entiende nadie, y un vCard entero es absurdo. Así que se
+  deletrea solo lo que **no es una palabra**: un `Product`, que es un GTIN por definición, y un texto
+  corto, sin espacios y mayoritariamente numérico —un número de serie, un lote, un Code 128 que
+  ningún motor clasificó—. Se exige *mayoría* de dígitos y no *algún* dígito para que `edificio2` se
+  siga leyendo como palabra; con la regla laxa el arreglo habría sido peor que el defecto.
+  Y no se toca nada del valor: ni se quitan guiones ni se agrupa de tres en tres, porque lo que se
+  anuncia tiene que ser lo mismo que hay en la pantalla y en la etiqueta o el cotejo deja de valer.
+- [x] **Vive en el dominio, y conviene decir por qué no contradice a D15.** Lo que se decide ahí no
+  es *cómo suena* sino **qué clase de valor es** —código o prosa—, que es una afirmación sobre el
+  significado y la misma en los cuatro idiomas. La frase que envuelve al valor ("Copiar %s") la
+  sigue poniendo la pantalla con sus recursos.
+- [ ] **Lo que no cubre ningún test es el cableado.** `spokenValue` tiene ocho casos en
+  `commonTest`, pero que las seis llamadas de `ScannerResults` y `HistoryRow` sigan usándolo no lo
+  comprueba nadie: alguien puede volver a poner `rawValue` y todo seguiría en verde. Cubrirlo pide
+  un test de semántica sobre la pantalla del historial con datos sembrados, que es trabajo de la
+  Ronda 13 y no de esta.
+
+*Sin comprobar en dispositivo:* que la separación por espacios produzca exactamente la prosodia
+esperada en TalkBack y VoiceOver. Es la técnica habitual y no depende del idioma, pero cómo suena de
+verdad solo lo dice un teléfono.
 
 **Mirado y correcto.** Los seis `contentDescription = null` son **todos** decorativos y cinco llevan
 escrito por qué: el icono repite lo que dice el texto de al lado, y anunciarlo haría que el lector
@@ -786,14 +808,27 @@ está.
 
 ### Ronda 13 — verificación 🚧
 
-- [ ] **El suelo de cobertura deja fuera las máquinas de estados.** `tools/coverage.py` exige 80 % en
-  `:core:domain` y `:core:data`, que es donde estaba el agujero cuando se escribió. Pero los cuatro
-  ViewModels —scanner (483 líneas), history (231), comparison (140), settings (87)— viven en
-  `:feature:*`, **fuera del gate**. Tienen tests (once ficheros), así que esto no es "no está
-  probado": es que **nadie sabe el número**, que es literalmente el reproche con el que se abrió la
-  medición de cobertura en la Ronda 5. El defecto se repite un módulo más allá. Añadirlos al gate es
-  una línea del script; lo que hay que decidir antes es el umbral, porque un ViewModel tiene ramas de
-  UI que no son lo mismo que la lógica de dominio.
+El hallazgo era que el suelo de cobertura exigía 80 % en `:core:domain` y `:core:data` mientras los
+cuatro ViewModels —scanner (483 líneas), history (231), comparison (140), settings (87)— vivían en
+`:feature:*`, **fuera del gate**. Tienen tests, así que nunca fue "no está probado": era que **nadie
+sabía el número**, el mismo reproche con el que se abrió la medición en la Ronda 5, un módulo más
+allá.
+
+- [x] **Paso uno: medir.** Kover aplicado a los tres módulos de feature y sus informes generados en
+  CI. Entran en `coverage.py` **sin suelo**, que es un modo nuevo del script y no un descuido:
+  `modulo=80` fija el suyo, `--min` pone el de por defecto, y un módulo a secas se mide y se informa
+  sin poder fallar.
+  Inventar un umbral antes de la primera medición solo tiene dos finales y los dos son malos: o
+  rompe CI el primer día, o se elige tan bajo que no exige nada. Es exactamente cómo se hizo con
+  dominio y datos —primero el número, después el suelo—, y aquella primera medición encontró algo
+  que ningún umbral habría encontrado: código muerto.
+- [ ] **Paso dos: fijar el suelo, con el dato delante.** Y decidir con él una pregunta que ahora
+  mismo no se puede contestar a ciegas: si el número de un módulo de Compose significa algo tal
+  cual, o si hay que excluir los `@Composable` para que hable de la lógica en vez de la UI. La lista
+  de "paquetes con menos cobertura" que imprime el script lo va a decir en la primera ejecución.
+- [ ] **Paso tres: el cableado de la Ronda 10.** Las seis llamadas a `spokenValue` no las comprueba
+  nadie. Un test de semántica sobre el historial con datos sembrados cerraría eso y de paso subiría
+  el número por donde hay que subirlo — cubriendo comportamiento, no líneas.
 
 ### Ronda 14 — rendimiento: sin baseline no hay ronda 🚧
 

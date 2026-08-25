@@ -87,10 +87,23 @@ jobs:
       # usa sube el número y no protege nada.
       #
       # Ya con el dato delante, el umbral del SDD §13.1 se exige de verdad.
-      - name: Cobertura de dominio y datos
+      #
+      # **Y desde la Ronda 13 se miden también las tres features**, que es donde viven los cuatro
+      # ViewModels con la máquina de estados. Entran **sin suelo a propósito**: tienen tests, así
+      # que el problema nunca fue la falta de red — era que nadie sabía el número, el mismo reproche
+      # de la Ronda 5 un módulo más allá. Inventar un umbral antes de la primera medición solo tiene
+      # dos finales y los dos son malos: o rompe CI el primer día, o se elige tan bajo que no exige
+      # nada. Se mide, se mira, y el suelo se fija después con el dato delante — igual que se hizo
+      # con dominio y datos.
+      - name: Cobertura del núcleo y de las features
         run: |
-          ./gradlew :core:domain:koverXmlReport :core:data:koverXmlReport
-          python3 tools/coverage.py core/domain core/data --min 80
+          ./gradlew \
+            :core:domain:koverXmlReport :core:data:koverXmlReport \
+            :feature:scanner:koverXmlReport :feature:history:koverXmlReport \
+            :feature:settings:koverXmlReport
+          python3 tools/coverage.py \
+            core/domain=80 core/data=80 \
+            feature/scanner feature/history feature/settings
 
       - name: Publicar informes
         if: always()

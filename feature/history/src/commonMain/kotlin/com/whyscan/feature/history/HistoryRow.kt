@@ -24,6 +24,7 @@ import com.whyscan.core.designsystem.Spacing
 import com.whyscan.core.domain.scan.OpenKind
 import com.whyscan.core.domain.scan.ResultAction
 import com.whyscan.core.domain.scan.ResultActionsFactory
+import com.whyscan.core.domain.scan.spokenValue
 import com.whyscan.core.model.Detection
 import com.whyscan.core.model.HistoryEntry
 import com.whyscan.feature.history.resources.Res
@@ -69,14 +70,22 @@ internal fun HistoryRow(
     val actions = ResultActionsFactory.actionsFor(detection.barcode, canShare)
     val shareable = ResultActionsFactory.shareableContent(detection.barcode).asText()
 
+    // El valor como hay que **decirlo**, no como hay que escribirlo. Ver `spokenValue`.
+    val spoken = spokenValue(detection.barcode)
+
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(Spacing.md),
             verticalArrangement = Arrangement.spacedBy(Spacing.xs),
         ) {
             // Monoespaciada por lo mismo que en la pantalla de escaneo: es un dato que se coteja
-            // carácter a carácter, y en una proporcional `1`, `l` e `I` se confunden.
-            Text(detection.barcode.rawValue, style = LocalCodeValueStyle.current)
+            // carácter a carácter, y en una proporcional `1`, `l` e `I` se confunden. La
+            // descripción es ese mismo cotejo para quien no ve la pantalla — ver `spokenValue`.
+            Text(
+                text = detection.barcode.rawValue,
+                style = LocalCodeValueStyle.current,
+                modifier = Modifier.semantics { contentDescription = spoken },
+            )
 
             Text(
                 text = detection.metaLine(advancedMode),
@@ -111,7 +120,7 @@ internal fun HistoryRow(
  */
 @Composable
 private fun NoteText(entry: HistoryEntry) {
-    val spoken = stringResource(Res.string.a11y_note_value, entry.detection.barcode.rawValue)
+    val spoken = stringResource(Res.string.a11y_note_value, spokenValue(entry.detection.barcode))
 
     Text(
         text = entry.note.orEmpty(),
@@ -162,7 +171,10 @@ private fun RowActions(
     isEditingNote: Boolean,
     onAction: (HistoryAction) -> Unit,
 ) {
-    val value = entry.detection.barcode.rawValue
+    // El valor como hay que decirlo, no como hay que escribirlo: ver `spokenValue`. En una lista
+    // larga las descripciones son lo único que distingue un botón del de la fila de arriba, así que
+    // aquí importa el doble.
+    val value = spokenValue(entry.detection.barcode)
 
     Row(
         horizontalArrangement = Arrangement.spacedBy(Spacing.sm),

@@ -2,7 +2,17 @@
 """Lee los informes XML de Kover y dice cuánta cobertura hay, por módulo.
 
     ./gradlew :core:domain:koverXmlReport :core:data:koverXmlReport
-    python3 tools/coverage.py core/domain core/data --min 80
+    python3 tools/coverage.py core/domain=80 core/data=80 feature/scanner
+
+## Cómo se dice el suelo de cada módulo
+
+`modulo=80` fija el suyo; `--min 80` pone el de por defecto para los que no lo lleven; un módulo a
+secas y sin `--min` **se mide y se informa, pero no puede fallar**.
+
+Ese último modo existe para una situación concreta y no para escaquearse: cuando se empieza a medir
+algo, todavía no hay un número que defender. Poner un suelo inventado antes de la primera medición
+solo tiene dos finales, y los dos son malos — o rompe CI el primer día, o se elige tan bajo que no
+exige nada. Se mide, se mira el número y **entonces** se fija.
 
 ## Qué problema resuelve
 
@@ -87,7 +97,7 @@ def read_module(module: str) -> tuple[int, int, list[tuple[str, int, int]]]:
 
 def main(argv: list[str]) -> int:
     minimum: float | None = None
-    modules = []
+    modules: list[tuple[str, float | None]] = []
 
     arguments = list(argv)
     while arguments:
@@ -97,8 +107,11 @@ def main(argv: list[str]) -> int:
                 print("--min necesita un número")
                 return 2
             minimum = float(arguments.pop(0))
+        elif "=" in argument:
+            path, _, floor = argument.partition("=")
+            modules.append((path, float(floor)))
         else:
-            modules.append(argument)
+            modules.append((argument, None))
 
     if not modules:
         print(__doc__)
@@ -108,14 +121,20 @@ def main(argv: list[str]) -> int:
     failures = []
 
     print("Cobertura de líneas\n")
-    for module in modules:
+    for module, own_minimum in modules:
+        # El suelo propio manda sobre `--min`, que es solo el de por defecto. Un módulo sin ninguno
+        # de los dos se **mide y se informa** sin poder fallar: es el estado en el que se entra
+        # cuando todavía no hay un número que defender, no un permiso para no tenerlo nunca.
+        floor = own_minimum if own_minimum is not None else minimum
         covered, total, packages = read_module(module)
         share = percentage(covered, total)
         verdict = ""
-        if minimum is not None:
-            verdict = "  ✓" if share >= minimum else f"  ✗ por debajo de {minimum:g} %"
-            if share < minimum:
+        if floor is not None:
+            verdict = "  ✓" if share >= floor else f"  ✗ por debajo de {floor:g} %"
+            if share < floor:
                 failures.append((module, share))
+        else:
+            verdict = "  · solo medido, sin suelo"
         print(f"  {module:<20} {share:6.1f} %   ({covered}/{total} líneas){verdict}")
         worst.extend(packages)
 

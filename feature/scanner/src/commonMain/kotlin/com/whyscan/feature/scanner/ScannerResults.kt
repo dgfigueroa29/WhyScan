@@ -47,6 +47,7 @@ import com.whyscan.core.designsystem.LocalCodeValueStyle
 import com.whyscan.core.designsystem.Radius
 import com.whyscan.core.designsystem.Spacing
 import com.whyscan.core.domain.scan.ResultActionsFactory
+import com.whyscan.core.domain.scan.spokenValue
 import com.whyscan.core.model.Detection
 import com.whyscan.feature.scanner.resources.Res
 import com.whyscan.feature.scanner.resources.a11y_note_add
@@ -302,6 +303,11 @@ internal fun DetectionCard(
     val actions = ResultActionsFactory.actionsFor(detection.barcode, canShare)
     val shareable = ResultActionsFactory.shareableContent(detection.barcode).asText()
 
+    // El valor tal y como hay que **decirlo**, que no es como hay que escribirlo: un EAN-13 seguido
+    // se pronuncia como una cifra de trece dígitos y deja de poder cotejarse contra la etiqueta.
+    // Ver `spokenValue`. Se calcula una vez porque lo usan el propio valor y las cuatro etiquetas.
+    val spoken = spokenValue(detection.barcode)
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -320,6 +326,10 @@ internal fun DetectionCard(
         ) {
             // Monoespaciada: es un dato que se coteja carácter a carácter contra una etiqueta
             // impresa, y en proporcional `1`, `l` e `I` se confunden.
+            //
+            // Y el mismo cotejo, para quien no ve la pantalla: sin la descripción de abajo el
+            // lector pronuncia el valor como una cantidad y la lectura se vuelve inservible. La
+            // decisión tipográfica y esta son la misma decisión por dos caminos distintos.
             Text(
                 text = detection.barcode.rawValue,
                 style = LocalCodeValueStyle.current,
@@ -327,6 +337,7 @@ internal fun DetectionCard(
                 // o se comparte con los botones de abajo, que es lo que se hace con un valor largo.
                 maxLines = CODE_VALUE_MAX_LINES,
                 overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.semantics { contentDescription = spoken },
             )
 
             Text(
@@ -360,7 +371,7 @@ internal fun DetectionCard(
             // le da sentido a un código que el usuario ya no recuerda, así que se lee antes de
             // decidir qué hacer con él.
             if (note != null) {
-                val spokenNote = stringResource(Res.string.a11y_note_value, detection.barcode.rawValue)
+                val spokenNote = stringResource(Res.string.a11y_note_value, spoken)
                 Text(
                     text = note,
                     style = MaterialTheme.typography.bodyMedium,
@@ -379,10 +390,10 @@ internal fun DetectionCard(
                 actions.forEachIndexed { index, action ->
                     // Con varios resultados en pantalla, todos los botones se llaman igual. La
                     // descripción incluye el valor para que "Copiar" diga qué se copia (RNF-05).
-                    val spoken = stringResource(action.spokenResource(), detection.barcode.rawValue)
+                    val spokenAction = stringResource(action.spokenResource(), spoken)
                     val label = stringResource(action.labelResource())
                     val onClick = { onAction(ScannerAction.RunResultAction(action, shareable)) }
-                    val semantics = Modifier.semantics { contentDescription = spoken }
+                    val semantics = Modifier.semantics { contentDescription = spokenAction }
 
                     // La primera acción de la lectura destacada va como botón relleno: es la que el
                     // usuario quiere el 90 % de las veces —abrir el enlace, copiar el número— y con
@@ -401,7 +412,7 @@ internal fun DetectionCard(
             // arriba hacen algo con el código, y esta escribe sobre él.
             val spokenNoteAction = stringResource(
                 if (note == null) Res.string.a11y_note_add else Res.string.a11y_note_edit,
-                detection.barcode.rawValue,
+                spoken,
             )
             TextButton(
                 onClick = { onAction(ScannerAction.EditNote(detection.id)) },
