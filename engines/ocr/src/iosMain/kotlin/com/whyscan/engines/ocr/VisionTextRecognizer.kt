@@ -6,18 +6,18 @@ import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.useContents
 import platform.CoreGraphics.CGPoint
 import platform.ImageIO.CGImagePropertyOrientation
+import platform.ImageIO.kCGImagePropertyOrientationDown
+import platform.ImageIO.kCGImagePropertyOrientationDownMirrored
+import platform.ImageIO.kCGImagePropertyOrientationLeft
+import platform.ImageIO.kCGImagePropertyOrientationLeftMirrored
+import platform.ImageIO.kCGImagePropertyOrientationRight
+import platform.ImageIO.kCGImagePropertyOrientationRightMirrored
+import platform.ImageIO.kCGImagePropertyOrientationUp
+import platform.ImageIO.kCGImagePropertyOrientationUpMirrored
 import platform.UIKit.UIDevice
-import platform.UIKit.UIDeviceOrientationLandscapeLeft
-import platform.UIKit.UIDeviceOrientationLandscapeRight
-import platform.UIKit.UIDeviceOrientationPortraitUpsideDown
+import platform.UIKit.UIDeviceOrientation
 import platform.UIKit.UIImage
-import platform.UIKit.UIImageOrientationDown
-import platform.UIKit.UIImageOrientationDownMirrored
-import platform.UIKit.UIImageOrientationLeft
-import platform.UIKit.UIImageOrientationLeftMirrored
-import platform.UIKit.UIImageOrientationRight
-import platform.UIKit.UIImageOrientationRightMirrored
-import platform.UIKit.UIImageOrientationUpMirrored
+import platform.UIKit.UIImageOrientation
 import platform.Vision.VNImageRequestHandler
 import platform.Vision.VNRecognizeTextRequest
 import platform.Vision.VNRecognizedText
@@ -94,20 +94,26 @@ internal object VisionTextRecognizer {
  *
  * Cuando el sistema no está generando notificaciones de orientación, `orientation` responde
  * "desconocida"; ahí se asume vertical, que es como se sujeta un teléfono para leer una etiqueta.
+ *
+ * Las constantes se cualifican por su tipo y no se importan sueltas, al revés que las de
+ * AVFoundation que usa el resto del proyecto: cinterop no traduce igual todos los `NS_ENUM`, y las
+ * de UIKit no existen como declaraciones de nivel superior. Las de ImageIO sí, y por eso van
+ * importadas. Está escrito porque es exactamente la clase de asimetría que solo se descubre
+ * compilando, y compilar iOS aquí cuesta un workflow entero.
  */
 @OptIn(ExperimentalForeignApi::class)
 internal fun currentCaptureOrientation(): CGImagePropertyOrientation =
     when (UIDevice.currentDevice.orientation) {
-        UIDeviceOrientationPortraitUpsideDown ->
-            CGImagePropertyOrientation.kCGImagePropertyOrientationLeft
+        UIDeviceOrientation.UIDeviceOrientationPortraitUpsideDown ->
+            kCGImagePropertyOrientationLeft
 
-        UIDeviceOrientationLandscapeLeft ->
-            CGImagePropertyOrientation.kCGImagePropertyOrientationUp
+        UIDeviceOrientation.UIDeviceOrientationLandscapeLeft ->
+            kCGImagePropertyOrientationUp
 
-        UIDeviceOrientationLandscapeRight ->
-            CGImagePropertyOrientation.kCGImagePropertyOrientationDown
+        UIDeviceOrientation.UIDeviceOrientationLandscapeRight ->
+            kCGImagePropertyOrientationDown
 
-        else -> CGImagePropertyOrientation.kCGImagePropertyOrientationRight
+        else -> kCGImagePropertyOrientationRight
     }
 
 /**
@@ -120,20 +126,14 @@ internal fun currentCaptureOrientation(): CGImagePropertyOrientation =
 @OptIn(ExperimentalForeignApi::class)
 internal fun UIImage.captureOrientation(): CGImagePropertyOrientation =
     when (imageOrientation) {
-        UIImageOrientationDown -> CGImagePropertyOrientation.kCGImagePropertyOrientationDown
-        UIImageOrientationLeft -> CGImagePropertyOrientation.kCGImagePropertyOrientationLeft
-        UIImageOrientationRight -> CGImagePropertyOrientation.kCGImagePropertyOrientationRight
-        UIImageOrientationUpMirrored ->
-            CGImagePropertyOrientation.kCGImagePropertyOrientationUpMirrored
+        UIImageOrientation.UIImageOrientationDown -> kCGImagePropertyOrientationDown
+        UIImageOrientation.UIImageOrientationLeft -> kCGImagePropertyOrientationLeft
+        UIImageOrientation.UIImageOrientationRight -> kCGImagePropertyOrientationRight
+        UIImageOrientation.UIImageOrientationUpMirrored -> kCGImagePropertyOrientationUpMirrored
+        UIImageOrientation.UIImageOrientationDownMirrored -> kCGImagePropertyOrientationDownMirrored
+        UIImageOrientation.UIImageOrientationLeftMirrored -> kCGImagePropertyOrientationLeftMirrored
+        UIImageOrientation.UIImageOrientationRightMirrored ->
+            kCGImagePropertyOrientationRightMirrored
 
-        UIImageOrientationDownMirrored ->
-            CGImagePropertyOrientation.kCGImagePropertyOrientationDownMirrored
-
-        UIImageOrientationLeftMirrored ->
-            CGImagePropertyOrientation.kCGImagePropertyOrientationLeftMirrored
-
-        UIImageOrientationRightMirrored ->
-            CGImagePropertyOrientation.kCGImagePropertyOrientationRightMirrored
-
-        else -> CGImagePropertyOrientation.kCGImagePropertyOrientationUp
+        else -> kCGImagePropertyOrientationUp
     }
