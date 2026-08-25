@@ -91,6 +91,7 @@ import kotlinx.datetime.minus
 import kotlinx.datetime.toLocalDateTime
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import kotlin.time.Clock
@@ -359,7 +360,7 @@ private fun ClearConfirmation(count: Int, onAction: (HistoryAction) -> Unit) {
     AlertDialog(
         onDismissRequest = { onAction(HistoryAction.DismissClear) },
         title = { Text(stringResource(Res.string.history_clear_title)) },
-        text = { Text(stringResource(Res.string.history_clear_body, count)) },
+        text = { Text(pluralStringResource(Res.plurals.history_clear_body, count, count)) },
         confirmButton = {
             TextButton(onClick = { onAction(HistoryAction.Clear) }) {
                 Text(

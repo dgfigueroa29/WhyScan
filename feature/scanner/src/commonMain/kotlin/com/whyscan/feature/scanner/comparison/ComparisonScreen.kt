@@ -23,6 +23,7 @@ import com.whyscan.core.domain.scan.EngineMetrics
 import com.whyscan.feature.scanner.resources.Res
 import com.whyscan.feature.scanner.resources.action_stop
 import com.whyscan.feature.scanner.resources.comparison_counts
+import com.whyscan.feature.scanner.resources.comparison_detections
 import com.whyscan.feature.scanner.resources.comparison_failures
 import com.whyscan.feature.scanner.resources.comparison_frames
 import com.whyscan.feature.scanner.resources.comparison_frames_per_detection
@@ -36,7 +37,9 @@ import com.whyscan.feature.scanner.resources.comparison_participants
 import com.whyscan.feature.scanner.resources.comparison_reset
 import com.whyscan.feature.scanner.resources.comparison_start
 import com.whyscan.feature.scanner.resources.comparison_title
+import com.whyscan.feature.scanner.resources.comparison_unique_values
 import com.whyscan.feature.scanner.resources.session_error
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -80,8 +83,9 @@ private fun Header(state: ComparisonState, onAction: (ComparisonAction) -> Unit)
 
             if (state.notEnoughEngines) {
                 Text(
-                    text = stringResource(
-                        Res.string.comparison_needs_two_engines,
+                    text = pluralStringResource(
+                        Res.plurals.comparison_needs_two_engines,
+                        state.participants.size,
                         state.participants.size,
                     ),
                     style = MaterialTheme.typography.bodySmall,
@@ -158,10 +162,23 @@ private fun MetricsCard(metrics: EngineMetrics, isLeader: Boolean) {
                 },
             )
             Text(
+                // Dos contadores no caben en un solo plural: `pluralStringResource` elige la
+                // forma con **una** cantidad, así que "1 códigos distintos · 3 lecturas" no tenía
+                // arreglo mientras fuera una sola cadena. Se pluralizan por separado y
+                // `comparison_counts` pasa a ser la plantilla que los une — el separador sigue
+                // siendo traducible, que es lo que se perdería juntándolos en Kotlin.
                 text = stringResource(
                     Res.string.comparison_counts,
-                    metrics.uniqueValues,
-                    metrics.detections,
+                    pluralStringResource(
+                        Res.plurals.comparison_unique_values,
+                        metrics.uniqueValues,
+                        metrics.uniqueValues,
+                    ),
+                    pluralStringResource(
+                        Res.plurals.comparison_detections,
+                        metrics.detections,
+                        metrics.detections,
+                    ),
                 ),
                 style = MaterialTheme.typography.bodySmall,
             )
@@ -176,12 +193,24 @@ private fun MetricsCard(metrics: EngineMetrics, isLeader: Boolean) {
             )
             Text(
                 text = buildString {
-                    append(stringResource(Res.string.comparison_frames, metrics.framesAnalyzed))
+                    append(
+                        pluralStringResource(
+                            Res.plurals.comparison_frames,
+                            metrics.framesAnalyzed,
+                            metrics.framesAnalyzed,
+                        ),
+                    )
                     metrics.framesPerDetection?.let {
                         append(stringResource(Res.string.comparison_frames_per_detection, it))
                     }
                     if (metrics.transientFailures > 0) {
-                        append(stringResource(Res.string.comparison_failures, metrics.transientFailures))
+                        append(
+                            pluralStringResource(
+                                Res.plurals.comparison_failures,
+                                metrics.transientFailures,
+                                metrics.transientFailures,
+                            ),
+                        )
                     }
                 },
                 style = MaterialTheme.typography.labelSmall,

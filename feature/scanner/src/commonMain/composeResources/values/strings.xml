@@ -40,7 +40,10 @@
     <string name="engine_selected">Selected</string>
     <string name="engine_select">Select</string>
     <string name="engine_in_use">In use</string>
-    <string name="engine_formats_count">%1$d formats</string>
+    <plurals name="engine_formats_count">
+        <item quantity="one">%1$d format</item>
+        <item quantity="other">%1$d formats</item>
+    </plurals>
     <string name="engine_supports_continuous"> · continuous</string>
     <string name="engine_supports_multiple"> · multiple</string>
     <string name="engine_supports_torch"> · torch</string>
@@ -86,14 +89,31 @@
     <string name="comparison_start">Compare</string>
     <string name="comparison_reset">Reset</string>
     <string name="comparison_hint">Point at the same code with the comparison running: every engine reads it on its own and the scoreboard shows which one gets there first.</string>
-    <string name="comparison_needs_two_engines">Comparing needs at least two available engines. Right now there are %1$d.</string>
+    <plurals name="comparison_needs_two_engines">
+        <item quantity="one">Comparing needs at least two available engines. Right now there is %1$d.</item>
+        <item quantity="other">Comparing needs at least two available engines. Right now there are %1$d.</item>
+    </plurals>
     <string name="comparison_participants">Taking part: %1$s</string>
     <string name="comparison_leader">%1$s · best</string>
-    <string name="comparison_counts">%1$d distinct codes · %2$d reads</string>
+    <string name="comparison_counts">%1$s · %2$s</string>
+    <plurals name="comparison_unique_values">
+        <item quantity="one">%1$d distinct code</item>
+        <item quantity="other">%1$d distinct codes</item>
+    </plurals>
+    <plurals name="comparison_detections">
+        <item quantity="one">%1$d read</item>
+        <item quantity="other">%1$d reads</item>
+    </plurals>
     <string name="comparison_latencies">first: %1$s · average: %2$s</string>
-    <string name="comparison_frames">%1$d frames</string>
+    <plurals name="comparison_frames">
+        <item quantity="one">%1$d frame</item>
+        <item quantity="other">%1$d frames</item>
+    </plurals>
     <string name="comparison_frames_per_detection"> · %1$d per read</string>
-    <string name="comparison_failures"> · %1$d failures</string>
+    <plurals name="comparison_failures">
+        <item quantity="one"> · %1$d failure</item>
+        <item quantity="other"> · %1$d failures</item>
+    </plurals>
     <string name="comparison_no_data">—</string>
     <string name="comparison_millis">%1$d ms</string>
 
@@ -101,7 +121,10 @@
          these descriptions, a screen reader announces "Copy" five times without saying what. -->
     <string name="a11y_viewfinder">Camera viewfinder</string>
     <string name="a11y_no_detections">No code in the viewfinder</string>
-    <string name="a11y_detections_in_view">%1$d codes in the viewfinder</string>
+    <plurals name="a11y_detections_in_view">
+        <item quantity="one">%1$d code in the viewfinder</item>
+        <item quantity="other">%1$d codes in the viewfinder</item>
+    </plurals>
     <string name="a11y_copy_value">Copy %1$s</string>
     <string name="a11y_share_value">Share %1$s</string>
     <string name="a11y_open_value">Open %1$s</string>

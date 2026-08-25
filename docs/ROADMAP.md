@@ -769,22 +769,34 @@ todo el proyecto, así que los 48 dp de objetivo táctil los pone Material y no 
 comportamiento con la escala tipográfica al máximo. Eso sigue necesitando un teléfono y ya está en
 su bloque.
 
-### Ronda 11 — internacionalización 🚧
+### Ronda 11 — internacionalización ✅
 
-- [ ] **No hay un solo `<plurals>` en los cuatro catálogos, y hay cadenas que cuentan cosas.** El
-  caso visible es `history_clear_body`: *"Se van a eliminar %1$d lecturas, con sus notas"*. Con una
-  sola lectura dice **"Se van a eliminar 1 lecturas"**, y lo dice en el único diálogo irreversible
-  de la app — el sitio donde peor sienta que el texto parezca descuidado, porque es donde el usuario
-  está decidiendo si confiar. El inglés tiene el mismo defecto (`1 scans will be deleted`). Compose
-  Multiplatform resuelve esto con `pluralStringResource`; el trabajo es mecánico y `tools/checks.py`
-  tendrá que aprender a comprobar la paridad de los plurales igual que ya comprueba la de las
-  cadenas.
-- [ ] **La fecha del historial fija el orden día-mes-año.** `history_date` es `%1$d de %2$s de %3$d`
-  en castellano y `%1$d %2$s %3$d` en inglés. Componer la fecha a mano fue una decisión razonable
-  —no hay formateador de fechas común en KMP— pero el inglés **es el respaldo de todo idioma que no
-  sea español**, así que un teléfono en inglés estadounidense ve "25 August 2026" en vez de "August
-  25, 2026", y uno en alemán ve la fecha en inglés con orden británico. Es menor y hay que decir por
-  qué: se equivoca en el orden, no en el dato.
+- [x] **Siete cadenas que contaban cosas pasan a `<plurals>`**, y eran siete y no una: el hallazgo
+  original solo había mirado `history_clear_body`. Al ir a arreglarlo aparecieron
+  `engine_formats_count`, `comparison_frames`, `comparison_failures`, `a11y_detections_in_view`,
+  `comparison_needs_two_engines` y `comparison_counts`. Vale la pena decirlo porque es el patrón de
+  siempre: la auditoría encuentra el ejemplar visible y el arreglo encuentra la familia.
+  El peor era el que estaba a la vista: *"Se van a eliminar **1 lecturas**"*, en el **único diálogo
+  irreversible de la app** — justo donde peor sienta que el texto parezca descuidado, porque es
+  donde el usuario decide si fiarse.
+- [x] **`comparison_counts` no se podía pluralizar tal cual, y ahí estaba lo interesante.** Llevaba
+  **dos** contadores —"%1$d códigos distintos · %2$d lecturas"— y `pluralStringResource` elige la
+  forma a partir de **una** cantidad. Se parte en dos plurales y la cadena queda como plantilla de
+  unión (`%1$s · %2$s`), lo que además conserva el separador dentro del catálogo: juntarlos en
+  Kotlin habría metido puntuación traducible en el código.
+- [x] **`tools/checks.py` aprende a mirar plurales**, y no solo su paridad entre idiomas: comprueba
+  que las dos lenguas declaren **las mismas cantidades**. Una `<item quantity="one">` que falte no
+  rompe la compilación — revienta en ejecución y **solo con el número que la usa**, que es la clase
+  de fallo que aparece con un elemento en la lista y no con dos. Comprobado borrando una a propósito
+  antes de subirlo: la caza y dice qué idioma y qué cantidad.
+
+**Y la fecha del historial se queda como está, que también es una decisión.** El hallazgo decía que
+`history_date` fija el orden día-mes-año y que el inglés, al ser el respaldo de todo idioma que no
+sea español, se lo impone a todo el mundo. Es cierto, pero **cambiarlo no lo arregla**: sin un
+formateador que conozca el locale —y en KMP común no lo hay— cualquier orden fijo se equivoca con
+alguien. Y entre los dos, día-mes-año es el que usan más hablantes de inglés y casi toda Europa, así
+que como respaldo genérico es la mejor de las dos opciones malas. Se deja escrito para no volver a
+"arreglarlo" dando la vuelta a la moneda.
 
 **Mirado y correcto.** 203 claves con paridad inglés/español comprobada en CI antes que ninguna otra
 cosa, y el inglés en la carpeta sin calificador para que sea el respaldo real. Eso ya evita el

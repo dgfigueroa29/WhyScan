@@ -35,7 +35,10 @@
     <string name="engine_selected">Elegido</string>
     <string name="engine_select">Elegir</string>
     <string name="engine_in_use">En uso</string>
-    <string name="engine_formats_count">%1$d formatos</string>
+    <plurals name="engine_formats_count">
+        <item quantity="one">%1$d formato</item>
+        <item quantity="other">%1$d formatos</item>
+    </plurals>
     <string name="engine_supports_continuous"> · continuo</string>
     <string name="engine_supports_multiple"> · múltiple</string>
     <string name="engine_supports_torch"> · linterna</string>
@@ -81,21 +84,41 @@
     <string name="comparison_start">Comparar</string>
     <string name="comparison_reset">Reiniciar</string>
     <string name="comparison_hint">Apuntá al mismo código con la comparación en marcha: cada motor lo leerá por su cuenta y el marcador mostrará quién acierta antes.</string>
-    <string name="comparison_needs_two_engines">Hacen falta al menos dos motores disponibles para comparar. Ahora mismo hay %1$d.</string>
+    <plurals name="comparison_needs_two_engines">
+        <item quantity="one">Hacen falta al menos dos motores disponibles para comparar. Ahora mismo hay %1$d.</item>
+        <item quantity="other">Hacen falta al menos dos motores disponibles para comparar. Ahora mismo hay %1$d.</item>
+    </plurals>
     <string name="comparison_participants">Participan: %1$s</string>
     <string name="comparison_leader">%1$s · mejor</string>
-    <string name="comparison_counts">%1$d códigos distintos · %2$d lecturas</string>
+    <string name="comparison_counts">%1$s · %2$s</string>
+    <plurals name="comparison_unique_values">
+        <item quantity="one">%1$d código distinto</item>
+        <item quantity="other">%1$d códigos distintos</item>
+    </plurals>
+    <plurals name="comparison_detections">
+        <item quantity="one">%1$d lectura</item>
+        <item quantity="other">%1$d lecturas</item>
+    </plurals>
     <string name="comparison_latencies">primera: %1$s · media: %2$s</string>
-    <string name="comparison_frames">%1$d frames</string>
+    <plurals name="comparison_frames">
+        <item quantity="one">%1$d frame</item>
+        <item quantity="other">%1$d frames</item>
+    </plurals>
     <string name="comparison_frames_per_detection"> · %1$d por lectura</string>
-    <string name="comparison_failures"> · %1$d fallos</string>
+    <plurals name="comparison_failures">
+        <item quantity="one"> · %1$d fallo</item>
+        <item quantity="other"> · %1$d fallos</item>
+    </plurals>
     <string name="comparison_no_data">—</string>
     <string name="comparison_millis">%1$d ms</string>
     <!-- Accesibilidad (RNF-05). Los botones de acción repiten etiqueta en cada resultado: sin
          estas descripciones, un lector de pantalla anuncia "Copiar" cinco veces sin decir qué. -->
     <string name="a11y_viewfinder">Visor de la cámara</string>
     <string name="a11y_no_detections">Ningún código en el visor</string>
-    <string name="a11y_detections_in_view">%1$d códigos en el visor</string>
+    <plurals name="a11y_detections_in_view">
+        <item quantity="one">%1$d código en el visor</item>
+        <item quantity="other">%1$d códigos en el visor</item>
+    </plurals>
     <string name="a11y_copy_value">Copiar %1$s</string>
     <string name="a11y_share_value">Compartir %1$s</string>
     <string name="a11y_open_value">Abrir %1$s</string>

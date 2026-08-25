@@ -68,6 +68,7 @@ import com.whyscan.feature.scanner.resources.session_starting
 import com.whyscan.feature.scanner.resources.torch_off
 import com.whyscan.feature.scanner.resources.torch_on
 import com.whyscan.feature.scanner.resources.zoom_ratio
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -155,7 +156,11 @@ private fun CameraViewfinder(previewEngine: CameraPreviewEngine, state: ScannerS
     val inView = if (state.detections.isEmpty()) {
         stringResource(Res.string.a11y_no_detections)
     } else {
-        stringResource(Res.string.a11y_detections_in_view, state.detections.size)
+        pluralStringResource(
+            Res.plurals.a11y_detections_in_view,
+            state.detections.size,
+            state.detections.size,
+        )
     }
     // El texto se arma fuera del `semantics`: su lambda no es composable y `stringResource` sí.
     val description = "${stringResource(Res.string.a11y_viewfinder)}. $inView"

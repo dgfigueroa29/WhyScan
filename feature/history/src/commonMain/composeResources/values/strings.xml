@@ -45,7 +45,10 @@
     <!-- Deleting. One row goes straight through; wiping everything asks first. -->
     <string name="history_delete">Delete</string>
     <string name="history_clear_title">Clear the whole history?</string>
-    <string name="history_clear_body">%1$d scans will be deleted, notes included. There is no copy anywhere, so this cannot be undone.</string>
+    <plurals name="history_clear_body">
+        <item quantity="one">%1$d scan will be deleted, its note included. There is no copy anywhere, so this cannot be undone.</item>
+        <item quantity="other">%1$d scans will be deleted, notes included. There is no copy anywhere, so this cannot be undone.</item>
+    </plurals>
     <string name="history_clear_confirm">Delete everything</string>
     <string name="history_clear_cancel">Keep it</string>
 

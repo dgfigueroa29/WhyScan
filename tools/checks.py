@@ -280,32 +280,69 @@ def check_compose_resources() -> int:
             report(catalog, "falta values/ o values-es/")
             continue
 
-        declared_en = {e.get("name") for e in ET.parse(english).getroot()}
-        declared_es = {e.get("name") for e in ET.parse(spanish).getroot()}
-        total_keys += len(declared_en)
+        strings_en, plurals_en = declared(english)
+        strings_es, plurals_es = declared(spanish)
+        total_keys += len(strings_en) + len(plurals_en)
 
-        for key in sorted(declared_en - declared_es):
-            report(spanish, f"falta la clave '{key}', que sí está en inglés")
-        for key in sorted(declared_es - declared_en):
-            # El catálogo sin calificador es el respaldo de **cualquier** idioma, así que una clave
-            # que solo existe en español revienta para todo el mundo que no hable español.
-            report(english, f"falta la clave '{key}', que sí está en español")
+        for kind, en, es in (("cadena", strings_en, strings_es), ("plural", plurals_en, plurals_es)):
+            for key in sorted(set(en) - set(es)):
+                report(spanish, f"falta el {kind} '{key}', que sí está en inglés")
+            for key in sorted(set(es) - set(en)):
+                # El catálogo sin calificador es el respaldo de **cualquier** idioma, así que una
+                # clave que solo existe en español revienta para todo el que no hable español.
+                report(english, f"falta el {kind} '{key}', que sí está en español")
+
+        # Un `<plurals>` al que le falta una cantidad no rompe la compilación: revienta en ejecución
+        # y solo con el número que la usa. Es justo la clase de fallo que aparece con un elemento en
+        # la lista y no con dos, así que se comprueba que las dos lenguas declaren las mismas.
+        for key in sorted(set(plurals_en) & set(plurals_es)):
+            if plurals_en[key] != plurals_es[key]:
+                falta_es = plurals_en[key] - plurals_es[key]
+                falta_en = plurals_es[key] - plurals_en[key]
+                if falta_es:
+                    report(spanish, f"al plural '{key}' le faltan cantidades: {sorted(falta_es)}")
+                if falta_en:
+                    report(english, f"al plural '{key}' le faltan cantidades: {sorted(falta_en)}")
 
         module = os.path.dirname(os.path.dirname(catalog))
-        used, imported = set(), set()
+        used_strings, used_plurals, imported = set(), set(), set()
         for source in walk(module, ".kt"):
             text = open(source, encoding="utf-8").read()
-            used |= set(re.findall(r"Res\.string\.(\w+)", text))
+            used_strings |= set(re.findall(r"Res\.string\.(\w+)", text))
+            used_plurals |= set(re.findall(r"Res\.plurals\.(\w+)", text))
             imported |= set(re.findall(r"^import [\w.]+\.resources\.(\w+)$", text, re.M))
 
-        for key in sorted(used - imported):
-            report(module, f"se usa Res.string.{key} sin importarla")
-        for key in sorted(used - declared_en):
-            report(module, f"Res.string.{key} no está declarada en ningún catálogo")
-        for key in sorted(declared_en - used):
+        for accessor, used, declared_keys in (
+            ("string", used_strings, set(strings_en)),
+            ("plurals", used_plurals, set(plurals_en)),
+        ):
+            for key in sorted(used - imported):
+                report(module, f"se usa Res.{accessor}.{key} sin importarla")
+            for key in sorted(used - declared_keys):
+                report(module, f"Res.{accessor}.{key} no está declarada en ningún catálogo")
+
+        huerfanas = (set(strings_en) | set(plurals_en)) - used_strings - used_plurals
+        for key in sorted(huerfanas):
             report(module, f"clave huérfana '{key}': está declarada y no la usa nadie")
 
     return total_keys
+
+
+def declared(path: str) -> tuple[list[str], dict[str, set[str]]]:
+    """Las cadenas y los plurales de un catálogo.
+
+    Los plurales vienen con el conjunto de `quantity` que declaran, que es lo que hay que comparar
+    entre idiomas: `one` y `other` no son las mismas en todas las lenguas y olvidar una no lo dice
+    nadie hasta que un usuario da con ese número.
+    """
+    strings, plurals = [], {}
+    for element in ET.parse(path).getroot():
+        name = element.get("name")
+        if element.tag == "plurals":
+            plurals[name] = {item.get("quantity") for item in element}
+        else:
+            strings.append(name)
+    return strings, plurals
 
 
 def main() -> int:
