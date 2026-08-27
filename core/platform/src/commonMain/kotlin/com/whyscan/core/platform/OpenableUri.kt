@@ -13,10 +13,14 @@ private val ALLOWED_SCHEMES = setOf("http", "https", "mailto", "tel", "sms", "ge
  * Si [uri] se puede entregar al sistema para que lo abra.
  *
  * ### Por qué existe, si el dominio ya filtra
- * Porque filtrar en el dominio y abrir en la plataforma son dos sitios distintos, y hoy lo único
- * que impide que llegue aquí un `javascript:`, un `intent://` o un `content://` es que **nadie
- * llama a `openUrl` de otro modo**. Eso es una propiedad del grafo de llamadas, no del método: se
+ * Porque filtrar en el dominio y abrir en la plataforma son dos sitios distintos, y lo único que
+ * impediría que llegue aquí un `javascript:`, un `intent://` o un `content://` sería que **nadie
+ * llame a `openUrl` de otro modo**. Eso es una propiedad del grafo de llamadas, no del método: se
  * cumple hoy y deja de cumplirse el día que alguien añada un camino nuevo, sin que nada avise.
+ *
+ * Ese día ya llegó, y sin drama precisamente por esto: Ajustes abre desde aquí la política de
+ * privacidad y los términos de uso, que son direcciones nuestras y no salen del dominio. La
+ * comprobación las mira igual.
  *
  * En un lector de códigos esa distinción no es teórica. El atacante controla el contenido **entero**
  * del código y la víctima solo tiene que apuntar la cámara; la lista blanca de esquemas es *la*

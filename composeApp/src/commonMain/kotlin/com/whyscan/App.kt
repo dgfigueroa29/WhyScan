@@ -41,7 +41,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.whyscan.core.designsystem.LocalSnackbarHostState
 import com.whyscan.core.designsystem.ProvideAppLanguage
 import com.whyscan.core.designsystem.WhyScanTheme
-import com.whyscan.core.domain.repository.AppPreferences
 import com.whyscan.core.domain.repository.AppPreferencesRepository
 import com.whyscan.feature.history.HistoryScreen
 import com.whyscan.feature.scanner.ScannerScreen
@@ -100,8 +99,13 @@ fun App(
     onDarkThemeResolved: (Boolean) -> Unit = {},
 ) {
     val preferencesRepository = koinInject<AppPreferencesRepository>()
-    val preferences by preferencesRepository.observePreferences()
-        .collectAsStateWithLifecycle(AppPreferences())
+
+    // Sin valor inicial, y esa es la gracia: `observePreferences()` es un `StateFlow` que ya trae
+    // lo leído del almacén, así que la **primera** composición sale con el tema y el idioma de
+    // verdad. Antes se sembraba con `AppPreferences()` y quien tuviera el tema oscuro forzado veía
+    // un fotograma en claro — el mismo destello que la pantalla de arranque de Android existe para
+    // que no ocurra, colándose por el otro lado.
+    val preferences by preferencesRepository.observePreferences().collectAsStateWithLifecycle()
 
     val darkTheme = preferences.themeMode.isDark(isSystemInDarkTheme())
     LaunchedEffect(darkTheme) { onDarkThemeResolved(darkTheme) }
@@ -136,11 +140,16 @@ fun App(
  *
  * ## Por qué pide el repositorio y no el valor ya observado
  *
- * Porque leerlo del estado observado era una **carrera**, y de las que solo se ven en un dispositivo.
- * `collectAsStateWithLifecycle` necesita un valor inicial y ese valor es `AppPreferences()`, con la
- * revisión a `null`: durante la primera composición, un usuario que sí tenía novedades pendientes
- * parece recién instalado, y esta función le marcaría todo como visto antes de que llegara su valor
- * de disco. `current()` devuelve el valor ya leído, sin ese hueco.
+ * Nació de una **carrera**, de las que solo se ven en un dispositivo: `collectAsStateWithLifecycle`
+ * se sembraba con `AppPreferences()`, con la revisión a `null`, así que durante la primera
+ * composición un usuario que sí tenía novedades pendientes parecía recién instalado y esta función
+ * le marcaba todo como visto antes de que llegara su valor de disco.
+ *
+ * **Esa carrera ya no existe**: `observePreferences()` es un `StateFlow` y la composición arranca
+ * con lo leído del almacén. Se sigue pidiendo el repositorio igualmente, y no por inercia: esto no
+ * observa nada, hace **una** pregunta una sola vez —"¿qué vio ya este usuario?"— y `current()` es
+ * la forma de esa pregunta. Recibir el estado observado ataría una decisión de arranque a un valor
+ * que cambia solo.
  *
  * Va dentro del tema para que el diálogo se pinte con los colores y la tipografía que toquen, modo
  * dislexia incluido.

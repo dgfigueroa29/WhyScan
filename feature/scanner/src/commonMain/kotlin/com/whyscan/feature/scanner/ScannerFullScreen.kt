@@ -1,5 +1,7 @@
 package com.whyscan.feature.scanner
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,8 +18,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -57,12 +65,34 @@ internal fun FullScreenPreview(
     onAction: (ScannerAction) -> Unit,
     previewEngine: CameraPreviewEngine?,
 ) {
+    // Entra con un fundido y un acercamiento mínimo, en lugar de aparecer de golpe. Un diálogo que
+    // ocupa la pantalla entera sin transición se lee como un cambio de pantalla que alguien hizo
+    // mal, no como algo que el usuario acaba de abrir.
+    //
+    // **Solo la entrada.** Animar la salida obliga a mantener el diálogo vivo después de que el
+    // usuario haya pedido cerrarlo, y eso —sobre un visor de cámara— se percibe como que la app va
+    // lenta. Al cerrar manda el usuario.
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { shown = true }
+    val appearance by animateFloatAsState(
+        targetValue = if (shown) 1f else 0f,
+        animationSpec = tween(durationMillis = ENTER_MILLIS),
+        label = "aparición de la pantalla completa",
+    )
+
     Dialog(
         onDismissRequest = { onAction(ScannerAction.CloseFullScreen) },
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         Surface(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    alpha = appearance
+                    val scale = ENTER_SCALE + (1f - ENTER_SCALE) * appearance
+                    scaleX = scale
+                    scaleY = scale
+                },
             color = MaterialTheme.colorScheme.surface,
         ) {
             // El diálogo se pinta por encima de las barras del sistema, así que los insets hay que
@@ -130,3 +160,9 @@ private fun Header(state: ScannerState, onAction: (ScannerAction) -> Unit) {
         )
     }
 }
+
+/** Lo que tarda la pantalla completa en aparecer. El mismo tiempo que la entrada entre destinos. */
+private const val ENTER_MILLIS = 220
+
+/** De dónde arranca el acercamiento. Un matiz de que "llega", no una entrada con voluntad propia. */
+private const val ENTER_SCALE = 0.94f

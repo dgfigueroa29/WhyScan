@@ -1,6 +1,6 @@
 package com.whyscan.core.domain.repository
 
-import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Preferencias de **la app**, no del escaneo.
@@ -88,7 +88,19 @@ enum class AppLanguage(val id: String, val tag: String?) {
 }
 
 interface AppPreferencesRepository {
-    fun observePreferences(): Flow<AppPreferences>
+
+    /**
+     * Las preferencias, observables y **con valor desde el primer instante**.
+     *
+     * Es `StateFlow` y no `Flow` a propósito, y no es una filtración de la implementación: estas
+     * preferencias se leen de un almacén síncrono al construir el repositorio, así que preguntar
+     * "¿cuáles son ahora?" siempre tiene respuesta. Declararlo permite que la raíz de la app
+     * componga **ya** con el tema y el idioma de verdad; con un `Flow` había que sembrar la
+     * composición con `AppPreferences()` y el primer fotograma salía en claro para quien tuviera
+     * el tema oscuro forzado.
+     */
+    fun observePreferences(): StateFlow<AppPreferences>
+
     suspend fun current(): AppPreferences
     suspend fun setThemeMode(mode: ThemeMode)
     suspend fun setLanguage(language: AppLanguage)

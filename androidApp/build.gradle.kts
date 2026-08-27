@@ -79,6 +79,12 @@ dependencies {
     implementation(libs.koin.android)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.core.ktx)
+
+    // La pantalla de arranque del sistema. Es la única forma de que el hueco entre que el sistema
+    // crea la ventana y Compose pinta la primera pantalla deje de ser un rectángulo de color: ver
+    // el comentario de `Theme.WhyScan.Starting` en `themes.xml`.
+    implementation(libs.androidx.core.splashscreen)
+
     implementation(libs.compose.runtime)
 
     // Instala el baseline profile que viaja en el APK/AAB.

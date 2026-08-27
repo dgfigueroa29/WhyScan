@@ -5,10 +5,12 @@ import com.whyscan.core.domain.repository.AppLanguage
 import com.whyscan.core.domain.repository.AppPreferences
 import com.whyscan.core.domain.repository.AppPreferencesRepository
 import com.whyscan.core.domain.repository.ThemeMode
+import com.whyscan.core.platform.NoOpPlatformActions
+import com.whyscan.core.platform.PlatformActions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
@@ -114,8 +116,57 @@ class SettingsViewModelTest {
         }
     }
 
-    private fun viewModel(canChooseLanguage: Boolean = true) =
-        SettingsViewModel(preferences = repository, canChooseLanguage = canChooseLanguage)
+    @Test
+    fun `un enlace que nadie sabe abrir se le cuenta al usuario`() = runTest {
+        // Es la única acción de esta pantalla cuyo resultado no se ve: el tema y el idioma cambian
+        // delante del usuario, y abrir un documento se va de la app. Sin este aviso, un dispositivo
+        // sin navegador dejaba el botón sin hacer nada y sin decir por qué.
+        val viewModel = viewModel(platformActions = NoOpPlatformActions())
+
+        viewModel.effects.test {
+            viewModel.onAction(SettingsAction.OpenLink("https://ejemplo.test/privacidad"))
+
+            assertEquals(SettingsEffect.ShowMessage(SettingsMessage.LinkFailed), awaitItem())
+        }
+    }
+
+    @Test
+    fun `un enlace que si se abre no dice nada`() = runTest {
+        // Abrir el navegador **es** el feedback. Un aviso encima sería ruido sobre algo que el
+        // usuario ya está viendo.
+        val opened = mutableListOf<String>()
+        val viewModel = viewModel(platformActions = RecordingPlatformActions(opened))
+
+        viewModel.effects.test {
+            viewModel.onAction(SettingsAction.OpenLink("https://ejemplo.test/privacidad"))
+
+            expectNoEvents()
+        }
+        assertEquals(listOf("https://ejemplo.test/privacidad"), opened)
+    }
+
+    private fun viewModel(
+        canChooseLanguage: Boolean = true,
+        platformActions: PlatformActions = NoOpPlatformActions(),
+    ) = SettingsViewModel(
+        preferences = repository,
+        platformActions = platformActions,
+        canChooseLanguage = canChooseLanguage,
+    )
+}
+
+/** Anota qué direcciones se pidió abrir, y dice que todas se abrieron. */
+private class RecordingPlatformActions(
+    private val opened: MutableList<String>,
+) : PlatformActions {
+    override val canShare: Boolean = false
+    override suspend fun copyToClipboard(text: String): Boolean = false
+    override suspend fun share(text: String): Boolean = false
+
+    override suspend fun openUrl(url: String): Boolean {
+        opened += url
+        return true
+    }
 }
 
 private class FakeAppPreferencesRepository : AppPreferencesRepository {
@@ -126,7 +177,7 @@ private class FakeAppPreferencesRepository : AppPreferencesRepository {
         state.value = preferences
     }
 
-    override fun observePreferences(): Flow<AppPreferences> = state.asStateFlow()
+    override fun observePreferences(): StateFlow<AppPreferences> = state.asStateFlow()
 
     override suspend fun current(): AppPreferences = state.first()
 

@@ -42,9 +42,25 @@
     <string name="settings_about">About</string>
     <string name="settings_whats_new">What is new</string>
     <string name="settings_privacy">No account, no tracking, no network. WhyScan does not request internet access at all, and the system backup is switched off, so what you scan stays on this device — and leaves it only if you export it yourself.</string>
+    <string name="settings_privacy_policy">Privacy policy</string>
+    <string name="settings_terms">Terms of use</string>
+
+    <!--
+        The addresses of the two legal documents.
+
+        They are catalogue strings and not Kotlin constants **because they change with the
+        language**: each points at the version of the document the user can actually read. And they
+        live on the web rather than inside the app on purpose: a legal text changes without the app
+        changing, and the Play listing needs to link the policy without opening the APK.
+    -->
+    <string name="legal_privacy_url">https://github.com/dgfigueroa29/WhyScan/blob/main/docs/legal/privacy.md</string>
+    <string name="legal_terms_url">https://github.com/dgfigueroa29/WhyScan/blob/main/docs/legal/terms.md</string>
+
+    <string name="message_link_failed">The document could not be opened. There may be no browser installed.</string>
 
     <!-- Accessibility (RNF-05): the theme and language options are chips whose label alone does not
          say what they set. "Dark" on its own could be anything. -->
+    <string name="a11y_opens_externally">%1$s. Opens outside the app</string>
     <string name="a11y_theme_option">Theme: %1$s</string>
     <string name="a11y_language_option">Language: %1$s</string>
 </resources>

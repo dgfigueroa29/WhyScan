@@ -1,11 +1,15 @@
 package com.whyscan.feature.scanner
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -222,14 +226,33 @@ private fun DetectedResults(
     val older = state.detections.drop(1)
     var expanded by remember { mutableStateOf(false) }
 
-    DetectionCard(
-        detection = latest,
-        canShare = state.canShare,
-        advancedMode = advancedMode,
-        highlighted = true,
-        note = state.noteOf(latest.id),
-        onAction = onAction,
-    )
+    // La lectura nueva **entra**: sube desde abajo mientras la anterior se desvanece, en lugar de
+    // sustituirla de un fotograma al siguiente. En escaneo continuo esa sustitución seca era lo que
+    // hacía dudar de si la app había leído otro código o seguía enseñando el mismo.
+    //
+    // `contentKey` va sobre el id y no sobre la lectura entera: anotar un código produce un estado
+    // nuevo con la misma lectura dentro, y sin esto la tarjeta se reanimaría al guardar la nota.
+    AnimatedContent(
+        targetState = latest,
+        contentKey = { it.id },
+        transitionSpec = {
+            (fadeIn(tween(ARRIVAL_MILLIS)) + slideInVertically { height -> height / ARRIVAL_OFFSET })
+                .togetherWith(fadeOut(tween(ARRIVAL_MILLIS)))
+        },
+        label = "última lectura",
+    ) { detection ->
+        DetectionCard(
+            detection = detection,
+            canShare = state.canShare,
+            advancedMode = advancedMode,
+            // La que se está yendo deja de estar destacada, y eso no es solo color: `highlighted`
+            // marca la tarjeta como región viva, y dos a la vez harían que un lector de pantalla
+            // anunciara la lectura vieja justo detrás de la nueva.
+            highlighted = detection.id == state.latestDetection?.id,
+            note = state.noteOf(detection.id),
+            onAction = onAction,
+        )
+    }
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -496,6 +519,12 @@ internal fun ManualEntryField(state: ScannerState, onAction: (ScannerAction) -> 
         HorizontalDivider()
     }
 }
+
+/** Lo que tarda una lectura nueva en ocupar el sitio de la anterior. */
+private const val ARRIVAL_MILLIS = 180
+
+/** Desde qué fracción de su propia altura sube. Un empujón, no un desplazamiento de pantalla. */
+private const val ARRIVAL_OFFSET = 4
 
 private const val CODE_VALUE_MAX_LINES = 3
 

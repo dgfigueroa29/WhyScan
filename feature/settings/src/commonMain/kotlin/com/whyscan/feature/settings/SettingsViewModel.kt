@@ -6,29 +6,41 @@ import com.whyscan.core.domain.concurrency.launchCatching
 import com.whyscan.core.domain.repository.AppLanguage
 import com.whyscan.core.domain.repository.AppPreferencesRepository
 import com.whyscan.core.domain.repository.ThemeMode
+import com.whyscan.core.platform.PlatformActions
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 /**
  * Ajustes de la app: aspecto, accesibilidad, idioma y modo avanzado.
  *
- * No tiene efectos de una sola vez —ni `SharedFlow` ni snackbars— y no es un olvido: aquí todo
- * cambio *es* su propio feedback, porque el tema y el idioma se ven en la propia pantalla en cuanto
- * se tocan. Un aviso de "guardado" sobre algo que ya cambió delante del usuario es ruido.
+ * **Ningún ajuste avisa de que se guardó, y no es un olvido**: aquí cada cambio *es* su propio
+ * feedback, porque el tema y el idioma se ven en la propia pantalla en cuanto se tocan. Un aviso de
+ * "guardado" sobre algo que ya cambió delante del usuario es ruido.
+ *
+ * El canal de efectos existe **solo** por lo que sí puede fallar en silencio: abrir la política de
+ * privacidad o los términos de uso sale de la app, y si no hay quien los abra no pasa nada y nadie
+ * sabe por qué. Ver [SettingsEffect].
  *
  * [canChooseLanguage] llega por constructor y no se consulta aquí dentro para que el ViewModel se
  * pueda testear en `commonTest` con los dos valores, que es donde vive la única lógica que tiene.
  */
 class SettingsViewModel(
     private val preferences: AppPreferencesRepository,
+    private val platformActions: PlatformActions,
     canChooseLanguage: Boolean,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SettingsState(canChooseLanguage = canChooseLanguage))
     val state: StateFlow<SettingsState> = _state.asStateFlow()
+
+    private val _effects = MutableSharedFlow<SettingsEffect>()
+    val effects: SharedFlow<SettingsEffect> = _effects.asSharedFlow()
 
     init {
         launchSafely {
@@ -60,6 +72,23 @@ class SettingsViewModel(
             is SettingsAction.SetLanguage -> setLanguage(action.language)
             is SettingsAction.SetAdvancedMode -> setAdvancedMode(action.enabled)
             is SettingsAction.SetDyslexiaFriendly -> setDyslexiaFriendly(action.enabled)
+            is SettingsAction.OpenLink -> openLink(action.url)
+        }
+    }
+
+    /**
+     * Abre un documento legal fuera de la app.
+     *
+     * La dirección llega ya resuelta desde la pantalla —ver [SettingsAction.OpenLink]— y
+     * `PlatformActions` la comprueba otra vez contra la lista blanca de esquemas antes de
+     * entregársela al sistema. Que aquí solo lleguen direcciones nuestras es una propiedad del
+     * grafo de llamadas, y esa comprobación existe justamente para no depender de eso.
+     */
+    private fun openLink(url: String) {
+        launchSafely {
+            if (!platformActions.openUrl(url)) {
+                _effects.emit(SettingsEffect.ShowMessage(SettingsMessage.LinkFailed))
+            }
         }
     }
 

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
@@ -22,6 +23,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,13 +34,18 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.whyscan.core.designsystem.LocalSnackbarHostState
 import com.whyscan.core.designsystem.Spacing
 import com.whyscan.core.designsystem.WhyScanMark
 import com.whyscan.core.domain.repository.AppLanguage
 import com.whyscan.core.domain.repository.ThemeMode
 import com.whyscan.feature.settings.resources.Res
 import com.whyscan.feature.settings.resources.a11y_language_option
+import com.whyscan.feature.settings.resources.a11y_opens_externally
 import com.whyscan.feature.settings.resources.a11y_theme_option
+import com.whyscan.feature.settings.resources.legal_privacy_url
+import com.whyscan.feature.settings.resources.legal_terms_url
+import com.whyscan.feature.settings.resources.message_link_failed
 import com.whyscan.feature.settings.resources.settings_about
 import com.whyscan.feature.settings.resources.settings_accessibility
 import com.whyscan.feature.settings.resources.settings_advanced
@@ -52,6 +59,8 @@ import com.whyscan.feature.settings.resources.settings_language_english
 import com.whyscan.feature.settings.resources.settings_language_spanish
 import com.whyscan.feature.settings.resources.settings_language_system
 import com.whyscan.feature.settings.resources.settings_privacy
+import com.whyscan.feature.settings.resources.settings_privacy_policy
+import com.whyscan.feature.settings.resources.settings_terms
 import com.whyscan.feature.settings.resources.settings_theme
 import com.whyscan.feature.settings.resources.settings_theme_dark
 import com.whyscan.feature.settings.resources.settings_theme_hint
@@ -59,14 +68,36 @@ import com.whyscan.feature.settings.resources.settings_theme_light
 import com.whyscan.feature.settings.resources.settings_theme_system
 import com.whyscan.feature.settings.resources.settings_whats_new
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun SettingsScreen(viewModel: SettingsViewModel = koinViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val snackbarHostState = LocalSnackbarHostState.current
+
+    LaunchedEffect(viewModel) {
+        viewModel.effects.collect { effect ->
+            when (effect) {
+                is SettingsEffect.ShowMessage ->
+                    snackbarHostState.showSnackbar(resolve(effect.message))
+            }
+        }
+    }
 
     SettingsContent(state = state, onAction = viewModel::onAction)
+}
+
+/**
+ * El ViewModel dice qué pasó; aquí se le pone nombre.
+ *
+ * Es `suspend` con `getString` en lugar de `@Composable` con `stringResource` porque se la llama
+ * desde dentro de un `LaunchedEffect`, que es una corrutina y **no** un contexto composable. Mismo
+ * criterio que en las otras dos pantallas con efectos.
+ */
+private suspend fun resolve(message: SettingsMessage): String = when (message) {
+    SettingsMessage.LinkFailed -> getString(Res.string.message_link_failed)
 }
 
 @Composable
@@ -153,8 +184,52 @@ fun SettingsContent(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+
+                // Los dos documentos legales, enlazados y no embutidos en la app. Son textos que
+                // cambian sin que la app cambie —y que Play necesita poder leer desde su ficha, no
+                // desde dentro del APK—, así que la fuente de verdad es la web y aquí va el enlace.
+                // Cada dirección apunta al documento en el idioma que el usuario tiene puesto: son
+                // recursos, y por eso se resuelven aquí.
+                LegalLink(
+                    label = stringResource(Res.string.settings_privacy_policy),
+                    url = stringResource(Res.string.legal_privacy_url),
+                    onAction = onAction,
+                )
+                LegalLink(
+                    label = stringResource(Res.string.settings_terms),
+                    url = stringResource(Res.string.legal_terms_url),
+                    onAction = onAction,
+                )
             }
         }
+    }
+}
+
+/**
+ * Un documento legal, que se abre fuera de la app.
+ *
+ * Lleva el icono de "esto se va a otra parte" a propósito: un botón de texto en una lista de
+ * ajustes promete una pantalla más de la app, y lo que va a pasar es que se abre el navegador. Para
+ * quien no ve la pantalla, esa misma advertencia va en la descripción hablada, porque el icono es
+ * decorativo y la etiqueta sola —"Política de privacidad"— tampoco lo diría.
+ */
+@Composable
+private fun LegalLink(label: String, url: String, onAction: (SettingsAction) -> Unit) {
+    val spoken = stringResource(Res.string.a11y_opens_externally, label)
+
+    TextButton(
+        onClick = { onAction(SettingsAction.OpenLink(url)) },
+        contentPadding = PaddingValues(0.dp),
+        modifier = Modifier.semantics { contentDescription = spoken },
+    ) {
+        Text(label)
+        Icon(
+            imageVector = Icons.Filled.Language,
+            contentDescription = null,
+            modifier = Modifier
+                .padding(start = Spacing.xs)
+                .size(Spacing.md),
+        )
     }
 }
 

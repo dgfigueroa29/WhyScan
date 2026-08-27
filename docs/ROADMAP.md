@@ -896,6 +896,46 @@ el cuerpo de letra subido, que es como las va a ver mucha gente.
   ahora" vive detrás del modo avanzado, que está apagado por defecto: estrenárselo a todo el mundo
   sería contarle a la mayoría una función que no va a ver
 
+### Ronda 16 — el defecto que atrapaba al usuario, el arranque y lo legal ✅
+
+- [x] **Cerrar la cámara la hacía aparecer otra vez, y llevaba ahí desde la Fase 2.** El Google Code
+  Scanner encabeza la cadena en Android y abre su propia pantalla a pantalla completa; al cerrarla
+  con el botón atrás emite `ScanError.Cancelled`, que es fatal, y `FallbackScannerEngine` hacía con
+  él lo que hace con cualquier fallo fatal: **pasar al motor siguiente y volver a abrir la cámara**.
+  El fallo de fondo era conceptual: `isFatal` respondía a una pregunta —"¿puede seguir esta
+  sesión?"— y se le estaba pidiendo otra —"¿merece la pena probar otro motor?"—. Ahora son dos, y
+  `allowsFallback` dice que cancelar no es una avería sino el usuario diciendo que no quiere seguir.
+  Es exactamente la clase de defecto que la tabla de "qué cubre a los motores de cámara sin
+  emulador" anuncia: la degradación se testea entera con motores falsos, pero **qué emite el motor
+  de Google al cerrarse solo se ve en un teléfono**
+- [x] **Pantalla de arranque de verdad, con `androidx.core:core-splashscreen`.** El comentario de
+  `themes.xml` llevaba tiempo diciendo que el `windowBackground` cubría el hueco "con un rectángulo
+  de color" y que cerrarlo del todo era "una decisión aparte". Se tomó: la marca del lanzador,
+  centrada, con relevo al tema normal vía `postSplashScreenTheme` y salida animada. De paso cierra
+  el caso que el color solo no podía —sistema en claro con la app forzada a oscuro— sujetándola
+  hasta que la primera composición resuelve el tema
+- [x] **`observePreferences()` pasa a ser `StateFlow`, y el primer fotograma deja de mentir.** La
+  raíz se sembraba con `AppPreferences()` porque `collectAsStateWithLifecycle` exige un valor
+  inicial; como el repositorio lee del almacén al construirse, ese valor era una copia falsa que
+  duraba un fotograma —y era el fotograma claro de quien tiene el tema oscuro. No es filtrar la
+  implementación: estas preferencias **siempre** tienen valor actual, y ahora el tipo lo dice
+- [x] **Tres animaciones, y las que no se hicieron.** Se añaden la salida de la pantalla de arranque,
+  la entrada de la pantalla completa de "Probar ahora" y la llegada de una lectura nueva a la hoja
+  de resultados —que además ya no deja dos tarjetas marcadas como región viva a la vez—. **No** se
+  animó el cambio entre los estados del visor: un `AnimatedContent` mantiene compuesto lo que sale,
+  así que al degradar de motor habría dos superficies de cámara vivas peleándose por la sesión. Y
+  **no** se añadió el latido del contorno de detección: una animación infinita sobre la pantalla de
+  la cámara es un bucle de repintado permanente en el sitio donde la batería más importa
+- [x] **Política de privacidad y términos de uso, escritos y enlazados** desde Ajustes → Acerca de,
+  en los dos idiomas (`docs/legal/`). Las direcciones son cadenas del catálogo y no constantes,
+  porque cada una apunta al documento en el idioma que el usuario tiene puesto. Los documentos son
+  **comprobables**: cada afirmación se corresponde con algo verificable en el código —el manifiesto
+  sin `INTERNET`, `allowBackup="false"`, la lista blanca de esquemas— y el único matiz real, que el
+  escáner del sistema es un componente de Google, está dicho con nombre en lugar de escondido
+- [x] **Ajustes estrena canal de efectos, y el KDoc que decía que no lo necesitaba se corrigió en vez
+  de borrarse.** Era cierto mientras cada cambio se veía en la propia pantalla; abrir un documento
+  fuera de la app es la primera acción de Ajustes cuyo fracaso es invisible
+
 ### Antes de la ficha de Play, esto va primero
 
 Lo de abajo es trámite de tienda. Lo de esta lista no. Se hizo el repaso a propósito antes de tocar
@@ -947,8 +987,12 @@ que falta es un teléfono.
   una
   ficha existente. **Sin red en el entorno de desarrollo, esto no se pudo verificar aquí**
 - [ ] Capturas, gráfico de cabecera 1024×500 y textos de la ficha, en los dos idiomas
-- [ ] Política de privacidad publicada y formulario de seguridad de datos. Es el trámite más corto
-  de todos: sin `INTERNET`, la respuesta a casi todo es "no se recoge nada"
+- [ ] Política de privacidad **publicada** y formulario de seguridad de datos. El documento ya está
+  escrito y enlazado desde Ajustes (`docs/legal/`, Ronda 16); lo que falta es de tienda: pegar la
+  dirección en Play Console y rellenar el formulario. Sin `INTERNET`, la respuesta a casi todo es
+  "no se recoge nada", con la única salvedad que el propio documento nombra — el escáner del
+  sistema es un componente de Google. Queda una decisión que no es técnica: **qué correo de
+  contacto** va en la ficha; los documentos remiten hoy a las incidencias del repositorio
 - [ ] Firma de release y `bundle` en vez de APK
 
 **Criterio de salida:** alguien que no sabe qué es un motor de escaneo abre la app, lee un código y
