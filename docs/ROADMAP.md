@@ -853,6 +853,49 @@ allá.
   teléfono, y hasta entonces esta ronda existe para que el hueco tenga nombre en vez de parecer que
   nadie lo miró.
 
+### Ronda 15 — botones que caben, y probar un motor de verdad ✅
+
+No es una ronda de la auditoría por pilares: sale de mirar las pantallas en un ancho estrecho y con
+el cuerpo de letra subido, que es como las va a ver mucha gente.
+
+- [x] **Las filas de acciones se salían de la pantalla, y la culpa era de las palabras.** Una fila
+  del historial llevaba cinco botones de texto seguidos —"Abrir enlace · Copiar · Compartir ·
+  Agregar nota · Eliminar"—, y la barra del propio historial otros cuatro con "Borrar" al final. En
+  la pantalla de escaneo el problema ya estaba **reconocido y esquivado**: anotar vivía en su propia
+  fila justo porque un cuarto botón no cabía. Convertidas en icono las acciones que tienen un
+  símbolo que ya no hay que aprender —copiar, compartir, anotar, eliminar, y los tres mandos del
+  comparador: comparar, detener, reiniciar—, cabe todo y anotar vuelve con las demás.
+- [x] **Abrir conserva la palabra, y esa es la línea.** "Abrir enlace", "Llamar", "Escribir",
+  "Enviar SMS" y "Ver en el mapa" son cinco cosas distintas que ningún icono separa; ahí la etiqueta
+  es lo único que dice qué va a pasar al tocar. La regla vive en un tipo, `ResultActionLook`, y no
+  en un `if` repartido por las pantallas
+- [x] **No se pierde nada por el camino (RNF-05).** Cada icono lleva su descripción hablada, y en las
+  acciones sobre un resultado es la de siempre —la que ya incluía el valor—, así que un lector de
+  pantalla sigue diciendo "Copiar 7 7 0 1…" y no "Copiar" cinco veces. Las cadenas que dejaron de
+  dibujarse pero siguen nombrando al botón se quedaron; las que no nombraban nada —`result_copy`,
+  `result_share`, `history_delete`— se borraron de los dos catálogos, que es lo que impide que
+  alguien las traduzca por gusto
+- [x] **"Probar ahora", al lado de "Elegir" en cada ficha de motor.** Elegir guardaba una preferencia
+  y devolvía al usuario a la misma lista de fichas, donde a la vista no cambiaba nada; la pregunta
+  que uno se hace delante del catálogo es "¿qué tal lee **este**?", y esa solo la contesta la cámara
+  abierta. Ahora elige el motor, reinicia la sesión con él y abre el visor a pantalla completa. Solo
+  sale en los motores que declaran `LiveCamera`, que es la regla de siempre: la UI no nombra
+  motores, lee capacidades
+- [x] **La pantalla completa es un `Dialog` y no un destino.** La pantalla de escaneo vive dentro del
+  `Scaffold`, entre la barra de navegación y los insets: cualquier cosa dibujada ahí nace recortada.
+  Un destino más, además, sería un sitio al que se puede volver con el botón atrás desde donde no
+  tiene sentido. Dentro se reutiliza todo —el mismo `ViewfinderArea` y la misma tarjeta de
+  resultado—, y el visor de debajo deja de componer su superficie mientras tanto: **dos vistas de
+  preview sobre el mismo motor se pelean por la sesión**, y ese es un sexto caso con nombre en el
+  `when` del visor, no un `previewEngine = null` que mentiría diciendo "pausada"
+- [x] **Cubierto donde se puede:** tres tests nuevos en `ScannerViewModelTest` sobre probar un motor,
+  cerrar la prueba sin deshacer la elección, y que salir de la pantalla no deje la pantalla completa
+  abierta. Lo que **no** cubre nadie es que se vea bien ni que la cámara se comporte dentro de un
+  diálogo: eso sigue necesitando el teléfono de siempre
+- [x] **Sin entrada en "Qué hay de nuevo", a propósito.** Los iconos se entienden solos y "Probar
+  ahora" vive detrás del modo avanzado, que está apagado por defecto: estrenárselo a todo el mundo
+  sería contarle a la mayoría una función que no va a ver
+
 ### Antes de la ficha de Play, esto va primero
 
 Lo de abajo es trámite de tienda. Lo de esta lista no. Se hizo el repaso a propósito antes de tocar

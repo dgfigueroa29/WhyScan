@@ -1,15 +1,22 @@
 package com.whyscan.feature.scanner
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -17,12 +24,15 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import com.whyscan.core.designsystem.Spacing
 import com.whyscan.core.domain.model.EngineStatus
 import com.whyscan.core.model.BarcodeFormat
+import com.whyscan.core.model.ScanSource
 import com.whyscan.core.scanner.EngineAvailability
 import com.whyscan.feature.scanner.resources.Res
+import com.whyscan.feature.scanner.resources.a11y_try_engine
 import com.whyscan.feature.scanner.resources.action_auto
 import com.whyscan.feature.scanner.resources.action_dismiss
 import com.whyscan.feature.scanner.resources.availability_available
@@ -39,6 +49,7 @@ import com.whyscan.feature.scanner.resources.engine_selected
 import com.whyscan.feature.scanner.resources.engine_supports_continuous
 import com.whyscan.feature.scanner.resources.engine_supports_multiple
 import com.whyscan.feature.scanner.resources.engine_supports_torch
+import com.whyscan.feature.scanner.resources.engine_try_now
 import com.whyscan.feature.scanner.resources.formats_hint
 import com.whyscan.feature.scanner.resources.formats_title
 import com.whyscan.feature.scanner.resources.session_error
@@ -150,6 +161,11 @@ internal fun WorkbenchControls(state: ScannerState, onAction: (ScannerAction) ->
 /**
  * Ficha de un motor. Se renderiza **entera desde el descriptor**: ni un solo `when` sobre el id.
  * Es la prueba de que las capacidades declarativas hacen genérica a la UI.
+ *
+ * @param onTry probar el motor en el acto, con el visor a pantalla completa. Es la respuesta a la
+ *   pregunta que deja "Elegir" sin contestar: elegir guarda una preferencia y devuelve al usuario a
+ *   la misma lista de fichas, donde a la vista no ha cambiado nada. Lo que uno quiere delante del
+ *   catálogo es **ver leer** a este motor, y para eso hace falta la cámara abierta.
  */
 @Composable
 internal fun EngineCard(
@@ -157,6 +173,7 @@ internal fun EngineCard(
     selected: Boolean,
     active: Boolean,
     onSelect: () -> Unit,
+    onTry: () -> Unit,
 ) {
     val descriptor = status.descriptor
     val capabilities = descriptor.capabilities
@@ -204,7 +221,13 @@ internal fun EngineCard(
                 style = MaterialTheme.typography.labelSmall,
             )
 
-            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+            // Se desplaza en horizontal: son hasta tres chips —"Elegido", "Probar ahora" y "En
+            // uso"— y en un teléfono estrecho con el cuerpo de letra subido el tercero se salía por
+            // la derecha sin que nada avisara de que estaba ahí.
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+            ) {
                 AssistChip(
                     onClick = onSelect,
                     enabled = status.isUsable,
@@ -213,6 +236,28 @@ internal fun EngineCard(
                         Text(stringResource(label))
                     },
                 )
+
+                // "Probar ahora" solo sale en los motores que leen de la cámara en vivo, que es la
+                // regla de siempre: la UI no nombra motores, lee capacidades. Ofrecérselo a la
+                // entrada manual sería abrir un visor a pantalla completa sobre algo que no captura
+                // nada.
+                if (ScanSource.LiveCamera in capabilities.sources) {
+                    val spoken = stringResource(Res.string.a11y_try_engine, descriptor.displayName)
+                    AssistChip(
+                        onClick = onTry,
+                        enabled = status.isUsable,
+                        modifier = Modifier.semantics { contentDescription = spoken },
+                        label = { Text(stringResource(Res.string.engine_try_now)) },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Filled.PhotoCamera,
+                                contentDescription = null,
+                                modifier = Modifier.size(AssistChipDefaults.IconSize),
+                            )
+                        },
+                    )
+                }
+
                 if (active) {
                     AssistChip(
                         onClick = {},

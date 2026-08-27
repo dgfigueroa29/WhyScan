@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -20,6 +21,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarResult
@@ -337,8 +339,15 @@ private fun HistoryToolbar(
                     Text(stringResource(format.labelResource()))
                 }
             }
-            OutlinedButton(onClick = { onAction(HistoryAction.ConfirmClear) }) {
-                Text(stringResource(Res.string.history_clear))
+            // Icono y no palabra: los tres formatos de exportación ya ocupan la fila, y "Borrar"
+            // detrás de ellos era lo primero que se salía de la pantalla. El diálogo que sale al
+            // pulsarlo sigue diciendo con todas las letras qué se va a borrar y cuánto.
+            OutlinedIconButton(onClick = { onAction(HistoryAction.ConfirmClear) }) {
+                Icon(
+                    imageVector = Icons.Filled.DeleteForever,
+                    contentDescription = stringResource(Res.string.history_clear),
+                    tint = MaterialTheme.colorScheme.error,
+                )
             }
         }
     }

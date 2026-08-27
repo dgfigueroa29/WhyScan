@@ -17,14 +17,17 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -46,6 +49,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import com.whyscan.core.designsystem.LocalCodeValueStyle
 import com.whyscan.core.designsystem.Radius
 import com.whyscan.core.designsystem.Spacing
+import com.whyscan.core.domain.scan.ResultAction
 import com.whyscan.core.domain.scan.ResultActionsFactory
 import com.whyscan.core.domain.scan.spokenValue
 import com.whyscan.core.model.Detection
@@ -386,41 +390,81 @@ internal fun DetectionCard(
                 )
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+            // Anotar viaja ahora en la **misma** fila que las demás acciones, y no en una propia.
+            // Estaba aparte porque un cuarto botón de texto se salía de la pantalla; con copiar y
+            // compartir convertidos en iconos (ver `ResultActionLook`) el sitio sobra, y el lápiz
+            // suelto en su propio renglón quedaba huérfano.
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 actions.forEachIndexed { index, action ->
-                    // Con varios resultados en pantalla, todos los botones se llaman igual. La
-                    // descripción incluye el valor para que "Copiar" diga qué se copia (RNF-05).
-                    val spokenAction = stringResource(action.spokenResource(), spoken)
-                    val label = stringResource(action.labelResource())
-                    val onClick = { onAction(ScannerAction.RunResultAction(action, shareable)) }
-                    val semantics = Modifier.semantics { contentDescription = spokenAction }
+                    ResultActionButton(
+                        action = action,
+                        spoken = spoken,
+                        // La primera acción de la lectura destacada va rellena: es la que el
+                        // usuario quiere el 90 % de las veces —abrir el enlace, copiar el número— y
+                        // con tres botones iguales no había ninguna pista de cuál.
+                        prominent = index == 0 && highlighted,
+                        onClick = { onAction(ScannerAction.RunResultAction(action, shareable)) },
+                    )
+                }
 
-                    // La primera acción de la lectura destacada va como botón relleno: es la que el
-                    // usuario quiere el 90 % de las veces —abrir el enlace, copiar el número— y con
-                    // tres botones de texto iguales no había ninguna pista de cuál.
-                    if (index == 0 && highlighted) {
-                        Button(onClick = onClick, modifier = semantics) { Text(label) }
-                    } else {
-                        TextButton(onClick = onClick, modifier = semantics) { Text(label) }
-                    }
+                val spokenNoteAction = stringResource(
+                    if (note == null) Res.string.a11y_note_add else Res.string.a11y_note_edit,
+                    spoken,
+                )
+                IconButton(
+                    onClick = { onAction(ScannerAction.EditNote(detection.id)) },
+                    modifier = Modifier.semantics { contentDescription = spokenNoteAction },
+                ) {
+                    // El lápiz vale para las dos: si la lectura ya tiene nota se lee encima, así que
+                    // el botón no tiene que contarlo. Quien no ve la pantalla sí lo distingue, por
+                    // la descripción de arriba.
+                    Icon(imageVector = Icons.Filled.Edit, contentDescription = null)
                 }
             }
+        }
+    }
+}
 
-            // Anotar va en su propia fila y no junto a las demás acciones. La de arriba ya puede
-            // llevar tres botones —abrir, copiar, compartir— y un cuarto se sale de la pantalla en
-            // cuanto el idioma alarga una etiqueta. Además no es la misma clase de cosa: las de
-            // arriba hacen algo con el código, y esta escribe sobre él.
-            val spokenNoteAction = stringResource(
-                if (note == null) Res.string.a11y_note_add else Res.string.a11y_note_edit,
-                spoken,
-            )
-            TextButton(
-                onClick = { onAction(ScannerAction.EditNote(detection.id)) },
-                modifier = Modifier.semantics { contentDescription = spokenNoteAction },
-            ) {
-                Text(
-                    stringResource(if (note == null) Res.string.note_add else Res.string.note_edit),
-                )
+/**
+ * Un botón de acción sobre el resultado, con símbolo o con palabra según lo que diga [look].
+ *
+ * @param spoken el valor tal y como hay que **decirlo**. Con varios resultados en pantalla todos
+ *   estos botones se llaman igual, y sin el valor dentro de la descripción un lector de pantalla
+ *   anuncia "Copiar" cinco veces sin decir qué (RNF-05). Con el icono en lugar de la palabra esto
+ *   deja de ser un detalle de accesibilidad y pasa a ser lo único que nombra al botón.
+ * @param prominent si es la acción principal de la lectura destacada, que va rellena.
+ */
+@Composable
+private fun ResultActionButton(
+    action: ResultAction,
+    spoken: String,
+    prominent: Boolean,
+    onClick: () -> Unit,
+) {
+    val spokenAction = stringResource(action.spokenResource(), spoken)
+    val semantics = Modifier.semantics { contentDescription = spokenAction }
+
+    when (val look = action.look()) {
+        is ResultActionLook.Symbol -> if (prominent) {
+            FilledIconButton(onClick = onClick, modifier = semantics) {
+                Icon(imageVector = look.icon, contentDescription = null)
+            }
+        } else {
+            IconButton(onClick = onClick, modifier = semantics) {
+                Icon(imageVector = look.icon, contentDescription = null)
+            }
+        }
+
+        is ResultActionLook.Word -> if (prominent) {
+            Button(onClick = onClick, modifier = semantics) {
+                Text(stringResource(look.label))
+            }
+        } else {
+            TextButton(onClick = onClick, modifier = semantics) {
+                Text(stringResource(look.label))
             }
         }
     }

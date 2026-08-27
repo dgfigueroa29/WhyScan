@@ -24,6 +24,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -254,6 +255,45 @@ class ScannerViewModelTest {
         viewModel.onAction(ScannerAction.SelectEngine(null))
 
         assertNull(viewModel.state.value.selectedEngineId)
+    }
+
+    @Test
+    fun `probar un motor lo elige y lleva el visor a pantalla completa`() = runTest {
+        // Es lo que "Elegir" no hace: guardar la preferencia y devolver al usuario a la misma lista
+        // de fichas, donde a la vista no cambia nada.
+        val viewModel = viewModel(FakeEngine(ScannerEngineId.MlKitCameraX))
+
+        viewModel.onAction(ScannerAction.TryEngine(ScannerEngineId.MlKitCameraX))
+
+        assertEquals(ScannerEngineId.MlKitCameraX, viewModel.state.value.selectedEngineId)
+        assertEquals(ScannerEngineId.MlKitCameraX, preferences.current().preferredEngineId)
+        assertTrue(viewModel.state.value.fullScreenPreview)
+    }
+
+    @Test
+    fun `cerrar la pantalla completa no deshace la eleccion del motor`() = runTest {
+        val viewModel = viewModel(FakeEngine(ScannerEngineId.MlKitCameraX))
+        viewModel.onAction(ScannerAction.TryEngine(ScannerEngineId.MlKitCameraX))
+
+        viewModel.onAction(ScannerAction.CloseFullScreen)
+
+        assertFalse(viewModel.state.value.fullScreenPreview)
+        // Se vuelve al banco con el motor probado ya elegido, que es el estado en el que uno quiere
+        // seguir mirando las fichas.
+        assertEquals(ScannerEngineId.MlKitCameraX, viewModel.state.value.selectedEngineId)
+    }
+
+    @Test
+    fun `al dejar de verse la pantalla tampoco queda la pantalla completa abierta`() = runTest {
+        // El ViewModel sobrevive a la navegación. Sin esto, volver del historial devolvía un visor a
+        // pantalla completa —y sin cámara detrás, porque la sesión sí se paró— tapando el catálogo
+        // que el usuario venía a ver.
+        val viewModel = viewModel(FakeEngine(ScannerEngineId.MlKitCameraX))
+        viewModel.onAction(ScannerAction.TryEngine(ScannerEngineId.MlKitCameraX))
+
+        viewModel.onAction(ScannerAction.ScreenHidden)
+
+        assertFalse(viewModel.state.value.fullScreenPreview)
     }
 
     @Test

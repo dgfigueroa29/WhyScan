@@ -96,11 +96,13 @@ class ScannerViewModel(
         when (action) {
             ScannerAction.Refresh -> refresh()
             ScannerAction.ScreenShown -> screenShown()
-            ScannerAction.ScreenHidden -> stopSession()
+            ScannerAction.ScreenHidden -> screenHidden()
             ScannerAction.ClearDetections -> _state.update { it.copy(detections = emptyList()) }
             ScannerAction.StartSession -> startSession()
             ScannerAction.StopSession -> stopSession()
             is ScannerAction.SelectEngine -> selectEngine(action.id)
+            is ScannerAction.TryEngine -> tryEngine(action.id)
+            ScannerAction.CloseFullScreen -> _state.update { it.copy(fullScreenPreview = false) }
             is ScannerAction.ToggleFormat -> toggleFormat(action.format)
             is ScannerAction.SetContinuous -> setContinuous(action.enabled)
             is ScannerAction.ManualInputChanged -> _state.update { it.copy(manualInput = action.value) }
@@ -182,6 +184,18 @@ class ScannerViewModel(
         refresh()
     }
 
+    /**
+     * La pantalla dejó de verse: se apaga la cámara y se cierra la pantalla completa.
+     *
+     * Lo segundo no es limpieza por gusto. El ViewModel sobrevive a la navegación, así que sin esto
+     * quien saliera al historial con el visor a pantalla completa abierto volvería a encontrárselo
+     * —sin cámara detrás, porque la sesión sí se paró— tapando el banco de motores que venía a ver.
+     */
+    private fun screenHidden() {
+        _state.update { it.copy(fullScreenPreview = false) }
+        stopSession()
+    }
+
     private fun observePreferenceChanges() {
         launchSafely {
             settings.observe().collect { preferences ->
@@ -261,6 +275,23 @@ class ScannerViewModel(
                 stopSession()
                 startSession()
             }
+        }
+    }
+
+    /**
+     * Probar un motor en el acto: se elige, se reinicia la sesión con él y el visor se va a pantalla
+     * completa.
+     *
+     * La sesión se reinicia **siempre**, y ahí está la diferencia con [selectEngine], que solo lo
+     * hace si ya estaba escaneando. Aquí no hay ambigüedad posible: el usuario acaba de pedir ver a
+     * este motor trabajando, así que dejarlo en pausa sería contestar que no a lo que pulsó.
+     */
+    private fun tryEngine(id: ScannerEngineId) {
+        launchSafely {
+            settings.preferEngine(id)
+            _state.update { it.copy(fullScreenPreview = true) }
+            stopSession()
+            startSession()
         }
     }
 

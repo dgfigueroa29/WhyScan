@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FlashOff
 import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.NoPhotography
 import androidx.compose.material.icons.filled.Pause
@@ -55,6 +56,9 @@ import com.whyscan.feature.scanner.resources.action_grant_camera
 import com.whyscan.feature.scanner.resources.action_resume
 import com.whyscan.feature.scanner.resources.action_scan_from_image
 import com.whyscan.feature.scanner.resources.action_stop
+import com.whyscan.feature.scanner.resources.fullscreen_close
+import com.whyscan.feature.scanner.resources.fullscreen_elsewhere_body
+import com.whyscan.feature.scanner.resources.fullscreen_elsewhere_title
 import com.whyscan.feature.scanner.resources.no_camera_body
 import com.whyscan.feature.scanner.resources.no_camera_title
 import com.whyscan.feature.scanner.resources.paused_body
@@ -74,10 +78,10 @@ import org.jetbrains.compose.resources.stringResource
 /**
  * El visor y todo lo que se superpone a él.
  *
- * Cinco cosas pueden ocupar este espacio y son excluyentes: el catálogo cargando, la petición de
- * permiso, el aviso de que aquí no hay cámara, la cámara de verdad, o la cámara **pausada**.
- * Resolverlo con un `when` y no con condiciones sueltas es lo que impide el estado imposible de
- * siempre — el visor negro con un cartel de permiso encima.
+ * Seis cosas pueden ocupar este espacio y son excluyentes: el catálogo cargando, la petición de
+ * permiso, el aviso de que aquí no hay cámara, la cámara de verdad, la cámara **pausada**, o el
+ * visor mudado a pantalla completa. Resolverlo con un `when` y no con condiciones sueltas es lo que
+ * impide el estado imposible de siempre — el visor negro con un cartel de permiso encima.
  *
  * ## Por qué hay un caso "pausado" y antes no
  *
@@ -88,6 +92,13 @@ import org.jetbrains.compose.resources.stringResource
  *
  * Ahora el spinner solo aparece mientras [SessionStatus.Starting], que es cuando de verdad hay algo
  * en marcha. Pausado es un estado con nombre, con su icono y con la salida a la vista.
+ *
+ * @param previewMoved el visor de verdad está en otra parte —hoy, en la pantalla completa de
+ *   "Probar ahora"—, así que aquí no se compone una segunda superficie de cámara. **Dos vistas de
+ *   preview sobre el mismo motor se pelean por la sesión**, y la que pierde se queda en negro. Es un
+ *   sexto caso excluyente y por eso entra en el `when` con los otros cinco, en vez de resolverse
+ *   pasando `previewEngine = null` — eso caía en la rama de "pausado", que es mentira: la cámara
+ *   está encendida, solo que en otro sitio.
  */
 @Composable
 internal fun ViewfinderArea(
@@ -95,6 +106,7 @@ internal fun ViewfinderArea(
     previewEngine: CameraPreviewEngine?,
     onAction: (ScannerAction) -> Unit,
     advancedMode: Boolean,
+    previewMoved: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -106,6 +118,10 @@ internal fun ViewfinderArea(
     ) {
         when {
             state.isLoading -> CircularProgressIndicator()
+
+            // Antes que nada: mientras el visor esté a pantalla completa, aquí no se pinta cámara
+            // aunque el resto de condiciones dieran para ello. Ver el KDoc de `previewMoved`.
+            previewMoved -> PreviewElsewhere(onAction)
 
             state.needsCameraPermission -> PermissionRequest(onAction)
 
@@ -120,24 +136,28 @@ internal fun ViewfinderArea(
             else -> CameraPaused(onAction)
         }
 
-        SessionBadge(
-            state = state,
-            advancedMode = advancedMode,
-            modifier = Modifier.align(Alignment.TopStart).padding(Spacing.md),
-        )
+        // Los mandos van con el visor: si se fue a pantalla completa, no se quedan aquí duplicados.
+        // La píldora de estado es además una región viva, y dos anunciarían lo mismo dos veces.
+        if (!previewMoved) {
+            SessionBadge(
+                state = state,
+                advancedMode = advancedMode,
+                modifier = Modifier.align(Alignment.TopStart).padding(Spacing.md),
+            )
 
-        ViewfinderControls(
-            state = state,
-            onAction = onAction,
-            modifier = Modifier.align(Alignment.TopEnd).padding(Spacing.md),
-        )
-
-        if (state.canControlZoom) {
-            ZoomControl(
+            ViewfinderControls(
                 state = state,
                 onAction = onAction,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(Spacing.md),
+                modifier = Modifier.align(Alignment.TopEnd).padding(Spacing.md),
             )
+
+            if (state.canControlZoom) {
+                ZoomControl(
+                    state = state,
+                    onAction = onAction,
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(Spacing.md),
+                )
+            }
         }
     }
 }
@@ -218,6 +238,27 @@ private fun CameraPaused(onAction: (ScannerAction) -> Unit) {
     ) {
         Button(onClick = { onAction(ScannerAction.StartSession) }) {
             Text(stringResource(Res.string.action_resume))
+        }
+    }
+}
+
+/**
+ * La cámara está encendida, pero su visor se fue a pantalla completa.
+ *
+ * Lo normal es que esto quede tapado por el propio diálogo, y aun así tiene que decir algo cierto:
+ * un rectángulo apagado con la sesión en marcha es exactamente la clase de estado sin nombre que ya
+ * costó un spinner infinito en este mismo `when` (ver el KDoc de arriba). Se ve de verdad mientras
+ * el diálogo se va, y es la salida si algún día deja de tapar la pantalla entera.
+ */
+@Composable
+private fun PreviewElsewhere(onAction: (ScannerAction) -> Unit) {
+    ViewfinderMessage(
+        icon = Icons.Filled.Fullscreen,
+        title = stringResource(Res.string.fullscreen_elsewhere_title),
+        body = stringResource(Res.string.fullscreen_elsewhere_body),
+    ) {
+        Button(onClick = { onAction(ScannerAction.CloseFullScreen) }) {
+            Text(stringResource(Res.string.fullscreen_close))
         }
     }
 }

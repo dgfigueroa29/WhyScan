@@ -48,6 +48,15 @@ data class ScannerState(
     val noteTargetId: String? = null,
     /** Lo que hay escrito en ese campo ahora mismo. */
     val noteDraft: String = "",
+    /**
+     * El visor está ocupando la pantalla entera para probar un motor concreto (`Probar ahora`).
+     *
+     * Es estado y no un parámetro de la UI porque quien lo enciende es una acción —elegir el motor y
+     * arrancar la sesión ocurren con él— y quien lo apaga puede ser el usuario **o** el propio
+     * ciclo de vida: salir de la pantalla lo cierra, para que volver devuelva el banco de motores
+     * donde estaba y no un visor a pantalla completa sin contexto.
+     */
+    val fullScreenPreview: Boolean = false,
     val error: ScanError? = null,
 ) {
     val usableEngines: List<EngineStatus> get() = catalog.filter { it.isUsable }
@@ -106,6 +115,16 @@ data class ScannerState(
     /** La lectura más reciente, que es la que la hoja de resultados destaca. */
     val latestDetection: Detection? get() = detections.firstOrNull()
 
+    /**
+     * Cómo se llama el motor que está leyendo, tal y como se le enseña a una persona.
+     *
+     * Sale del descriptor y no de una tabla en la UI, que es la misma regla de siempre: la pantalla
+     * no conoce ningún motor. El id —`mlkit-camerax`— no vale aquí: la pantalla completa la abre
+     * quien está probando un motor y quiere leer el nombre que vio en la ficha.
+     */
+    val activeEngineName: String?
+        get() = catalog.firstOrNull { it.id == activeEngineId }?.descriptor?.displayName
+
     /** La nota que ya tiene una lectura, o `null` si no tiene. */
     fun noteOf(detectionId: String): String? = notes[detectionId]
 }
@@ -137,6 +156,24 @@ sealed interface ScannerAction {
     data object StartSession : ScannerAction
     data object StopSession : ScannerAction
     data class SelectEngine(val id: ScannerEngineId?) : ScannerAction
+
+    /**
+     * Probar un motor **ahora**: lo elige, reinicia la sesión con él y abre el visor a pantalla
+     * completa.
+     *
+     * Es lo que [SelectEngine] no hace y nunca prometió hacer: guardar la preferencia y devolver al
+     * usuario a una lista de fichas donde, a la vista, no cambia nada. La pregunta que se hace
+     * delante del catálogo es "¿qué tal lee **este**?", y esa solo la contesta la cámara abierta.
+     */
+    data class TryEngine(val id: ScannerEngineId) : ScannerAction
+
+    /**
+     * Cerrar el visor a pantalla completa.
+     *
+     * **No para la sesión**: se vuelve al banco de motores con la cámara viva y el motor probado ya
+     * elegido, que es justo el estado en el que uno quiere seguir mirando las fichas.
+     */
+    data object CloseFullScreen : ScannerAction
     data class ToggleFormat(val format: BarcodeFormat) : ScannerAction
     data class SetContinuous(val enabled: Boolean) : ScannerAction
     data class ManualInputChanged(val value: String) : ScannerAction

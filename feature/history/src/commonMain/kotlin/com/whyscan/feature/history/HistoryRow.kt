@@ -5,7 +5,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Card
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -17,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import com.whyscan.core.designsystem.LocalCodeValueStyle
@@ -33,7 +41,6 @@ import com.whyscan.feature.history.resources.a11y_delete_value
 import com.whyscan.feature.history.resources.a11y_note_value
 import com.whyscan.feature.history.resources.a11y_open_value
 import com.whyscan.feature.history.resources.a11y_share_value
-import com.whyscan.feature.history.resources.history_delete
 import com.whyscan.feature.history.resources.history_note_add
 import com.whyscan.feature.history.resources.history_note_cancel
 import com.whyscan.feature.history.resources.history_note_edit
@@ -41,13 +48,11 @@ import com.whyscan.feature.history.resources.history_note_hint
 import com.whyscan.feature.history.resources.history_note_save
 import com.whyscan.feature.history.resources.history_row_latency
 import com.whyscan.feature.history.resources.history_row_meta
-import com.whyscan.feature.history.resources.result_copy
 import com.whyscan.feature.history.resources.result_open_email
 import com.whyscan.feature.history.resources.result_open_link
 import com.whyscan.feature.history.resources.result_open_map
 import com.whyscan.feature.history.resources.result_open_phone
 import com.whyscan.feature.history.resources.result_open_sms
-import com.whyscan.feature.history.resources.result_share
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
@@ -176,40 +181,59 @@ private fun RowActions(
     // aquí importa el doble.
     val value = spokenValue(entry.detection.barcode)
 
+    // Cinco botones caben en una fila **si no son palabras**. Con "Abrir enlace · Copiar ·
+    // Compartir · Agregar nota · Eliminar" la fila se salía de la pantalla en cualquier teléfono, y
+    // con el cuerpo de letra subido no llegaba ni a la mitad. Lo que dicen no se pierde: es su
+    // descripción hablada, que además lleva el valor dentro (RNF-05).
     Row(
-        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         actions.forEach { action ->
             // El historial es una lista larga de botones que se llaman igual. Sin el valor
             // dentro de la descripción, un lector de pantalla los hace indistinguibles.
             val spoken = stringResource(action.spokenResource(), value)
-            TextButton(
-                onClick = { onAction(HistoryAction.RunResultAction(action, shareable)) },
-                modifier = Modifier.semantics { contentDescription = spoken },
-            ) {
-                Text(stringResource(action.labelResource()))
+            val onClick = { onAction(HistoryAction.RunResultAction(action, shareable)) }
+            val semantics = Modifier.semantics { contentDescription = spoken }
+
+            // Abrir conserva su palabra: "Abrir enlace", "Llamar" y "Ver en el mapa" son cosas
+            // distintas que ningún icono separa. Copiar y compartir sí tienen el suyo.
+            when (val look = action.look()) {
+                is ResultActionLook.Symbol -> IconButton(onClick = onClick, modifier = semantics) {
+                    Icon(imageVector = look.icon, contentDescription = null)
+                }
+
+                is ResultActionLook.Word -> TextButton(onClick = onClick, modifier = semantics) {
+                    Text(stringResource(look.label))
+                }
             }
         }
 
         if (!isEditingNote) {
-            TextButton(onClick = { onAction(HistoryAction.EditNote(entry.id)) }) {
-                Text(
-                    stringResource(
-                        if (entry.hasNote) Res.string.history_note_edit else Res.string.history_note_add,
-                    ),
-                )
+            // El lápiz vale para anotar y para editar: si ya hay nota, se lee justo encima. La
+            // diferencia la dice la descripción, que es lo que oye quien no ve la pantalla.
+            val noteSpoken = stringResource(
+                if (entry.hasNote) Res.string.history_note_edit else Res.string.history_note_add,
+            )
+            IconButton(
+                onClick = { onAction(HistoryAction.EditNote(entry.id)) },
+                modifier = Modifier.semantics { contentDescription = noteSpoken },
+            ) {
+                Icon(imageVector = Icons.Filled.Edit, contentDescription = null)
             }
         }
 
         val deleteSpoken = stringResource(Res.string.a11y_delete_value, value)
-        TextButton(
+        IconButton(
             onClick = { onAction(HistoryAction.Delete(entry.id)) },
             modifier = Modifier.semantics { contentDescription = deleteSpoken },
         ) {
-            Text(
-                text = stringResource(Res.string.history_delete),
-                color = MaterialTheme.colorScheme.error,
+            Icon(
+                imageVector = Icons.Filled.Delete,
+                contentDescription = null,
+                // El único botón de la fila que destruye algo, y el color es lo que lo dice ahora
+                // que no hay palabra. Deshacer sigue existiendo, en el aviso que sale al borrar.
+                tint = MaterialTheme.colorScheme.error,
             )
         }
     }
@@ -235,17 +259,34 @@ private fun ResultAction.spokenResource(): StringResource = when (this) {
     is ResultAction.Open -> Res.string.a11y_open_value
 }
 
-/** Cómo se llama en pantalla cada acción sobre el resultado (RF-13). */
-private fun ResultAction.labelResource(): StringResource = when (this) {
-    ResultAction.Copy -> Res.string.result_copy
-    ResultAction.Share -> Res.string.result_share
-    is ResultAction.Open -> when (kind) {
-        OpenKind.Link -> Res.string.result_open_link
-        OpenKind.Email -> Res.string.result_open_email
-        OpenKind.Phone -> Res.string.result_open_phone
-        OpenKind.Sms -> Res.string.result_open_sms
-        OpenKind.Map -> Res.string.result_open_map
-    }
+/**
+ * Cómo se dibuja cada acción sobre el resultado: con símbolo o con palabra (RF-13).
+ *
+ * Es la misma regla que en la pantalla de escaneo, y está escrita dos veces por lo mismo que
+ * [spokenResource]: las cadenas son **por módulo** y ninguna de las dos features puede leer las de
+ * la otra. Lo que decide la forma es si el símbolo basta — copiar y compartir tienen uno que ya no
+ * hay que aprender; las cinco maneras de abrir, no.
+ */
+private sealed interface ResultActionLook {
+
+    data class Symbol(val icon: ImageVector) : ResultActionLook
+
+    data class Word(val label: StringResource) : ResultActionLook
+}
+
+/** Ver [ResultActionLook]. */
+private fun ResultAction.look(): ResultActionLook = when (this) {
+    ResultAction.Copy -> ResultActionLook.Symbol(Icons.Filled.ContentCopy)
+    ResultAction.Share -> ResultActionLook.Symbol(Icons.Filled.Share)
+    is ResultAction.Open -> ResultActionLook.Word(
+        when (kind) {
+            OpenKind.Link -> Res.string.result_open_link
+            OpenKind.Email -> Res.string.result_open_email
+            OpenKind.Phone -> Res.string.result_open_phone
+            OpenKind.Sms -> Res.string.result_open_sms
+            OpenKind.Map -> Res.string.result_open_map
+        },
+    )
 }
 
 /** Una nota larga puede crecer, pero no puede comerse la lista. */

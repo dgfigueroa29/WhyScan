@@ -107,6 +107,12 @@ fun ScannerContent(
         ScannerLayout(state, onAction, previewEngine, modifier)
     }
 
+    // "Probar ahora" se lanza desde la ficha de motor, que solo existe con el banco abierto, y aun
+    // así el diálogo se monta aquí: la disposición de debajo no debe saber que hay algo encima.
+    if (state.fullScreenPreview) {
+        FullScreenPreview(state, onAction, previewEngine)
+    }
+
     // Aquí y no dentro de una de las dos disposiciones: el botón de anotar sale en las tarjetas de
     // resultado, y esas aparecen en las dos.
     if (state.noteTargetId != null) {
@@ -138,7 +144,13 @@ private fun ScannerLayout(
                 .weight(1f)
                 .padding(Spacing.md),
         ) {
-            ViewfinderArea(state, previewEngine, onAction, advancedMode = false)
+            ViewfinderArea(
+                state = state,
+                previewEngine = previewEngine,
+                onAction = onAction,
+                advancedMode = false,
+                previewMoved = state.fullScreenPreview,
+            )
         }
 
         ResultsSheet(state = state, onAction = onAction, advancedMode = false)
@@ -166,7 +178,13 @@ private fun WorkbenchLayout(
     ) {
         item {
             Box(modifier = Modifier.fillMaxWidth().aspectRatio(VIEWFINDER_ASPECT_RATIO)) {
-                ViewfinderArea(state, previewEngine, onAction, advancedMode = true)
+                ViewfinderArea(
+                    state = state,
+                    previewEngine = previewEngine,
+                    onAction = onAction,
+                    advancedMode = true,
+                    previewMoved = state.fullScreenPreview,
+                )
             }
         }
 
@@ -188,6 +206,7 @@ private fun WorkbenchLayout(
                 selected = status.id == state.selectedEngineId,
                 active = status.id == state.activeEngineId,
                 onSelect = { onAction(ScannerAction.SelectEngine(status.id)) },
+                onTry = { onAction(ScannerAction.TryEngine(status.id)) },
             )
         }
 

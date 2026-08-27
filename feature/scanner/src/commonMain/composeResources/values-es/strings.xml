@@ -34,6 +34,8 @@
     <string name="detection_latency"> · %1$d ms</string>
     <string name="engine_selected">Elegido</string>
     <string name="engine_select">Elegir</string>
+    <!-- Elegir guarda una preferencia; probar abre la cámara con ese motor y deja verlo leer. -->
+    <string name="engine_try_now">Probar ahora</string>
     <string name="engine_in_use">En uso</string>
     <plurals name="engine_formats_count">
         <item quantity="one">%1$d formato</item>
@@ -55,13 +57,15 @@
     <string name="formats_title">Formatos (%1$d de %2$d)</string>
     <string name="formats_hint">Quitar formatos acelera la detección y evita lecturas cruzadas. Si los quitás todos vuelven todos: una petición sin formatos no es válida.</string>
 
-    <!-- Acciones sobre el resultado (RF-13) -->
-    <string name="result_copy">Copiar</string>
+    <!-- Acciones sobre el resultado (RF-13).
+
+         Copiar y compartir ya no tienen etiqueta: son iconos, y lo que dicen vive en las cadenas
+         `a11y_*` de más abajo, que además llevan el valor dentro. Abrir sí la conserva, porque son
+         cinco acciones distintas que ningún icono separa. Ver `ResultActionLook`. -->
     <!-- Lo que se copia de un QR de WiFi: pegarle a alguien `WIFI:T:WPA;S:…;;` no le sirve. -->
     <string name="share_wifi">Red: %1$s</string>
     <string name="share_wifi_with_password">Red: %1$s · Clave: %2$s</string>
     <string name="share_separator"> · </string>
-    <string name="result_share">Compartir</string>
     <string name="result_open_link">Abrir enlace</string>
     <string name="result_open_email">Escribir</string>
     <string name="result_open_phone">Llamar</string>
@@ -123,6 +127,13 @@
     <string name="a11y_share_value">Compartir %1$s</string>
     <string name="a11y_open_value">Abrir %1$s</string>
     <string name="a11y_zoom">Zoom de la cámara</string>
+    <string name="a11y_try_engine">Probar %1$s a pantalla completa</string>
+
+    <!-- Probar un motor con el visor ocupando la pantalla entera -->
+    <string name="fullscreen_title">Probando un motor</string>
+    <string name="fullscreen_close">Salir de pantalla completa</string>
+    <string name="fullscreen_elsewhere_title">El visor está a pantalla completa</string>
+    <string name="fullscreen_elsewhere_body">La cámara sigue encendida ahí. Volvé cuando termines de probar el motor.</string>
 
     <!-- Disposición con la cámara primero: los estados que ocupan el visor -->
     <string name="permission_title">Acceso a la cámara</string>
