@@ -41,6 +41,7 @@ el comparador en paralelo y las latencias por lectura.
 | Acciones sobre el resultado (RF-13)              | ✅ copiar, compartir y abrir, según el significado del código                                                                                                                                                                                                                                                                                  |
 | Navegación                                       | ✅ propia, con backstack que sobrevive a que el sistema mate el proceso                                                                                                                                                                                                                                                                        |
 | Build de release con R8                          | ✅ `minify` y `shrinkResources`, con `assembleRelease` en CI                                                                                                                                                                                                                                                                                   |
+| Tamaño del binario                               | ✅ medido en cada PR y repartido por cubos —código, nativas por ABI, assets—, con la tercera razón de [ADR-0009](docs/adr/ADR-0009-play-feature-delivery-aplazado.md) por fin instrumentada. Falta grabar la primera línea base, que solo produce CI |
 | Marca, icono y tema                              | ✅ **El módulo fugado**: el patrón de localización de un QR con el anillo abierto y su módulo central ya fuera ([ADR-0014](docs/adr/ADR-0014-la-marca-sale-del-objeto.md)). Grafito cálido con un único acento esmeralda, los ~30 roles de Material 3 declarados, icono adaptativo con capa monocroma y escala tipográfica y de formas propias |
 | Selector de tema claro/oscuro                    | ✅ Sistema / Claro / Oscuro, persistido, con las barras del sistema siguiendo al tema **de la app**                                                                                                                                                                                                                                            |
 | Idiomas inglés y español                         | ✅ los cuatro catálogos en `values/` (inglés, respaldo de cualquier idioma) y `values-es/`, con selector propio ([ADR-0011](docs/adr/ADR-0011-idioma-de-la-app-por-encima-del-sistema.md)) y `localeConfig` para el selector por app de Android 13+                                                                                            |
@@ -364,6 +365,13 @@ tenga el idioma que falta.
 Lo ejecuta también CI, como primer paso y antes incluso de instalar Java. Eso no es solo rapidez: es
 lo que impide que estas comprobaciones se desincronicen en silencio de lo que detekt exige de
 verdad.
+
+**`tools/binary_size.py` mide el APK y avisa cuando engorda.** RNF-06 dice que el binario no debe
+crecer por motores que el usuario no usa y ADR-0009 aplaza la solución diciendo, entre otras cosas,
+que **no hay medición con la que decidir qué partir**. Ya la hay: reparte el zip en cubos —código,
+nativas **por ABI**, assets, recursos—, compara con la línea base versionada y falla si crece más de
+un 2 % o si desaparece una ABI. No es el tamaño de descarga de Play, y el script lo dice: es una
+medida estable con la misma metodología, que es lo que hace falta para detectar un salto.
 
 **`tools/check_resolved_versions.py` cruza lo declarado con lo resuelto.** Declarar una versión no
 la

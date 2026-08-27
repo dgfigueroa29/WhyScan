@@ -164,6 +164,41 @@ jobs:
       - name: Ensamblar release (R8)
         run: ./gradlew :androidApp:assembleRelease
 
+      # RNF-06 dice que el APK no debe crecer por motores que el usuario no usa, y §7.6 del SDD
+      # reconoce que dentro de Android no se cumple. ADR-0009 aplaza Play Feature Delivery con tres
+      # razones, y la tercera es que **no hay ninguna medición con la que decidir qué partir**. Sin
+      # medirlo, RNF-06 no dice cuándo se incumple: se incumple sin que nadie se entere.
+      #
+      # `continue-on-error` **no** está puesto: cuando haya línea base, esto tiene que poder parar un
+      # PR. Mientras no la haya, el propio script se niega a fallar — ver su docstring.
+      - name: Tamaño del binario
+        run: |
+          python3 tools/binary_size.py \
+            --name android-release \
+            --baseline tools/binary-size.json \
+            'androidApp/build/outputs/apk/release/*.apk' | tee tamano.txt
+          status=${PIPESTATUS[0]}
+
+          {
+            echo '### Tamaño del binario'
+            echo
+            echo '```text'
+            cat tamano.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          exit "$status"
+
+      # El informe se sube aparte del resumen porque la primera medición hay que **commitearla**, y
+      # aquí no se puede construir el APK en local para obtenerla: bajar este artefacto y pegar su
+      # JSON en `tools/binary-size.json` es todo lo que hace falta para grabar la línea base.
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: tamano-binario
+          path: tamano.txt
+          if-no-files-found: warn
+
       - uses: actions/upload-artifact@v7
         with:
           name: apk-debug

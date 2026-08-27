@@ -1000,6 +1000,34 @@ cuesta y lo que cubre.
   alguien se le ocurra el caso — y que el día que alguien toque `parseUrl` o `percentEncode`, se
   entere
 
+### Ronda 19 — el tamaño del binario deja de ser una opinión ✅
+
+Segundo punto de las propuestas de la Ronda 16, y el que desbloquea una decisión que llevaba
+aplazada desde ADR-0009.
+
+- [x] **`tools/binary_size.py`, con su paso en `Verify`.** De las tres razones por las que ADR-0009
+  aplaza Play Feature Delivery, la tercera —*"no hay ninguna medición del APK con la que decidir qué
+  conviene partir"*— era la única que no dependía de tener cuenta de Play, y la más incómoda: **sin
+  medir, RNF-06 no dice cuándo se incumple**. Ahora reparte el zip en cubos, y el reparto es lo que
+  contesta la pregunta: las nativas van **por ABI**, que es el único trozo del APK atribuible a un
+  motor concreto
+- [x] **El umbral es un delta y no un nivel, y la distinción se escribió al lado.** Dos rondas antes
+  se rechazó fijar un suelo de cobertura sin medir; aquí se fija una tolerancia de crecimiento del
+  2 %. No es incoherencia: un suelo es absoluto e inventarlo antes de medir o rompe CI el primer día
+  o no exige nada; una tolerancia es relativa a una línea base que se graba de la medición real, así
+  que el primer día el delta es cero **por construcción**
+- [x] **También falla cuando un cubo desaparece.** Que deje de empaquetarse una ABI no es "pesa
+  menos": es que la app dejó de instalarse en esos dispositivos, y el total por sí solo lo aplaudiría
+- [x] **Probado antes de subirlo, con APKs sintéticos.** Aquí no se puede construir el binario, así
+  que se armaron zips con la forma real de uno —dex, tres ABI, assets, `resources.arsc`— y se
+  recorrieron los cinco caminos: sin línea base, sin cambios, con crecimiento, con adelgazamiento y
+  con una ABI desaparecida. Además se **extrajo el bloque `run:` del propio workflow** y se ejecutó
+  tal cual, en vez de una aproximación a mano: es lo que destapó que un delta negativo se imprimía
+  como `-921600 B`, porque el formateador nunca había visto un número por debajo de cero
+- [ ] **Falta grabar la primera línea base.** No es trabajo pendiente sino un dato que solo produce
+  CI: el paso imprime el JSON y lo sube como artefacto, y grabarlo es descargar ese archivo y
+  commitearlo en `tools/binary-size.json`. Hasta entonces el paso mide, informa y **no puede fallar**
+
 ### Antes de la ficha de Play, esto va primero
 
 Lo de abajo es trámite de tienda. Lo de esta lista no. Se hizo el repaso a propósito antes de tocar

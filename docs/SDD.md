@@ -634,6 +634,47 @@ no puede ser un módulo KMP, el mecanismo solo se ejecuta distribuyendo por Play
 medición del APK con la que decidir qué conviene partir. Se retoma cuando haya distribución y
 medición; hasta entonces el incumplimiento queda escrito y acotado en lugar de darse por resuelto.
 
+#### La medición ya existe: `tools/binary_size.py`
+
+De las tres razones de ADR-0009, la tercera era la única que no dependía de tener una cuenta de
+Play, y era la más incómoda: **sin medir, RNF-06 es un deseo con formato de requisito**. No dice
+cuándo se incumple, así que se incumple sin que nadie se entere — exactamente lo que le pasaba al
+objetivo de cobertura antes de la Ronda 5.
+
+Un APK es un zip, así que se lee su directorio central y se reparte cada entrada en cubos que
+significan algo aquí:
+
+| Cubo                          | Qué contiene y qué dice                                                                    |
+|-------------------------------|----------------------------------------------------------------------------------------------|
+| `código (dex)`                | Todo el Kotlin y el Java tras R8. Crece con cualquier dependencia nueva                     |
+| `nativas · <ABI>`, una por ABI | `libzxing*.so`. **Es el único reparto atribuible a un motor concreto**, y por eso el más útil para RNF-06 |
+| `assets`                      | Los `composeResources` y los modelos que viajan en el binario (ML Kit *bundled*)            |
+| `recursos`, `tabla de recursos` | Lo del sistema de recursos de Android                                                      |
+
+El total dice *cuánto*; los cubos dicen *de qué*, que es la pregunta que ADR-0009 no podía contestar.
+
+**Lo que este número no es**, y conviene no confundirlo nunca: no es el tamaño de descarga de Play.
+Play distribuye APKs partidos desde el AAB —cada dispositivo se baja una ABI y una densidad, no las
+cuatro y las seis— y además recomprime. Lo que sí es: una medida estable con la misma metodología en
+cada ejecución, que es todo lo que hace falta para detectar que un cambio ha engordado el binario y
+decir por dónde.
+
+**El umbral es un delta y no un nivel, y esa distinción es deliberada.** En la Ronda 17 se rechazó
+fijar un suelo de cobertura sin medir antes; aquí se fija una tolerancia de crecimiento del 2 % de
+salida. No es incoherencia: un suelo es un nivel absoluto e inventarlo antes de medir o rompe CI el
+primer día o no exige nada, mientras que una tolerancia es relativa a una línea base que se graba de
+la medición real — el primer día el delta es cero **por construcción**.
+
+Mientras no exista `tools/binary-size.json`, el script **mide e informa pero no puede fallar**, el
+mismo modo que `coverage.py` tiene para un módulo sin suelo. Grabar esa línea base tiene aquí una
+vuelta de tuerca propia de este proyecto: **el entorno de desarrollo no puede construir el APK**, así
+que la primera medición solo la produce CI. Por eso el script imprime el JSON listo para pegar y CI
+lo sube como artefacto: grabar la línea base es descargar un archivo y commitearlo.
+
+Además del crecimiento, falla cuando **un cubo desaparece**. En un APK eso no es "pesa menos": que
+deje de empaquetarse una ABI significa que la app dejó de instalarse en esos dispositivos, y el
+total por sí solo lo aplaudiría.
+
 ---
 
 ## 8. Catálogo de motores
@@ -1360,6 +1401,7 @@ información que solo existía como posición o como color":
 | Cobertura                        | CI, tras los tests | Que `:core:domain` y `:core:data` no bajen del 80 % de líneas, y **por dónde** cuando bajan (`tools/coverage.py` sobre los informes de Kover)                                                                                                                                                     | Kover + python3                                   |
 | Escapado de los destinos         | `commonTest`       | Que una dirección con `?cc=…&body=…` dentro no componga un correo ajeno, que un asunto no cuele parámetros, que una `#` no parta un `tel:` y que el `+` internacional y los acentos sobrevivan (§9.5)                                                                                             | kotlin-test                                       |
 | Dependencias                     | CI, en cada PR     | Que lo que añade un PR no traiga vulnerabilidades conocidas de severidad alta (`dependencies.yml`), sobre el grafo que `dependency-submission` publica desde `main`                                                                                                                               | dependency-review-action                          |
+| **Tamaño del binario**           | CI, tras `assembleRelease` | Que el APK de release no crezca más de un 2 % sobre la línea base grabada, y que no desaparezca ninguna ABI. Con el reparto por cubos, que es lo que atribuye el peso (`tools/binary_size.py`, §7.6)                                                                                              | python3                                           |
 | **Barrido del parseo**           | `commonTest`       | Cinco invariantes sobre 5.000 entradas generadas de una gramática del dominio: que nada lance, que todo destino pase la lista blanca, que un enlace solo sea `http`/`https`, que ningún delimitador del código llegue sin codificar a un `mailto:`/`tel:`/`sms:`, y que deletrear no altere el valor (`ValueParsingFuzzTest`, §13.7)                                          | kotlin-test                                       |
 | **Cancelar no degrada**          | `commonTest`       | Que un `Failed(Cancelled)` termine la cadena en vez de abrir el motor siguiente, que no emita `EngineSwitched` y que no se le cuente al usuario como error (`FallbackScannerEngineTest`, §7.5)                                                                                                     | kotlin-test                                       |
 | Probar un motor                  | `commonTest`       | Que "Probar ahora" elija el motor y abra la pantalla completa, que cerrarla no deshaga la elección, que una sesión sin lecturas la cierre sola y que salir de la pantalla tampoco la deje abierta (§9.10)                                                                                          | kotlin-test                                       |
