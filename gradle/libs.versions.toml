@@ -21,6 +21,7 @@
 kotlin = "2.4.10"
 #noinspection AndroidGradlePluginVersion
 agp = "8.13.2"
+#noinspection NewerVersionAvailable,GradleDependency
 composeMultiplatform = "1.11.1"
 # Las dos piezas de Compose que NO van a la versión del plugin. No es un descuido: es lo que
 # declara `ComposePlugin$Dependencies` dentro del propio plugin 1.11.1, y el motivo de cada una
@@ -137,7 +138,7 @@ kover = "0.9.9"
 playServicesCodeScanner = "16.1.0"
 mlkitBarcode = "17.3.0"
 mlkitTextRecognition = "16.0.1"
-camerax = "1.6.1"
+camerax = "1.6.2"
 # Baseline de comparación: dos artefactos distintos del mismo proyecto (ADR-0008).
 zxingcpp = "3.1.1"
 # ZXing en Java puro, para escritorio. Otro proyecto que el anterior pese al nombre: este es el
