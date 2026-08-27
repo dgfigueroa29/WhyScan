@@ -981,6 +981,25 @@ iOS ni de la tienda, y que por tanto no tenían excusa.
 sigue abierto a propósito. Lo bloquea un número que solo produce un run de CI, y adelantarse a él
 habría sido justo el error que ese paso describe.
 
+### Ronda 18 — barrido del parseo semántico ✅
+
+Primer punto de las propuestas de mejora de la Ronda 16, y el que mejor relación tiene entre lo que
+cuesta y lo que cubre.
+
+- [x] **`ValueParsingFuzzTest`: cinco invariantes sobre entradas generadas.** El detalle está en
+  §13.7 del SDD. Lo que lo justifica es una asimetría del producto: los tests de casos comprueban lo
+  que alguien pensó, y aquí **el atacante escribe el valor entero** — no necesita engañar a nadie
+  para que su cadena llegue al parser, le basta con imprimirla
+- [x] **Los invariantes se ejecutaron antes de subirlos.** Aquí no compila nada, así que se portó el
+  parser, `percentEncode`, la fábrica de acciones y la lista blanca a un modelo en Python y se
+  corrieron **1,6 millones de casos** sobre la misma gramática, con cinco semillas. Cero
+  violaciones. No sustituye a CI —el modelo puede diferir del original justo donde importa— pero
+  evita subir un test que se sabía roto, que es lo único que se podía hacer sin compilador
+- [x] **Nada nuevo que arreglar en el parser**, y conviene decirlo así en vez de callarlo: el barrido
+  **no encontró un defecto**. Lo que aporta es que las cinco propiedades dejen de depender de que a
+  alguien se le ocurra el caso — y que el día que alguien toque `parseUrl` o `percentEncode`, se
+  entere
+
 ### Antes de la ficha de Play, esto va primero
 
 Lo de abajo es trámite de tienda. Lo de esta lista no. Se hizo el repaso a propósito antes de tocar

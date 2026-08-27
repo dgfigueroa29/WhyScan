@@ -1360,6 +1360,7 @@ información que solo existía como posición o como color":
 | Cobertura                        | CI, tras los tests | Que `:core:domain` y `:core:data` no bajen del 80 % de líneas, y **por dónde** cuando bajan (`tools/coverage.py` sobre los informes de Kover)                                                                                                                                                     | Kover + python3                                   |
 | Escapado de los destinos         | `commonTest`       | Que una dirección con `?cc=…&body=…` dentro no componga un correo ajeno, que un asunto no cuele parámetros, que una `#` no parta un `tel:` y que el `+` internacional y los acentos sobrevivan (§9.5)                                                                                             | kotlin-test                                       |
 | Dependencias                     | CI, en cada PR     | Que lo que añade un PR no traiga vulnerabilidades conocidas de severidad alta (`dependencies.yml`), sobre el grafo que `dependency-submission` publica desde `main`                                                                                                                               | dependency-review-action                          |
+| **Barrido del parseo**           | `commonTest`       | Cinco invariantes sobre 5.000 entradas generadas de una gramática del dominio: que nada lance, que todo destino pase la lista blanca, que un enlace solo sea `http`/`https`, que ningún delimitador del código llegue sin codificar a un `mailto:`/`tel:`/`sms:`, y que deletrear no altere el valor (`ValueParsingFuzzTest`, §13.7)                                          | kotlin-test                                       |
 | **Cancelar no degrada**          | `commonTest`       | Que un `Failed(Cancelled)` termine la cadena en vez de abrir el motor siguiente, que no emita `EngineSwitched` y que no se le cuente al usuario como error (`FallbackScannerEngineTest`, §7.5)                                                                                                     | kotlin-test                                       |
 | Probar un motor                  | `commonTest`       | Que "Probar ahora" elija el motor y abra la pantalla completa, que cerrarla no deshaga la elección, que una sesión sin lecturas la cierre sola y que salir de la pantalla tampoco la deje abierta (§9.10)                                                                                          | kotlin-test                                       |
 | Enlaces legales                  | `commonTest`       | Que un enlace que nadie sabe abrir se le cuente al usuario, y que uno que sí se abre **no** diga nada — porque abrir el navegador ya es el feedback (§12)                                                                                                                                          | kotlin-test, turbine                              |
@@ -1714,6 +1715,44 @@ hay.
 
 **Lo que esto no mide.** Cuánto tarda el arranque sigue sin medirlo nadie: eso necesita un
 dispositivo y es la Ronda 14 del ROADMAP, abierta a propósito y sin hallazgos.
+
+### 13.7 Barrido del parseo semántico
+
+Los tests de `BarcodeValueParser` y de `ResultActionsFactory` comprueban **casos que alguien
+pensó**. Eso deja fuera, por construcción, lo que nadie pensó — y aquí ese hueco no es teórico:
+**el atacante escribe el valor entero** y la víctima solo tiene que apuntar la cámara. No necesita
+engañar a nadie para que su cadena llegue al parser; le basta con imprimirla.
+
+`ValueParsingFuzzTest` no afirma resultados sino **invariantes**, que es lo único comprobable sobre
+entradas que nadie ha visto:
+
+| Invariante                                        | Qué protege                                                                                       |
+|---------------------------------------------------|-----------------------------------------------------------------------------------------------------|
+| Nada lanza                                        | Una excepción aquí sube por el `Flow` del motor y se lleva la sesión de escaneo                    |
+| Todo `Open.uri` pasa `isOpenableUri`              | Que el dominio y el borde no diverjan — la versión exhaustiva de `OpenableUriDriftTest`            |
+| Un enlace solo puede ser `http` o `https`         | Más fuerte que la lista blanca: de sus seis esquemas, `Url` solo debería producir dos             |
+| Ningún delimitador del código compone el destino  | La propiedad que `percentEncode` existe para dar (§9.5), dicha como invariante en vez de por casos |
+| Deletrear no cambia ni un carácter                | Que el cotejo carácter a carácter de RNF-05 siga valiendo                                          |
+
+**Las entradas se ensamblan de una gramática, no de bytes al azar.** Las piezas significan algo en
+este dominio —prefijos de esquema, separadores de URI, nombres de parámetro que un atacante querría
+inyectar, control, bidi y no-ASCII, y trozos de valor legítimo—. Un fuzzer sin gramática sobre un
+parser de texto pasa el rato explorando cadenas que el primer `startsWith` descarta.
+
+**La semilla es fija**, así que el corpus es el mismo en cada ejecución y en las cuatro plataformas
+—`kotlin.random.Random(seed)` está especificado y no depende del host—. Un fallo no es un fantasma:
+el mensaje lleva la entrada exacta y esa entrada se pega tal cual en un test de caso. Subir el
+número de casos o cambiar la semilla explora más, y es lo que hay que hacer **al tocar el parser**,
+no dejarlo variar solo en cada CI: un test que a veces falla es un test que se acaba desactivando.
+
+**Lo que este barrido no es.** No es una prueba de ausencia: cinco mil entradas de una gramática
+finita no agotan nada, y un invariante que nadie escribió no lo comprueba nadie. Lo que da es que
+las cinco propiedades de arriba dejen de depender de que a alguien se le ocurra el caso.
+
+**Los dos caracteres invisibles del corpus van escritos como escape** —`\u202E` y `\u200B`— y no
+pegados literalmente. Un fuente con caracteres invisibles dentro es exactamente el problema que
+esos dos casos existen para probar; meterlo en el repositorio para comprobarlo sería el chiste
+equivocado.
 
 ---
 
