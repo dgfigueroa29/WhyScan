@@ -367,7 +367,16 @@ class ScannerViewModel(
             }
 
             is ScanEvent.SessionEnded -> _state.update {
-                it.copy(sessionStatus = SessionStatus.Finished, activeEngineId = null)
+                it.copy(
+                    sessionStatus = SessionStatus.Finished,
+                    activeEngineId = null,
+                    // La pantalla completa existe para ver leer a un motor. Si la sesión terminó
+                    // **sin nada que enseñar** —el usuario cerró la pantalla del Google Code
+                    // Scanner, o se agotó el plazo— no queda nada que mirar, y dejarla abierta le
+                    // pide un segundo atrás para salir de donde ya quiso salir. Con lecturas se
+                    // queda: ahí sí hay algo que leer y qué hacer con ello.
+                    fullScreenPreview = it.fullScreenPreview && it.detections.isNotEmpty(),
+                )
             }
 
             is ScanEvent.FrameAnalyzed -> Unit

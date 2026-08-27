@@ -22,6 +22,8 @@ import kotlinx.coroutines.flow.flow
  * - Los [ScanEvent.SessionEnded] de los motores internos se **suprimen**; solo se emite uno al
  *   final. Desde fuera, la cadena entera es una única sesión.
  * - Los errores no fatales se propagan tal cual: un frame corrupto no justifica degradar de motor.
+ * - Un fallo fatal que **no admite degradación** —cancelar— termina la cadena entera sin probar el
+ *   motor siguiente. Ver `ScanError.allowsFallback`.
  * - Cada cambio emite [ScanEvent.EngineSwitched], para que la UI lo comunique en lugar de mostrar
  *   un error.
  */
@@ -85,8 +87,16 @@ class FallbackScannerEngine(
                 }
 
                 val failure = fatalError
-                if (failure == null) {
-                    // El motor terminó su sesión limpiamente: la cadena termina con él.
+
+                // Dos formas de que la cadena termine aquí, y las dos son "no hay nada que
+                // reintentar":
+                //
+                //  - `null`: el motor terminó su sesión limpiamente.
+                //  - Un fallo que no admite degradación, o sea **cancelar**. El Google Code Scanner
+                //    abre su propia pantalla; al cerrarla con el botón atrás, degradar al motor
+                //    siguiente reabría la cámara justo después de que el usuario la cerrara. Ver
+                //    `ScanError.allowsFallback`.
+                if (failure == null || !failure.allowsFallback) {
                     emit(ScanEvent.SessionEnded(engine.id))
                     return@flow
                 }
