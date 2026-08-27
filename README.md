@@ -157,6 +157,12 @@ Lo que queda fuera por ahora, y por qué:
 
 Lectura mínima para tocar código: **§7 del SDD** (el Scanner Engine SPI) y **ADR-0002**.
 
+**Para retomar el proyecto**, lo primero es
+[«Por dónde seguir»](docs/ROADMAP.md#por-dónde-seguir), al principio del ROADMAP: dice qué queda
+abierto, qué lo bloquea y dónde vive el detalle de cada cosa. Está separado en tres grupos porque el
+bloqueo no es el mismo — lo que se puede hacer ya, lo que espera un número que solo produce CI, y lo
+que necesita un teléfono.
+
 ---
 
 ## Estructura

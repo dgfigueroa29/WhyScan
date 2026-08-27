@@ -22,6 +22,49 @@ criterio de salida se cumple en CI.
 
 ---
 
+## Por dónde seguir
+
+**Esto es un índice, no una lista aparte.** Cada fila remite a la ronda donde vive el detalle y el
+porqué; si algo cambia, se cambia **allí** y aquí solo el enlace. Una segunda copia de lo pendiente
+se desincroniza sola — es exactamente lo que acababa de pasar con dos casillas que seguían abiertas
+teniendo el trabajo hecho: el cableado de accesibilidad de la Ronda 10 y el `KoinContext` de D20.
+
+### Se puede hacer ahora, sin nada que esperar
+
+| Qué                                                                 | Dónde                        | Nota                                                                       |
+|---------------------------------------------------------------------|------------------------------|------------------------------------------------------------------------------|
+| **Tests de captura** (Roborazzi u otro)                             | propuestas de la Ronda 16    | Lo más caro y lo que más cierra: "que se vea bien" lleva desde la Fase 1 escrito como incubrible, y **no lo es** — Robolectric ya se usa aquí. Antes de comprometerse, un *spike* de una pantalla: los tests de captura son célebres por volverse ruido |
+| **Métricas del compilador de Compose**                              | propuestas de la Ronda 16    | `reportsDestination`: parámetros inestables y composables no saltables. Sin dispositivo, es lo único que dice algo real sobre recomposiciones |
+| **`IosPlatformActions.openUrl` sin la guarda de esquemas**          | [Ronda 9](#ronda-9--seguridad-y-privacidad-) | Una línea. Cae dentro de "lo mínimo para que iOS siga compilando", no de trabajar en iOS |
+
+### Bloqueado por un número que solo produce CI
+
+| Qué                                       | Dónde                                              | Qué lo desbloquea                                                    |
+|-------------------------------------------|-----------------------------------------------------|-----------------------------------------------------------------------|
+| **Suelo de cobertura de las features**    | [Ronda 13](#ronda-13--verificación-), paso dos      | Leer la tabla de cobertura de un run y decidir con ella, incluido si excluir los `@Composable` |
+| **Primera línea base del tamaño del binario** | [Ronda 19](#ronda-19--el-tamaño-del-binario-deja-de-ser-una-opinión-) | Bajar el artefacto `tamano-binario` de un run y commitear su JSON en `tools/binary-size.json` |
+
+Las dos tienen la misma forma y el mismo motivo: **aquí no compila nada**, así que la primera
+medición la produce CI y no una consola. Adelantarse a ellas es inventarse el dato.
+
+### Necesita un teléfono Android
+
+| Qué                                                    | Dónde                                                                 |
+|--------------------------------------------------------|------------------------------------------------------------------------|
+| Ver con los ojos lo de las Rondas 15 a 19               | pantalla de arranque, pantalla completa, animaciones, arreglo de cancelar |
+| Medir el arranque contra un punto de partida            | [Ronda 14](#ronda-14--rendimiento-sin-baseline-no-hay-ronda-)          |
+| Objetivos táctiles y `enableEdgeToEdge` (RNF-05)        | pendiente desde la Fase 5                                              |
+| RNF-01 (<500 ms de detección) y RNF-02 (<1 s de cámara) | nunca medidos                                                          |
+
+### Fuera de alcance por decisión, no por olvido
+
+- **iOS**, entero: lo manda `CLAUDE.md` y la Fase 3. Incluye D21, el `.xcodeproj` y que el OCR
+  **lea**.
+- **Play**: ficha, firma, `bundle`, formulario de seguridad de datos, y ADR-0009 (Play Feature
+  Delivery), que además exige distribuir por Play para ejecutarse.
+
+---
+
 ## Fase 1 — Fundaciones ✅ (entregable actual)
 
 Convertir el repositorio en un proyecto Compose Multiplatform con la arquitectura de motores
@@ -748,11 +791,12 @@ hizo falta tocarlo.
   es *cómo suena* sino **qué clase de valor es** —código o prosa—, que es una afirmación sobre el
   significado y la misma en los cuatro idiomas. La frase que envuelve al valor ("Copiar %s") la
   sigue poniendo la pantalla con sus recursos.
-- [ ] **Lo que no cubre ningún test es el cableado.** `spokenValue` tiene ocho casos en
-  `commonTest`, pero que las seis llamadas de `ScannerResults` y `HistoryRow` sigan usándolo no lo
-  comprueba nadie: alguien puede volver a poner `rawValue` y todo seguiría en verde. Cubrirlo pide
-  un test de semántica sobre la pantalla del historial con datos sembrados, que es trabajo de la
-  Ronda 13 y no de esta.
+- [x] **El cableado tampoco lo cubría ningún test, y ya sí.** `spokenValue` tenía ocho casos en
+  `commonTest`, pero que las seis llamadas de `ScannerResults` y `HistoryRow` siguieran usándolo no
+  lo comprobaba nadie: alguien podía volver a poner `rawValue` y todo seguiría en verde. Lo cierra
+  `HistorySemanticsTest` en la Ronda 17, que compone la pantalla y afirma sobre lo que **oye** un
+  lector de pantalla. Dejó de ser opcional en la Ronda 15: desde que copiar, compartir, anotar y
+  eliminar son iconos, la descripción hablada es lo único que nombra a esos botones.
 
 *Sin comprobar en dispositivo:* que la separación por espacios produzca exactamente la prosodia
 esperada en TalkBack y VoiceOver. Es la técnica habitual y no depende del idioma, pero cómo suena de
@@ -1065,8 +1109,11 @@ y no en una ronda: arrastrarlo de ronda en ronda lo haría parecer trabajo que n
 que falta es un teléfono.
 
 - [ ] Objetivos táctiles y `enableEdgeToEdge` **mirados con los ojos** (pendiente desde la Fase 5)
-- [ ] Quitar el `KoinContext` de `App.kt` (D20): cambia por dónde resuelven `koinInject` y
-  `koinViewModel`, y no lo comprueba ningún test sin abrir la app
+- [x] Quitar el `KoinContext` de `App.kt` (D20). **Estaba hecho desde la Ronda 6 y esta casilla se
+  quedó atrás**, que es justo lo que pasa cuando lo mismo se apunta en dos sitios. Lo que parecía
+  imposible de comprobar sin abrir la app resultó no serlo: `koinInject` no es UI, así que
+  `ComposeKoinContextTest` monta una `Composition` con el runtime de Compose y compara la instancia
+  con la del grafo
 - [ ] Verificar el selector de idioma en iOS (D21)
 - [ ] Medir el arranque en frío, que es lo que Play reporta en Vitals desde el primer día
 - [ ] El `actual` de Android de `DatabaseBuilderFactory`, que es lo único de la cadena de Room que
