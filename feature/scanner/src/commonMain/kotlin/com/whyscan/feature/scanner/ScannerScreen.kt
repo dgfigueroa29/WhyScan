@@ -13,10 +13,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.whyscan.core.designsystem.LocalSnackbarHostState
 import com.whyscan.core.designsystem.Spacing
@@ -53,18 +53,27 @@ fun ScannerScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = LocalSnackbarHostState.current
 
-    // `DisposableEffect` y no `LaunchedEffect`: hace falta el `onDispose`.
+    // Atado al **ciclo de vida** y no solo a la composición, que es la diferencia que cerró la
+    // Ronda 12.
     //
     // Al entrar se refresca el catálogo —la disponibilidad cambia mientras la pantalla no está: el
     // usuario concede el permiso desde los ajustes, ML Kit termina de descargar su modelo, otra app
-    // suelta la cámara— y la sesión arranca sola.
+    // suelta la cámara— y la sesión arranca sola. Al salir se apaga: el ViewModel sobrevive a la
+    // navegación, así que sin esto la cámara seguía capturando mientras el usuario mira el
+    // historial. En una app de escaneo eso no es solo batería.
     //
-    // Al salir se apaga. El ViewModel sobrevive a la navegación, así que sin esto la cámara seguía
-    // capturando mientras el usuario mira el historial. En una app de escaneo eso no es solo
-    // batería.
-    DisposableEffect(viewModel) {
+    // Lo que un `DisposableEffect` **no** cubría es minimizar la app. La composición no se
+    // desmonta al irse a segundo plano, así que `onDispose` no corría y la sesión seguía viva; lo
+    // único que soltaba la cámara era que cada preview de Android ata su controlador al
+    // `LifecycleOwner` por su cuenta. Es decir: la propiedad se cumplía **por debajo**, en cada
+    // motor, y no aquí. Y "no se le conoce consecuencia" es exactamente lo que se dijo del driver de
+    // Room y del `Executor` de Koin antes de que costaran caro.
+    //
+    // `LifecycleStartEffect` para y reanuda con la pantalla visible, así que la sesión deja de
+    // depender de que todos los motores presentes y futuros se acuerden de soltar la cámara.
+    LifecycleStartEffect(viewModel) {
         viewModel.onAction(ScannerAction.ScreenShown)
-        onDispose { viewModel.onAction(ScannerAction.ScreenHidden) }
+        onStopOrDispose { viewModel.onAction(ScannerAction.ScreenHidden) }
     }
 
     // Sin esto los mensajes del ViewModel se emitían a un SharedFlow que nadie escuchaba, incluido

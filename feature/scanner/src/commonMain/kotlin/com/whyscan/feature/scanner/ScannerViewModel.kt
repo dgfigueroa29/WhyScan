@@ -47,7 +47,7 @@ import kotlinx.coroutines.flow.update
  * [ScanSessions]: guardar una lectura es un hecho del motor y anotarla es una acción del usuario,
  * que es exactamente la línea por la que están separados esos dos colaboradores.
  *
- * `TooManyFunctions` sobrevive, y es un dato honesto: esta pantalla tiene catorce acciones de
+ * `TooManyFunctions` sobrevive, y es un dato honesto: esta pantalla tiene veintitrés acciones de
  * usuario y cada una necesita su función. Partirla por partir movería el recuento a otro archivo
  * sin que nadie entienda mejor la pantalla. La supresión se pone aquí, a la vista, y no subiendo el
  * umbral global —que dejaría la regla midiendo siempre lo que hubiera.
@@ -83,7 +83,7 @@ class ScannerViewModel(
     }
 
     /**
-     * `CyclomaticComplexMethod` cuenta catorce ramas y tiene razón en el número, no en lo que
+     * `CyclomaticComplexMethod` cuenta veintitrés ramas y tiene razón en el número, no en lo que
      * significa: es una tabla de despacho sobre un `sealed interface`, donde cada rama es una línea
      * y el compilador exige que estén todas. Partirla en dos `when` la haría peor de leer y bajaría
      * la métrica, que es justo la clase de arreglo que no sirve para nada.

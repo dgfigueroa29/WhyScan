@@ -391,3 +391,22 @@ cada PR a propósito — ver [ADR-0013](docs/adr/ADR-0013-baseline-profile.md).
 
 El coste es constante: **un módulo y una entrada en el catálogo**. Ni la UI ni el dominio cambian.
 Los ocho pasos están en [`docs/ENGINES.md`](docs/ENGINES.md#cómo-añadir-un-motor).
+
+---
+
+## Licencia
+
+[Apache-2.0](LICENSE).
+
+Se eligió sobre MIT por una diferencia concreta y no por costumbre: **Apache-2.0 incluye una
+concesión expresa de patentes** de quien contribuye a quien usa, y la retira automáticamente a quien
+demande por patentes. En un lector de códigos de barras —un terreno con patentes vivas sobre
+simbologías y sobre técnicas de decodificación— esa cláusula es exactamente la que hace falta. MIT
+no dice nada sobre patentes, y el silencio en un tema así no es neutral.
+
+Es además la licencia del ecosistema en el que vive el proyecto: Kotlin, Compose Multiplatform,
+AndroidX, ZXing y ML Kit son todas Apache-2.0 o compatibles.
+
+**Antes de esto no había archivo de licencia**, y sin él el código estaba, por defecto, con todos
+los derechos reservados — mientras los términos de uso decían que era público. Una de las dos cosas
+tenía que ceder, y no iba a ser la del documento que lee el usuario.

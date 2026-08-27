@@ -18,9 +18,10 @@ Se te concede una licencia personal, gratuita, no exclusiva e intransferible par
 WhyScan en los dispositivos que controlés, para cualquier fin —personal o profesional— que no esté
 prohibido en el punto 4.
 
-El código fuente de WhyScan es público. Cualquier uso del **código** —copiarlo, modificarlo,
-redistribuirlo— se rige por la licencia del repositorio y no por este documento, que habla de la app
-tal y como se distribuye.
+El código fuente de WhyScan es público y se publica bajo la [licencia
+Apache 2.0](https://github.com/dgfigueroa29/WhyScan/blob/main/LICENSE). Cualquier uso del **código**
+—copiarlo, modificarlo, redistribuirlo— se rige por esa licencia y no por este documento, que habla
+de la app tal y como se distribuye.
 
 ## 3. Lo que tenés que poner vos
 

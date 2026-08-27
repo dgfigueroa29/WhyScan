@@ -1707,6 +1707,11 @@ No es filtrar la implementación: estas preferencias **siempre** tienen un valor
 detrás hay un almacén síncrono. Lo que cambió es que ahora el tipo lo dice, y la composición puede
 arrancar con el tema y el idioma de verdad.
 
+**Solo en Android, y a propósito.** Escritorio y Web abren una ventana y pintan; no hay hueco que
+cubrir porque no hay instalación, ni ART interpretando por primera vez, ni un sistema que decida el
+fondo antes que la app. Inventar allí una pantalla de arranque sería añadir una espera donde no la
+hay.
+
 **Lo que esto no mide.** Cuánto tarda el arranque sigue sin medirlo nadie: eso necesita un
 dispositivo y es la Ronda 14 del ROADMAP, abierta a propósito y sin hallazgos.
 
@@ -2381,8 +2386,33 @@ como **región viva**, y durante una transición hay dos tarjetas en el árbol. 
 estar destacada —se calcula contra `latestDetection`, no se pasa `true` fijo—, así que un lector de
 pantalla no anuncia la lectura vieja justo detrás de la nueva.
 
-**Lo que ninguna de estas animaciones respeta todavía**: la preferencia del sistema de *reducir
-movimiento*. Está anotada como pendiente de accesibilidad y no como hecho.
+#### Reducir movimiento: lo hace la plataforma, y por eso aquí no hay código
+
+La primera versión de esta sección decía que ninguna de estas animaciones respetaba la preferencia
+de accesibilidad *reducir movimiento*. **Era una suposición y estaba mal**, así que queda escrito
+también el mecanismo, que es lo único que permite volver a comprobarlo:
+
+- En Android, "quitar animaciones" es `Settings.Global.ANIMATOR_DURATION_SCALE` puesto a cero.
+- Compose lo lee por su cuenta: el `Recomposer` que instala la ventana lleva un
+  `MotionDurationScale` derivado de ese ajuste, y **todas** las animaciones de este proyecto pasan
+  por él — `animate*AsState`, `AnimatedVisibility`, `AnimatedContent`, `animateContentSize` y el
+  `fade through` entre destinos. Con escala cero saltan al valor final en lugar de recorrerlo.
+- La salida de la pantalla de arranque no es Compose sino un `ViewPropertyAnimator`, que se apoya en
+  `ValueAnimator` y escala su duración con **el mismo ajuste**.
+
+Es decir: escribir aquí un `expect/actual` que leyera ese ajuste habría duplicado lo que la
+plataforma ya hace, y habría añadido un segundo sitio donde equivocarse. Lo correcto era mirarlo
+antes de construirlo.
+
+**Lo que sigue sin cubrir**, dicho con precisión y sin inflarlo:
+
+- **Escritorio y Web no tienen equivalente.** Ni el sistema de ventanas ni el navegador exponen a
+  Compose Multiplatform una preferencia de movimiento reducido, así que ahí las animaciones corren
+  siempre. En la web existiría `prefers-reduced-motion` vía CSS, pero no llega al runtime de Compose
+  sin un puente propio. No se hace hasta que alguien lo pida: son las dos plataformas que no se
+  publican.
+- **Nadie lo ha visto con los ojos.** El mecanismo es correcto sobre el papel; que en un teléfono con
+  las animaciones quitadas la app se comporte como debe sigue necesitando el teléfono de siempre.
 
 ---
 

@@ -19,9 +19,10 @@ You are granted a personal, free, non-exclusive and non-transferable licence to 
 WhyScan on devices you control, for any purpose — personal or professional — that is not prohibited
 in section 4.
 
-WhyScan's source code is public. Any use of the **code** — copying, modifying, redistributing it —
-is governed by the repository's licence and not by this document, which is about the app as
-distributed.
+WhyScan's source code is public and released under the [Apache 2.0
+licence](https://github.com/dgfigueroa29/WhyScan/blob/main/LICENSE). Any use of the **code** —
+copying, modifying, redistributing it — is governed by that licence and not by this document, which
+is about the app as distributed.
 
 ## 3. What you bring
 

@@ -812,11 +812,14 @@ está.
   subir un defecto propio, y está razonado en el código—, y el otro solo emite a un `SharedFlow`.
 - Las tres previews de Android atan el controlador de cámara al `LifecycleOwner`, así que irse a
   segundo plano suelta la cámara sin que nadie tenga que acordarse.
-- [ ] **Lo único que queda es un hueco de conocimiento, no un defecto conocido:** la *sesión* de
-  escaneo sigue viva en segundo plano aunque la cámara se desate, porque `DisposableEffect` no se
-  dispara al minimizar. No se le conoce consecuencia —sin frames no hay trabajo— pero tampoco hay
-  nada que lo compruebe, y "no se le conoce consecuencia" es precisamente lo que se dijo del driver
-  de Room y del `Executor` de Koin. Vale una comprobación explícita, no una reescritura.
+- [x] **Cerrado, y no con una comprobación sino quitando la pregunta.** Lo que quedaba era un hueco
+  de conocimiento: la *sesión* seguía viva en segundo plano aunque la cámara se desatara, porque
+  `DisposableEffect` no se dispara al minimizar. Al mirarlo de cerca, lo que soltaba la cámara era
+  que **cada preview de Android** ata su controlador al `LifecycleOwner` por su cuenta — es decir,
+  la propiedad se cumplía por debajo, en cada motor, y no en la pantalla. Eso no es una garantía:
+  es una coincidencia que se rompe con el primer motor que se olvide. `LifecycleStartEffect` la
+  sube al sitio donde se puede afirmar. Y "no se le conoce consecuencia" era precisamente lo que se
+  dijo del driver de Room y del `Executor` de Koin.
 
 ### Ronda 13 — verificación 🚧
 
@@ -838,9 +841,17 @@ allá.
   mismo no se puede contestar a ciegas: si el número de un módulo de Compose significa algo tal
   cual, o si hay que excluir los `@Composable` para que hable de la lógica en vez de la UI. La lista
   de "paquetes con menos cobertura" que imprime el script lo va a decir en la primera ejecución.
-- [ ] **Paso tres: el cableado de la Ronda 10.** Las seis llamadas a `spokenValue` no las comprueba
-  nadie. Un test de semántica sobre el historial con datos sembrados cerraría eso y de paso subiría
-  el número por donde hay que subirlo — cubriendo comportamiento, no líneas.
+
+  **Lo que bloquea este paso no es trabajo, es un número**, y el número solo lo produce un run de
+  CI: la medición ya corre y se publica en el resumen. Se intentó cerrarlo en la Ronda 17 y se
+  descartó a conciencia — configurar la exclusión de `@Composable` *antes* de mirar el dato habría
+  sido decidir a ciegas, que es exactamente lo que este paso dice que no se haga.
+- [x] **Paso tres: el cableado de la Ronda 10.** `HistorySemanticsTest` compone `HistoryContent` con
+  datos sembrados y afirma sobre lo que **oye** un lector de pantalla: que un EAN-13 se anuncie cifra
+  a cifra, que copiar, compartir y eliminar lleven el valor dentro, que dos filas no se anuncien
+  igual y que una URL no se deletree. Corre en la JVM con `runComposeUiTest`, sin ventana. Dejó de
+  ser opcional en la Ronda 15: desde que esos botones son iconos, la descripción hablada **es lo
+  único que los nombra**.
 
 ### Ronda 14 — rendimiento: sin baseline no hay ronda 🚧
 
@@ -942,6 +953,33 @@ el cuerpo de letra subido, que es como las va a ver mucha gente.
   D18. Añadidos: [ADR-0015](adr/ADR-0015-probar-un-motor-es-un-dialogo.md), §9.12 del SDD (qué se
   anima y **qué no**), §7.5 (`isFatal` frente a `allowsFallback`), §9.5 (símbolo o palabra), §9.10
   (probar un motor), §12 (los documentos legales) y §13.6 (la pantalla de arranque)
+
+### Ronda 17 — cerrar lo que se podía cerrar sin un teléfono ✅
+
+Salió del repaso de la documentación de la Ronda 16: una lista de pendientes que no dependían ni de
+iOS ni de la tienda, y que por tanto no tenían excusa.
+
+- [x] **No había `LICENSE`, y los términos de uso decían que el código era público.** Sin archivo de
+  licencia, por defecto son *todos los derechos reservados*: la afirmación que lee el usuario era
+  falsa. Apache-2.0, y no MIT, por una razón concreta — **incluye concesión expresa de patentes** y
+  la retira a quien demande por ellas. En un lector de códigos de barras, con patentes vivas sobre
+  simbologías y sobre técnicas de decodificación, esa cláusula es la que hace falta; el silencio de
+  MIT en ese tema no es neutral. Es además la licencia de todo lo que hay debajo: Kotlin, Compose,
+  AndroidX, ZXing y ML Kit
+- [x] **La sesión de escaneo ya no sobrevive a minimizar** (cierra la Ronda 12, ver allí)
+- [x] **El cableado de accesibilidad tiene test** (cierra el paso tres de la Ronda 13, ver allí)
+- [x] **Se retiró una afirmación falsa que se había escrito una ronda antes.** El §9.12 del SDD decía
+  que ninguna animación respetaba *reducir movimiento*. Era una suposición: en Android ese ajuste es
+  `ANIMATOR_DURATION_SCALE`, y tanto Compose —vía el `MotionDurationScale` que instala el
+  `Recomposer`— como el `ViewPropertyAnimator` de la pantalla de arranque lo leen solos. **Escribir
+  un `expect/actual` para eso habría duplicado la plataforma**, que es peor que no hacer nada. Queda
+  el mecanismo escrito, que es lo único que permite volver a comprobarlo, y lo que sí falta dicho
+  con precisión: Escritorio y Web no tienen equivalente
+- [x] Deriva de KDoc: `ScannerViewModel` decía tener "catorce acciones de usuario" y tiene veintitrés
+
+**Lo que se decidió no hacer, y por qué**: el paso dos de la Ronda 13 —fijar el suelo de cobertura—
+sigue abierto a propósito. Lo bloquea un número que solo produce un run de CI, y adelantarse a él
+habría sido justo el error que ese paso describe.
 
 ### Antes de la ficha de Play, esto va primero
 
