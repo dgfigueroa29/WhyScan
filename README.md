@@ -53,14 +53,18 @@ el comparador en paralelo y las latencias por lectura.
 | Migraciones de la base                           | ✅ `@AutoMigration`, y un test que abre una base v1 con datos y comprueba que siguen ahí                                                                                                                                                                                                                                                       |
 | Que el grafo de Koin resuelva                    | ✅ los módulos comunes, escritorio **y Android** (este con Robolectric, en la JVM y sin emulador). D18 cerrada                                                                                                                                                                                                                                 |
 | Que la app **se monte**                          | ✅ `AppCompositionTest` compone `App()` entera con el grafo real y cambia de destino, sin emulador ni ventana                                                                                                                                                                                                                                  |
-| Transiciones entre pantallas                     | ✅ *fade through* de Material 3 al cambiar de destino, en lugar del corte seco que había                                                                                                                                                                                                                                                       |
-| Baseline profile                                 | 🚧 cableado listo y comprobado en CI ([ADR-0013](docs/adr/ADR-0013-baseline-profile.md)); **falta lanzar la grabación**, que necesita un emulador y vive en el workflow `Baseline profile (manual)`                                                                                                                                           |
+| Transiciones y movimiento                        | ✅ *fade through* entre destinos, salida animada de la pantalla de arranque, entrada de la pantalla completa y llegada de una lectura nueva. Lo que **no** se anima está decidido y escrito (§9.12 del SDD) |
+| Pantalla de arranque                             | ✅ la marca del lanzador con `core-splashscreen`, sujeta hasta que la primera composición resuelve el tema — cierra el destello claro de quien tiene el tema oscuro forzado |
+| Probar un motor sin salir del catálogo           | ✅ "Probar ahora" junto a "Elegir": elige el motor, reinicia la sesión con él y abre el visor a pantalla completa ([ADR-0015](docs/adr/ADR-0015-probar-un-motor-es-un-dialogo.md)) |
+| Acciones que caben en cualquier pantalla         | ✅ copiar, compartir, anotar y borrar son iconos; abrir conserva la palabra, porque son cinco acciones distintas que ningún icono separa. La descripción hablada sigue llevando el valor dentro |
+| Política de privacidad y términos de uso         | ✅ escritos, comprobables contra el código y enlazados desde Ajustes → Acerca de, en los dos idiomas (`docs/legal/`) |
+| Baseline profile                                 | ✅ grabado y versionado ([ADR-0013](docs/adr/ADR-0013-baseline-profile.md)); se regenera desde el workflow `Baseline profile (manual)`. Lo que sigue sin saberse es **cuánto** mejora el arranque: eso exige un dispositivo |
 | Qué hay de nuevo                                 | ✅ una vez tras cada actualización, y siempre accesible desde Ajustes. A quien acaba de instalar no se le estrena nada                                                                                                                                                                                                                         |
 | Accesibilidad (RNF-05)                           | ✅ contraste AA **verificado por test** (56 pares, los dos temas), semántica para lectores de pantalla y **modo dislexia** que ajusta la escala tipográfica entera                                                                                                                                                                             |
 | Privacidad (RNF-03)                              | ✅ auditada: sin trazas, sin cliente HTTP, sin analítica, sin permiso `INTERNET` y **sin copia de seguridad del sistema** — esa última era la puerta que no pasaba por la app, y la vigila un chequeo en CI                                                                                                                                    |
 | ZXing en Java (Desktop)                          | ✅ el único decodificador de escritorio; **verificado de verdad**, decodificando imágenes generadas en el test                                                                                                                                                                                                                                 |
 
-El catálogo muestra las ocho alternativas con su estado real; los motores aún no implementados se
+El catálogo muestra las nueve alternativas con su estado real; los motores aún no implementados se
 declaran como tales, con la fase en la que llegan. Ver `docs/ROADMAP.md`.
 
 Lo que queda fuera por ahora, y por qué:
@@ -148,6 +152,7 @@ Lo que queda fuera por ahora, y por qué:
 | [`docs/ENGINES.md`](docs/ENGINES.md) | Catálogo de motores: formatos, capacidades y prioridad por plataforma          |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Fases, criterios de salida y deuda técnica aceptada                            |
 | [`docs/adr/`](docs/adr/)             | Decisiones de arquitectura con su contexto y sus consecuencias                 |
+| [`docs/legal/`](docs/legal/)         | Política de privacidad y términos de uso, en español e inglés                  |
 
 Lectura mínima para tocar código: **§7 del SDD** (el Scanner Engine SPI) y **ADR-0002**.
 
@@ -250,6 +255,22 @@ por segundo, tres segundos apuntando a un QR emitían noventa lecturas idéntica
 **una a una en el historial persistente**. No era ruido visual sino corrupción de los datos del
 usuario. La regla es una ventana de dos segundos y no "una vez por sesión", porque volver a leer el
 mismo código es un caso de uso real — contar unidades iguales en un inventario.
+
+**Cerrar la cámara la hacía aparecer otra vez**, y el defecto llevaba ahí desde la Fase 2. El Google
+Code Scanner encabeza la cadena en Android y abre **su propia pantalla** a pantalla completa; al
+cerrarla con el botón atrás emitía `Cancelled`, que es un error fatal, y la cadena de fallback hacía
+con él lo que hace con cualquier fallo fatal: pasar al motor siguiente, que vuelve a abrir la
+cámara. El fallo de fondo era conceptual — `isFatal` contestaba *"¿puede seguir esta sesión?"* y se
+le estaba pidiendo además *"¿merece la pena probar otro motor?"*. Ahora son dos preguntas: cancelar
+no es una avería, es el usuario diciendo que no quiere seguir (§7.5 del SDD).
+
+**Se puede probar un motor sin salir del catálogo.** "Elegir" guardaba una preferencia y devolvía al
+usuario a la misma lista de fichas, donde a la vista no cambiaba nada; la pregunta que uno se hace
+delante de ese catálogo es *qué tal lee **este***, y esa solo la contesta la cámara abierta.
+"Probar ahora" elige el motor, reinicia la sesión con él y abre el visor a pantalla completa —un
+`Dialog` y no un destino, porque la pantalla vive dentro del `Scaffold` y no puede quitarse el
+recorte que ese `Scaffold` le impone
+([ADR-0015](docs/adr/ADR-0015-probar-un-motor-es-un-dialogo.md)).
 
 **Pausado es un estado con nombre.** Lo era en la píldora de estado y no en el visor: al pausar
 desaparece la superficie de preview, y el `when` que decide qué ocupa ese hueco no tenía un caso

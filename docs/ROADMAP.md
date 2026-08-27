@@ -935,6 +935,13 @@ el cuerpo de letra subido, que es como las va a ver mucha gente.
 - [x] **Ajustes estrena canal de efectos, y el KDoc que decía que no lo necesitaba se corrigió en vez
   de borrarse.** Era cierto mientras cada cambio se veía en la propia pantalla; abrir un documento
   fuera de la app es la primera acción de Ajustes cuyo fracaso es invisible
+- [x] **La documentación se puso al día, y de paso salieron tres cosas que ya estaban mal.** El
+  README daba el baseline profile por pendiente cuando lleva versionado desde la Ronda 7; hablaba de
+  "las ocho alternativas" con nueve motores en el catálogo, y lo mismo el SDD en tres sitios; y
+  `ENGINES.md` decía que el grafo de Android "sigue sin cobertura", que dejó de ser cierto al cerrar
+  D18. Añadidos: [ADR-0015](adr/ADR-0015-probar-un-motor-es-un-dialogo.md), §9.12 del SDD (qué se
+  anima y **qué no**), §7.5 (`isFatal` frente a `allowsFallback`), §9.5 (símbolo o palabra), §9.10
+  (probar un motor), §12 (los documentos legales) y §13.6 (la pantalla de arranque)
 
 ### Antes de la ficha de Play, esto va primero
 

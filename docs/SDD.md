@@ -155,7 +155,7 @@ Los límites del `ScanRequest` — formatos, cuántos códigos por frame, si la 
 primera lectura y el plazo máximo — los hacen cumplir **decoradores del dominio**, no cada motor.
 Los motores son desiguales en esto: el de entrada manual respeta el modo continuo porque lo
 implementa a mano, mientras que ML Kit y Vision dejan la cámara corriendo hasta que el consumidor
-cancele. Centralizarlo es lo que garantiza el mismo comportamiento observable en los ocho.
+cancele. Centralizarlo es lo que garantiza el mismo comportamiento observable en los nueve.
 
 ### 3.2 Requisitos no funcionales
 
@@ -357,7 +357,7 @@ mundo; la `Detection` es el evento de haberlo visto con un motor concreto en un 
 separación es la que habilita G5 (comparabilidad entre motores).
 
 `HistoryEntry` envuelve a `Detection` por el mismo criterio llevado un paso más: una nota es un dato
-**mutable, humano y posterior**, y meterla dentro de `Detection` obligaría a los ocho motores, a los
+**mutable, humano y posterior**, y meterla dentro de `Detection` obligaría a los nueve motores, a los
 seis decoradores, al comparador y al marcador a acarrear un campo que en todo ese recorrido vale
 siempre `null` — además de hacer que "estas dos lecturas son la misma" dependiera de si alguien
 escribió algo. El razonamiento completo, y los tres defectos de persistencia que destapó, están en
@@ -532,12 +532,50 @@ SelectScannerEngineUseCase       ← política de selección
    ▼
 FallbackScannerEngine            ← decorador que recorre la cadena
        si el motor N emite Failed(fatal) o no está Available → intenta N+1
+       ...salvo que el fallo no admita degradación (cancelar) → la cadena termina
        emite EngineSwitched para que la UI lo comunique (G4)
 ```
 
 El fallback es un **decorador** (`BarcodeScannerEngine` que envuelve una lista de motores) y no
 lógica dentro del ViewModel. Consecuencia práctica: es testeable en `commonTest` con motores
 falsos, sin cámara, sin dispositivo y sin Compose.
+
+#### `isFatal` no es `allowsFallback`, y confundirlos atrapaba al usuario
+
+`ScanError.isFatal` contesta **"¿puede seguir esta sesión?"**. Durante toda la vida del proyecto se
+le estuvo pidiendo además una segunda respuesta —**"¿merece la pena probar otro motor?"**— y el
+día que las dos dejaron de coincidir, el usuario se quedó encerrado.
+
+`GMS_CODE_SCANNER` encabeza la cadena en Android y **abre su propia pantalla a pantalla completa**,
+fuera de la app (es la única capacidad `UI propia del motor` del catálogo). Al cerrarla con el botón
+atrás, el motor emite `ScanError.Cancelled`, que es fatal — y con razón: esa sesión, desde luego, no
+puede continuar. `FallbackScannerEngine` hacía entonces lo que hace con cualquier fallo fatal: pasar
+al motor siguiente, que es `MLKIT_CAMERAX`, que **vuelve a abrir la cámara**. Cerrar la cámara la
+hacía aparecer otra vez.
+
+El diagnóstico importa más que el arreglo: no era un fallo del decorador, que hacía exactamente lo
+que debía, ni del motor, que reportaba lo que había pasado. Era **una pregunta de más colgada de un
+booleano que respondía otra cosa**. Ahora son dos:
+
+```kotlin
+sealed class ScanError(val isFatal: Boolean, val allowsFallback: Boolean = true)
+
+data object Cancelled : ScanError(isFatal = true, allowsFallback = false)
+```
+
+El valor por defecto es `true` porque **todos los demás errores sí son averías** —cámara ocupada,
+permiso denegado, SDK ausente, plazo agotado— y degradar ante ellos es exactamente para lo que la
+cadena existe (G4). Cancelar no es una avería: es el usuario diciendo que no quiere seguir, y la
+única respuesta correcta a eso es dejar de escanear.
+
+Un `Failed` que no admite degradación **tampoco se le cuenta al usuario**: la cadena lo consume y
+emite `SessionEnded`, igual que hace con cualquier fallo fatal. Un aviso de error sobre algo que el
+usuario acaba de pedir sería ruido.
+
+Es también un dato sobre el hueco de verificación: la degradación se testea entera en `commonTest`
+con motores falsos —y ese test existía y pasaba—, pero **qué emite el motor de Google al cerrarse
+solo se ve en un teléfono**. La tabla de "qué cubre a los motores de cámara sin emulador" del
+ROADMAP anuncia justo esta forma de fallo.
 
 #### La cadena completa, y por qué el orden importa
 
@@ -1103,6 +1141,35 @@ Garantías de privacidad (RNF-03), verificables en revisión de código:
 - **La copia de seguridad del sistema está apagada** en las dos plataformas: `allowBackup="false"`
   más `dataExtractionRules` en Android, y `NSURLIsExcludedFromBackupKey` sobre el archivo en iOS.
 
+#### La política de privacidad y los términos de uso
+
+Las garantías de arriba dejaron de vivir solo en este documento: están escritas para el usuario en
+`docs/legal/`, en los dos idiomas, y **enlazadas desde Ajustes → Acerca de**.
+
+No son un trámite copiado de una plantilla, y por eso valen: cada afirmación se corresponde con algo
+**verificable en el código** —el manifiesto sin `INTERNET`, `allowBackup="false"` más
+`dataExtractionRules`, la lista blanca de esquemas de `isOpenableUri`, el *photo picker* que evita
+pedir permiso de galería— y el único matiz real está dicho con nombre en lugar de escondido: **el
+Google Code Scanner es un componente de Google Play Services** que abre su propia cámara, y su
+tratamiento de datos se rige por la política de Google. La salida también se dice: en Ajustes →
+Avanzado se puede elegir a mano un motor que se ejecute entero dentro de la app.
+
+Dos decisiones de implementación que no son obvias:
+
+- **Las direcciones son cadenas del catálogo y no constantes de Kotlin**, porque cada una apunta al
+  documento en el idioma que el usuario tiene puesto. Eso obliga a resolverlas en la composición y a
+  que la acción las lleve ya resueltas (`SettingsAction.OpenLink(url)`), que es el mismo reparto que
+  `RunResultAction` en §9.5: el dominio no sabe que existen dos idiomas.
+- **Los documentos viven en la web y no dentro de la app.** Un texto legal cambia sin que la app
+  cambie, y la ficha de Play necesita poder enlazar la política sin abrir el APK. El coste es que
+  leerlos exige salir de una app que presume de no necesitar red — se asume, y por eso el enlace lo
+  dice antes de abrirse, también para quien no ve la pantalla.
+
+Abrir uno de esos enlaces pasa por `PlatformActions.openUrl`, así que **vuelve a comprobarse contra
+la lista blanca de esquemas** aunque la dirección sea nuestra. Es el segundo llamante de esa función
+y la primera vez que su KDoc deja de poder decir "nadie la llama de otro modo": la comprobación
+existe justamente para no depender de eso.
+
 #### Auditoría, con lo que se comprobó y lo que salió
 
 No basta con enumerar garantías: lo que sigue es el resultado de buscarlas en el código, incluidos
@@ -1274,7 +1341,7 @@ información que solo existía como posición o como color":
 | Unitario de dominio              | `commonTest`       | UseCases, política de selección, fallback, parser semántico, mappers de formato                                                                                                                                                                                                                   | kotlin-test, Turbine                              |
 | Unitario de presentación         | `commonTest`       | Reducers de ViewModel: acción → estado esperado                                                                                                                                                                                                                                                   | kotlin-test, Turbine, dispatcher de test          |
 | Contrato de motor                | `commonTest`       | **Suite compartida** que todo motor debe pasar (§13.2), aplicada a lo instanciable sin dispositivo: el motor manual, los decoradores y la cadena completa                                                                                                                                         | kotlin-test                                       |
-| Coherencia del catálogo          | `commonTest`       | Que los ocho descriptores sean válidos y no prometan lo que nadie implementa                                                                                                                                                                                                                      | kotlin-test                                       |
+| Coherencia del catálogo          | `commonTest`       | Que los nueve descriptores sean válidos y no prometan lo que nadie implementa                                                                                                                                                                                                                      | kotlin-test                                       |
 | Decodificación real              | `jvmTest`          | ZXing (Java) decodificando imágenes que el propio ZXing genera en el test                                                                                                                                                                                                                         | kotlin-test                                       |
 | **Grafo de dependencias**        | `desktopTest`      | Que el grafo real de Koin **resuelva**: arranca los módulos y pide cada tipo que la raíz de la app consume (`KoinGraphTest`, §10)                                                                                                                                                                 | kotlin-test, koin-core                            |
 | Contraste de la paleta           | `commonTest`       | 56 pares de color contra su umbral WCAG, sobre los dos esquemas (§12.1)                                                                                                                                                                                                                           | kotlin-test                                       |
@@ -1293,6 +1360,9 @@ información que solo existía como posición o como color":
 | Cobertura                        | CI, tras los tests | Que `:core:domain` y `:core:data` no bajen del 80 % de líneas, y **por dónde** cuando bajan (`tools/coverage.py` sobre los informes de Kover)                                                                                                                                                     | Kover + python3                                   |
 | Escapado de los destinos         | `commonTest`       | Que una dirección con `?cc=…&body=…` dentro no componga un correo ajeno, que un asunto no cuele parámetros, que una `#` no parta un `tel:` y que el `+` internacional y los acentos sobrevivan (§9.5)                                                                                             | kotlin-test                                       |
 | Dependencias                     | CI, en cada PR     | Que lo que añade un PR no traiga vulnerabilidades conocidas de severidad alta (`dependencies.yml`), sobre el grafo que `dependency-submission` publica desde `main`                                                                                                                               | dependency-review-action                          |
+| **Cancelar no degrada**          | `commonTest`       | Que un `Failed(Cancelled)` termine la cadena en vez de abrir el motor siguiente, que no emita `EngineSwitched` y que no se le cuente al usuario como error (`FallbackScannerEngineTest`, §7.5)                                                                                                     | kotlin-test                                       |
+| Probar un motor                  | `commonTest`       | Que "Probar ahora" elija el motor y abra la pantalla completa, que cerrarla no deshaga la elección, que una sesión sin lecturas la cierre sola y que salir de la pantalla tampoco la deje abierta (§9.10)                                                                                          | kotlin-test                                       |
+| Enlaces legales                  | `commonTest`       | Que un enlace que nadie sabe abrir se le cuente al usuario, y que uno que sí se abre **no** diga nada — porque abrir el navegador ya es el feedback (§12)                                                                                                                                          | kotlin-test, turbine                              |
 | **Composición de la raíz**       | `desktopTest`      | Que `App()` **se componga** sobre el grafo real —no que resuelva, que es lo que ya cubre `KoinGraphTest`— y que sin modo avanzado el comparador no esté en la barra (`AppCompositionTest`, §10)                                                                                                   | compose.uiTest                                    |
 
 Objetivo de cobertura: **≥ 80 % de líneas en `:core:domain` y `:core:data`**; la UI no se persigue
@@ -1564,7 +1634,7 @@ plugin no rompa la build: `assembleRelease` consume el perfil versionado sin arr
 cuando se ejecuta, y los fallos que produce —una clase eliminada, un nombre ofuscado que alguien
 esperaba leer— no aparecen en debug. Descubrirlos al preparar una release es tarde.
 
-### 13.6 Rendimiento del arranque: el baseline profile
+### 13.6 Rendimiento del arranque: el baseline profile y la pantalla de arranque
 
 Es la única optimización de arranque que este proyecto puede hacer sin tocar arquitectura, y ataca
 un
@@ -1599,6 +1669,46 @@ Tres decisiones que conviene no perder, con su razón, y el detalle en
 Y una consecuencia que hay que tener presente porque **no avisa**: un perfil viejo no rompe nada,
 simplemente deja de cubrir el código nuevo. Hay que relanzar el workflow al añadir pantallas o al
 subir Compose.
+
+#### La pantalla de arranque: lo que el usuario ve mientras todo eso ocurre
+
+El baseline profile acorta el arranque; la pantalla de arranque decide **qué se ve durante él**, y
+son problemas distintos.
+
+Lo que había era un `windowBackground` de color, con su gemelo en `values-night/`. Cubría el hueco
+entre que el sistema crea la ventana y Compose pinta la primera pantalla, pero lo cubría con un
+rectángulo: durante el arranque en frío —el que Play mide y el que sufre quien tiene el teléfono más
+lento— la app **no era nada**. Y dejaba un caso que el color solo no podía cerrar, escrito como
+pendiente en el propio `themes.xml`: **con el sistema en claro y la app forzada a oscuro**, el fondo
+de arranque lo elige el sistema con *su* configuración, antes de que nadie haya podido leer las
+preferencias.
+
+`androidx.core:core-splashscreen` cierra los dos:
+
+| Pieza                          | Qué resuelve                                                                                                                  |
+|--------------------------------|---------------------------------------------------------------------------------------------------------------------------------|
+| `Theme.WhyScan.Starting`       | La marca del lanzador, centrada, con la misma animación que el resto de apps del teléfono                                      |
+| `postSplashScreenTheme`        | El relevo al tema normal en el momento exacto, sin el parpadeo de dos ventanas                                                |
+| `setKeepOnScreenCondition`     | Sujeta la marca hasta que la primera composición ha resuelto el tema — el caso claro/oscuro de arriba                          |
+| `setOnExitAnimationListener`   | La marca se va con un fundido corto en vez de desaparecer de un fotograma al siguiente                                        |
+
+Sujetar la pantalla de arranque **obligó a arreglar algo debajo**, y esa es la parte que importa.
+La raíz sembraba su estado con `collectAsStateWithLifecycle(AppPreferences())` porque un `Flow`
+exige valor inicial; como el repositorio lee del almacén al construirse, ese valor era **una copia
+falsa que duraba un fotograma** — y ese fotograma era exactamente el destello claro que se quería
+evitar. `AppPreferencesRepository.observePreferences()` pasa a devolver `StateFlow`:
+
+```kotlin
+/** Las preferencias, observables y **con valor desde el primer instante**. */
+fun observePreferences(): StateFlow<AppPreferences>
+```
+
+No es filtrar la implementación: estas preferencias **siempre** tienen un valor actual, porque
+detrás hay un almacén síncrono. Lo que cambió es que ahora el tipo lo dice, y la composición puede
+arrancar con el tema y el idioma de verdad.
+
+**Lo que esto no mide.** Cuánto tarda el arranque sigue sin medirlo nadie: eso necesita un
+dispositivo y es la Ronda 14 del ROADMAP, abierta a propósito y sin hallazgos.
 
 ---
 
@@ -1697,6 +1807,42 @@ Se conserva lo que un destino legítimo necesita —la `@` que separa buzón de 
 internacional de RFC 3966, los separadores visuales de un número— y se codifica todo lo demás, byte
 a byte sobre UTF-8 para que un asunto con acentos llegue entero. El criterio es ese y no el
 contrario: se permite lo que hace falta, no se prohíbe lo que se recuerda.
+
+#### Con símbolo o con palabra: `ResultActionLook`
+
+Las acciones **no se dibujan todas igual**, y la línea que las separa es si el símbolo basta.
+
+Una lectura ofrece hasta tres acciones y debajo va la de anotar. Con cuatro palabras seguidas
+—"Abrir enlace · Copiar · Compartir · Agregar nota"— la fila se salía de la pantalla en cuanto el
+idioma alargaba una etiqueta o el usuario subía el tamaño de letra. En el historial era peor:
+**cinco** botones de texto por fila, y "Eliminar" el primero en desaparecer por la derecha.
+
+Copiar y compartir tienen un icono que ya no hay que aprender, así que su palabra no añadía nada.
+Abrir no lo tiene: "Abrir enlace", "Llamar", "Escribir", "Enviar SMS" y "Ver en el mapa" son cinco
+cosas distintas que ningún icono separa, y ahí la etiqueta es lo único que dice qué va a pasar al
+tocar. La regla vive en un tipo y no en un `if` repartido por las pantallas:
+
+```kotlin
+internal sealed interface ResultActionLook {
+    data class Symbol(val icon: ImageVector) : ResultActionLook
+    data class Word(val label: StringResource) : ResultActionLook
+}
+```
+
+Está escrito **dos veces**, una en `:feature:scanner` y otra en `:feature:history`, por lo mismo que
+`spokenResource`: los textos son recursos **por módulo** (§9.6) y ninguna de las dos features puede
+leer los de la otra. Lo compartible sería el `ImageVector`, y llevarlo a `:core:designsystem`
+obligaría a ese módulo a conocer `ResultAction`, que es dominio.
+
+**Para quien no ve la pantalla no cambia nada**, y eso hubo que asegurarlo: la descripción hablada
+sigue siendo la de siempre, la que lleva el valor dentro (`a11y_copy_value` = "Copiar %1$s"). Con el
+icono en lugar de la palabra deja de ser un detalle de accesibilidad y pasa a ser **lo único que
+nombra al botón** (RNF-05). Las cadenas que dejaron de dibujarse y ya no nombraban nada —
+`result_copy`, `result_share`, `history_delete`— se borraron de los dos catálogos, que es lo que
+impide que alguien las traduzca por gusto.
+
+Efecto secundario que valió la pena: anotar vuelve a la fila de las demás acciones. Estaba aparte
+justo porque un cuarto botón de texto no cabía.
 
 `PlatformActions` es **una sola interfaz**, no tres segregadas como las capacidades de los motores
 (§7.2). La diferencia es real: un motor puede implementar unas capacidades y otras no, y la UI
@@ -2065,6 +2211,37 @@ reabriría la cámara que el usuario acaba de cerrar a mano con el botón de pau
 límite. Lo que se recorta no se pierde —el historial guarda todo, y ese es su trabajo— y deja de
 ocupar memoria en una pantalla donde nadie se desplaza cien lecturas hacia abajo.
 
+#### Probar un motor: el visor a pantalla completa
+
+El banco de motores lista las nueve alternativas y ofrecía un solo botón, **"Elegir"**, que guarda
+una preferencia y devuelve al usuario a la misma lista de fichas donde a la vista no cambia nada.
+La pregunta que uno se hace delante de ese catálogo —*¿qué tal lee **este**?*— se quedaba sin
+contestar.
+
+**"Probar ahora"**, a la derecha de "Elegir", elige el motor, **reinicia la sesión con él** y abre
+el visor ocupando la pantalla entera. La sesión se reinicia siempre y no solo si ya estaba
+escaneando, que es la diferencia con `SelectEngine`: aquí no hay ambigüedad posible sobre lo que el
+usuario acaba de pedir.
+
+El chip solo sale en motores que declaran `ScanSource.LiveCamera`, que es la regla de siempre — la
+UI no nombra motores, lee capacidades. Ofrecérselo a la entrada manual sería abrir un visor a
+pantalla completa sobre algo que no captura nada.
+
+Por qué es un `Dialog` y no un destino de la navegación está en
+[ADR-0015](adr/ADR-0015-probar-un-motor-es-un-dialogo.md); en resumen, la pantalla de escaneo vive
+dentro del `Scaffold` y no puede quitarse el recorte que ese `Scaffold` le impone.
+
+Lo que sí es de este documento es el ciclo de vida, que tiene un detalle que no se ve al leer el
+código de la pantalla: **mientras el diálogo está abierto, el visor de debajo deja de componer su
+superficie de cámara**. Dos vistas de preview sobre el mismo motor se pelean por la sesión y una de
+las dos se queda en negro. Es un caso más del `when` de `ViewfinderArea` —`previewMoved`— y no un
+`previewEngine = null`, que caería en la rama de "pausada" y sería falso: la cámara está encendida,
+solo que en otro sitio.
+
+Y se cierra solo en dos casos: al dejar de verse la pantalla —el ViewModel sobrevive a la
+navegación— y cuando **la sesión termina sin ninguna lectura**, que es el caso de cancelar el
+Google Code Scanner. Con lecturas se queda abierto: ahí sí hay algo que mirar.
+
 #### Pausado es un estado, no una espera
 
 `ViewfinderArea` resuelve con un `when` las cosas excluyentes que pueden ocupar ese espacio, y hasta
@@ -2162,13 +2339,50 @@ novedades a quien cierre la app antes de leerlas.
 
 La primera versión leía la revisión del estado ya observado, y era una carrera de las que solo se
 ven
-en un dispositivo. `collectAsStateWithLifecycle` necesita un valor inicial, y ese valor es
+en un dispositivo. `collectAsStateWithLifecycle` necesitaba un valor inicial, y ese valor era
 `AppPreferences()` con la revisión a `null`: durante la primera composición **un usuario con
-novedades pendientes parece recién instalado**, así que se le habrían marcado como vistas antes de
-que llegara su valor de disco. Se resuelve pidiendo el valor con `current()`, que devuelve el ya
-leído y no tiene ese hueco. Es el mismo patrón que la carrera del catálogo en §9.10: un valor
-inicial
-de conveniencia usado como si fuera un dato.
+novedades pendientes parecía recién instalado**, así que se le habrían marcado como vistas antes de
+que llegara su valor de disco. Es el mismo patrón que la carrera del catálogo en §9.10: un valor
+inicial de conveniencia usado como si fuera un dato.
+
+**Esa carrera ya no existe** — `observePreferences()` devuelve `StateFlow` y la composición arranca
+con lo leído del almacén (§13.6). Se sigue pidiendo el valor con `current()` igualmente, y no por
+inercia: esto no observa nada, hace **una** pregunta una sola vez —"¿qué vio ya este usuario?"— y
+atar una decisión de arranque a un valor que cambia solo sería otra clase de error.
+
+---
+
+### 9.12 Movimiento: qué se anima y qué no
+
+Una app que cambia de estado de un fotograma al siguiente se percibe como una app que da saltos, y
+donde más se nota es en lo primero que se ve. Lo que se anima:
+
+| Dónde                         | Qué                                                                             |
+|-------------------------------|-----------------------------------------------------------------------------------|
+| Entre destinos                | *Fade through* de Material 3, con los tiempos **sin solapar**: 90 ms de salida y 220 ms de entrada. Solapar dos pantallas a media opacidad sobre un visor de cámara se nota más que en ningún otro sitio |
+| Salida de la pantalla de arranque | La marca se aleja un 8 % mientras se desvanece, 220 ms (§13.6)                |
+| Entrada de la pantalla completa   | Fundido y acercamiento desde 0,94. **Solo la entrada**: animar la salida obliga a mantener el diálogo vivo después de que el usuario haya pedido cerrarlo, y sobre una cámara eso se lee como que la app va lenta |
+| Llegada de una lectura        | La tarjeta destacada sube desde una cuarta parte de su altura mientras la anterior se desvanece. En escaneo continuo, la sustitución seca hacía dudar de si la app había leído otro código o seguía enseñando el mismo |
+| Altura de la hoja de resultados | `animateContentSize`, para que el visor no dé un tirón hacia arriba con cada lectura |
+
+**Y lo que se decidió no animar, que es la parte con contenido:**
+
+- **El cambio entre los seis estados del visor.** `AnimatedContent` mantiene compuesto lo que sale
+  mientras entra lo nuevo. Al degradar de motor eso significa **dos superficies de cámara vivas a la
+  vez**, peleándose por la sesión — exactamente el problema que `previewMoved` existe para evitar
+  (§9.10). La transición sería bonita y la cámara se quedaría en negro.
+- **Un latido en el contorno de detección.** Una animación infinita mantiene el `Canvas` repintando
+  siempre, y ese `Canvas` está encima de la cámara: es un bucle de repintado permanente en la
+  pantalla donde la batería más importa. Se descarta hasta que haya una medición que diga cuánto
+  cuesta de verdad.
+
+Hay además una consecuencia de accesibilidad que no es evidente: la tarjeta destacada se anuncia
+como **región viva**, y durante una transición hay dos tarjetas en el árbol. La que sale deja de
+estar destacada —se calcula contra `latestDetection`, no se pasa `true` fijo—, así que un lector de
+pantalla no anuncia la lectura vieja justo detrás de la nueva.
+
+**Lo que ninguna de estas animaciones respeta todavía**: la preferencia del sistema de *reducir
+movimiento*. Está anotada como pendiente de accesibilidad y no como hecho.
 
 ---
 
@@ -2190,3 +2404,4 @@ de conveniencia usado como si fuera un dato.
 | [ADR-0012](adr/ADR-0012-la-nota-es-del-historial-no-de-la-deteccion.md) | La nota del usuario es un tercer nivel del modelo (`HistoryEntry`) y no un campo de `Detection`                       |
 | [ADR-0013](adr/ADR-0013-baseline-profile.md)                            | El baseline profile se graba en un emulador declarado, se versiona y se lanza a mano: es un artefacto, no un criterio |
 | [ADR-0014](adr/ADR-0014-la-marca-sale-del-objeto.md)                    | La marca sale del objeto que la app lee —el patrón de localización de un QR— y no del nombre ni de la categoría       |
+| [ADR-0015](adr/ADR-0015-probar-un-motor-es-un-dialogo.md)               | Probar un motor abre un diálogo a pantalla completa, no un destino: la pantalla vive dentro del `Scaffold`            |
