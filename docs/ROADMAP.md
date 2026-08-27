@@ -1099,6 +1099,10 @@ nada de Play, y salió algo que no estaba en ninguna lista:
 - [x] **Generar el baseline profile.** Hecho: el perfil está versionado y `baseline-profile.yml` lo
   regenera y lo commitea solo. Es lo que separa "la app arranca" de "la app arranca rápido la
   primera vez" — con la salvedad de siempre, que **cuánto** más rápido solo lo dice un dispositivo
+- [ ] **Navegación** Si concedo permisos para la cámara se abre la camara para escanear. Eso está bien. 
+Pero si en esa pantalla escaneo correctamente un código, oprimo el icono de la X o hago back sin importar
+si fue con gesto o botón de navegación de poder ir a la home. Esto no se está cumpliendo porque una vez
+que entra en la camara a pantalla completa no deja salir de ahí.
 
 Solo después tiene sentido pelearse con la ficha.
 

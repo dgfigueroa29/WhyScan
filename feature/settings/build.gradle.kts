@@ -47,3 +47,14 @@ kotlin {
         }
     }
 }
+
+kover {
+    reports {
+        filters {
+            excludes {
+                packages("com.whyscan.feature.settings.resources")
+                classes("*.ComposableSingletons\$*")
+            }
+        }
+    }
+}
