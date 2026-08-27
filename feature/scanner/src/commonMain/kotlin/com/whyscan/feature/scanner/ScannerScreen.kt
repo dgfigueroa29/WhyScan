@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -53,27 +54,30 @@ fun ScannerScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = LocalSnackbarHostState.current
 
-    // Atado al **ciclo de vida** y no solo a la composición, que es la diferencia que cerró la
-    // Ronda 12.
+    // **Dos efectos y no uno, porque son dos preguntas distintas.** Fundirlas en una costó un
+    // defecto que encerraba al usuario dentro de la cámara; está contado en `ScannerAction`.
     //
-    // Al entrar se refresca el catálogo —la disponibilidad cambia mientras la pantalla no está: el
-    // usuario concede el permiso desde los ajustes, ML Kit termina de descargar su modelo, otra app
-    // suelta la cámara— y la sesión arranca sola. Al salir se apaga: el ViewModel sobrevive a la
-    // navegación, así que sin esto la cámara seguía capturando mientras el usuario mira el
-    // historial. En una app de escaneo eso no es solo batería.
-    //
-    // Lo que un `DisposableEffect` **no** cubría es minimizar la app. La composición no se
-    // desmonta al irse a segundo plano, así que `onDispose` no corría y la sesión seguía viva; lo
-    // único que soltaba la cámara era que cada preview de Android ata su controlador al
-    // `LifecycleOwner` por su cuenta. Es decir: la propiedad se cumplía **por debajo**, en cada
-    // motor, y no aquí. Y "no se le conoce consecuencia" es exactamente lo que se dijo del driver de
-    // Room y del `Executor` de Koin antes de que costaran caro.
-    //
-    // `LifecycleStartEffect` para y reanuda con la pantalla visible, así que la sesión deja de
-    // depender de que todos los motores presentes y futuros se acuerden de soltar la cámara.
-    LifecycleStartEffect(viewModel) {
+    // Navegación: llegar a la pantalla y salir de ella. Al entrar se refresca el catálogo —la
+    // disponibilidad cambia mientras la pantalla no está: el usuario concede el permiso desde los
+    // ajustes, ML Kit termina de descargar su modelo, otra app suelta la cámara— y la sesión
+    // arranca sola. Al salir se apaga: el ViewModel sobrevive a la navegación, así que sin esto la
+    // cámara seguía capturando mientras el usuario mira el historial.
+    DisposableEffect(viewModel) {
         viewModel.onAction(ScannerAction.ScreenShown)
-        onStopOrDispose { viewModel.onAction(ScannerAction.ScreenHidden) }
+        onDispose { viewModel.onAction(ScannerAction.ScreenHidden) }
+    }
+
+    // Ciclo de vida: primer plano y fondo. Es lo que un `DisposableEffect` no ve —la composición no
+    // se desmonta al minimizar—, y sin ello la sesión seguía viva en segundo plano: lo único que
+    // soltaba la cámara era que cada preview de Android ata su controlador al `LifecycleOwner` por
+    // su cuenta, o sea que la propiedad se cumplía **por debajo**, en cada motor, y no aquí.
+    //
+    // Va **después** del efecto de navegación a propósito: al desmontarse la composición los
+    // `onDispose` corren en orden inverso, así que `Backgrounded` se dispara antes que
+    // `ScreenHidden` y este último puede limpiar lo que aquel dejó apuntado.
+    LifecycleStartEffect(viewModel) {
+        viewModel.onAction(ScannerAction.Foregrounded)
+        onStopOrDispose { viewModel.onAction(ScannerAction.Backgrounded) }
     }
 
     // Sin esto los mensajes del ViewModel se emitían a un SharedFlow que nadie escuchaba, incluido

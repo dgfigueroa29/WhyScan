@@ -76,6 +76,15 @@ class ScannerViewModel(
      */
     private var autoStartPending: Boolean = false
 
+    /**
+     * La sesión estaba corriendo cuando la app se fue al fondo, así que hay que devolverla al volver.
+     *
+     * Es distinto de [autoStartPending] y esa distinción **es** el arreglo del defecto de
+     * navegación: uno responde a "el usuario llegó a esta pantalla" y el otro a "la app volvió al
+     * primer plano". Ver `ScannerAction.Backgrounded`.
+     */
+    private var resumeOnForeground: Boolean = false
+
     init {
         observeCatalogChanges()
         observePreferenceChanges()
@@ -97,6 +106,8 @@ class ScannerViewModel(
             ScannerAction.Refresh -> refresh()
             ScannerAction.ScreenShown -> screenShown()
             ScannerAction.ScreenHidden -> screenHidden()
+            ScannerAction.Backgrounded -> backgrounded()
+            ScannerAction.Foregrounded -> foregrounded()
             ScannerAction.ClearDetections -> _state.update { it.copy(detections = emptyList()) }
             ScannerAction.StartSession -> startSession()
             ScannerAction.StopSession -> stopSession()
@@ -192,9 +203,57 @@ class ScannerViewModel(
      * —sin cámara detrás, porque la sesión sí se paró— tapando el banco de motores que venía a ver.
      */
     private fun screenHidden() {
+        // Salir de la pantalla no es irse al fondo: aquí no queda nada que reanudar después. Y el
+        // orden importa — al desmontarse la composición se dispara antes `Backgrounded`, que sí deja
+        // la marca puesta.
+        resumeOnForeground = false
         _state.update { it.copy(fullScreenPreview = false) }
         stopSession()
     }
+
+    /**
+     * La app se fue al fondo.
+     *
+     * **Salvo que el motor activo abra su propia pantalla.** Ahí, estar en segundo plano no
+     * significa que el usuario se haya ido: significa que el motor está trabajando, en otro proceso,
+     * porque lo hemos arrancado nosotros. Parar la sesión cancelaría el escaneo que el usuario está
+     * haciendo **ahora mismo**, y su resultado se perdería en una corrutina ya cancelada.
+     *
+     * Del resto de motores sí se apaga la cámara, y se apunta que estaba corriendo para devolverla
+     * al volver. Si el usuario la había pausado a mano, no se apunta nada: reanudar algo que él
+     * apagó es contestarle que no.
+     */
+    private fun backgrounded() {
+        if (activeEngineProvidesOwnUi) return
+
+        val running = _state.value.sessionStatus == SessionStatus.Scanning ||
+            _state.value.sessionStatus == SessionStatus.Starting
+        if (!running) return
+
+        resumeOnForeground = true
+        stopSession()
+    }
+
+    /** La app volvió al primer plano: se devuelve la cámara **solo** si la habíamos quitado nosotros. */
+    private fun foregrounded() {
+        if (!resumeOnForeground) return
+
+        resumeOnForeground = false
+        startSession()
+    }
+
+    /**
+     * El motor que está corriendo abre su propia pantalla fuera de la app.
+     *
+     * Se lee de la capacidad declarada y no de una lista de motores: hoy es el Google Code Scanner,
+     * y el día que haya otro hereda el comportamiento sin tocar esta clase (RNF-07).
+     */
+    private val activeEngineProvidesOwnUi: Boolean
+        get() = _state.value.let { state ->
+            state.catalog
+                .firstOrNull { it.id == state.activeEngineId }
+                ?.descriptor?.capabilities?.providesOwnUi == true
+        }
 
     private fun observePreferenceChanges() {
         launchSafely {

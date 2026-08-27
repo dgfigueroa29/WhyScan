@@ -148,8 +148,34 @@ sealed interface ScannerAction {
      * El ViewModel sobrevive a la navegación, así que sin esto la cámara seguía capturando mientras
      * el usuario mira el historial o los ajustes. Es batería, y sobre todo es una app de escaneo
      * grabando cuando nadie se lo pidió.
+     *
+     * **Es navegación, no ciclo de vida**, y confundir las dos cosas costó un defecto que dejaba al
+     * usuario encerrado: ver [Backgrounded].
      */
     data object ScreenHidden : ScannerAction
+
+    /**
+     * La app se fue a segundo plano. **No es lo mismo que salir de la pantalla**, y tratarlo como si
+     * lo fuera fue exactamente el defecto.
+     *
+     * La cámara se apaga al irse al fondo —batería, y una app de escaneo no graba cuando nadie la
+     * mira— y se reanuda al volver, **si estaba corriendo**. Lo que no se hace es re-armar el
+     * arranque automático: ese es un privilegio de *llegar a la pantalla*, no de *volver al primer
+     * plano*.
+     *
+     * ### El defecto que esto cierra
+     *
+     * El Google Code Scanner abre **su propia pantalla, en otro proceso**, así que arrancar la
+     * sesión manda a WhyScan al fondo. Con el arranque automático atado al primer plano, la
+     * secuencia era circular: el motor abre su pantalla → WhyScan al fondo → el usuario cierra esa
+     * pantalla → WhyScan al primer plano → arranca la sesión → el motor abre su pantalla otra vez.
+     * **El usuario no podía salir**, ni con la X ni con atrás ni con el gesto, y daba igual que la
+     * lectura hubiera funcionado.
+     */
+    data object Backgrounded : ScannerAction
+
+    /** La app volvió al primer plano. Ver [Backgrounded]. */
+    data object Foregrounded : ScannerAction
 
     /** Vaciar los resultados en pantalla. El historial no se toca: eso se borra desde su pantalla. */
     data object ClearDetections : ScannerAction

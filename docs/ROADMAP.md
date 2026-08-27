@@ -865,6 +865,10 @@ está.
   sube al sitio donde se puede afirmar. Y "no se le conoce consecuencia" era precisamente lo que se
   dijo del driver de Room y del `Executor` de Koin.
 
+  **Y este arreglo trajo un defecto peor, que hay que leer junto a él.** Atar la sesión al ciclo de
+  vida estuvo bien; lo que estuvo mal fue atar **también** el arranque automático, que responde a
+  otra pregunta. El resultado fue una cámara de la que no se podía salir — Ronda 20.
+
 ### Ronda 13 — verificación 🚧
 
 El hallazgo era que el suelo de cobertura exigía 80 % en `:core:domain` y `:core:data` mientras los
@@ -1072,6 +1076,51 @@ aplazada desde ADR-0009.
   CI: el paso imprime el JSON y lo sube como artefacto, y grabarlo es descargar ese archivo y
   commitearlo en `tools/binary-size.json`. Hasta entonces el paso mide, informa y **no puede fallar**
 
+### Ronda 20 — la cámara de la que no se podía salir ✅
+
+Reportado desde un dispositivo, que es donde aparecen los defectos que ningún CI ve. Y es **una
+regresión de la Ronda 17**: la introduje dos rondas antes, arreglando otra cosa.
+
+- [x] **El síntoma:** con el permiso concedido, la cámara se abre y no hay forma de salir. Ni la X,
+  ni atrás, ni el gesto. Escanear un código correctamente tampoco ayudaba
+- [x] **La causa: dos preguntas distintas atadas al mismo evento.** La Ronda 12 cambió el
+  `DisposableEffect` de la pantalla por un `LifecycleStartEffect`, para que la sesión no siguiera
+  viva con la app minimizada. Con eso, "la app volvió al primer plano" pasó a contar como "el
+  usuario llegó a la pantalla" — y el arranque automático cuelga de lo segundo.
+
+  El Google Code Scanner abre **su propia pantalla, en otro proceso**. Arrancar la sesión, por
+  tanto, **manda WhyScan al fondo**. La secuencia se cierra sobre sí misma: el motor abre su
+  pantalla → WhyScan al fondo → el usuario la cierra → WhyScan al primer plano → eso arranca la
+  sesión → el motor abre su pantalla otra vez. Y de paso, irse al fondo cancelaba el `sessionJob`,
+  así que la lectura que el usuario acababa de hacer moría en una corrutina cancelada
+- [x] **El arreglo: que vuelvan a ser dos preguntas.** `ScreenShown`/`ScreenHidden` son navegación —
+  llegar a la pantalla y salir de ella— y solo ellas arman el arranque automático.
+  `Foregrounded`/`Backgrounded` son ciclo de vida: apagan la cámara al fondo y la devuelven al
+  volver **si estaba corriendo**, sin re-armar nada. Si el usuario la había pausado a mano, no
+  vuelve sola
+- [x] **Y el motor con pantalla propia es un caso con nombre.** Irse al fondo **no** para la sesión
+  cuando el motor activo declara `providesOwnUi`: ahí estar en segundo plano no significa que el
+  usuario se haya ido, significa que el motor está trabajando porque lo mandamos nosotros. Se lee de
+  la capacidad declarada y no de una lista de motores, así que el próximo con pantalla propia lo
+  hereda sin tocar el ViewModel (RNF-07)
+- [x] **Cinco tests en `ScannerLifecycleTest`**, y uno de ellos es el invariante que se violó: volver
+  al primer plano **no arranca una sesión por su cuenta**. Hizo falta que el motor falso pudiera
+  quedarse abierto (`keepsScanning`): uno que termina en cuanto emite deja sin sujeto la pregunta
+  "¿estaba corriendo la sesión cuando la app se fue al fondo?", y toda aserción sobre pararla y
+  reanudarla salía verde sin comprobar nada
+- [ ] **Un caso raro que se deja abierto a propósito, y no es este defecto.** Si el sistema se lleva
+  la pantalla del motor sin devolver resultado —el usuario la saca de recientes, o la mata una falta
+  de memoria—, la sesión se queda esperando un resultado que no llegará. Se podría inferir al volver
+  al primer plano, pero el resultado bueno también llega por ahí y el orden entre los dos no está
+  garantizado: el arreglo se comería lecturas correctas. **Es anterior a todo esto** y sale de una
+  sesión atascada saliendo de la pantalla
+
+**Lo que este defecto dice del proyecto, que es lo que vale para la próxima:** el CI está verde y
+seguiría verde con esto dentro. Lo destapó alguien usando la app. La tabla de "qué cubre a los
+motores de cámara sin emulador" ya nombraba esta forma de agujero —lo que el motor de Google hace
+**fuera del proceso** no lo ve nadie desde aquí— y esta es la segunda vez que muerde por el mismo
+sitio: la primera fue la cadena de fallback reabriendo la cámara al cancelar, en la Ronda 16.
+
 ### Antes de la ficha de Play, esto va primero
 
 Lo de abajo es trámite de tienda. Lo de esta lista no. Se hizo el repaso a propósito antes de tocar
@@ -1099,10 +1148,10 @@ nada de Play, y salió algo que no estaba en ninguna lista:
 - [x] **Generar el baseline profile.** Hecho: el perfil está versionado y `baseline-profile.yml` lo
   regenera y lo commitea solo. Es lo que separa "la app arranca" de "la app arranca rápido la
   primera vez" — con la salvedad de siempre, que **cuánto** más rápido solo lo dice un dispositivo
-- [ ] **Navegación** Si concedo permisos para la cámara se abre la camara para escanear. Eso está bien. 
-Pero si en esa pantalla escaneo correctamente un código, oprimo el icono de la X o hago back sin importar
-si fue con gesto o botón de navegación de poder ir a la home. Esto no se está cumpliendo porque una vez
-que entra en la camara a pantalla completa no deja salir de ahí.
+- [x] **Navegación: no se podía salir de la cámara.** Reportado desde un teléfono: conceder el
+  permiso abre la cámara —bien—, pero desde ahí ni la X, ni el botón atrás, ni el gesto sacaban de
+  la pantalla, y daba igual que la lectura hubiera funcionado. **Es una regresión de la Ronda 17**
+  y está contada en la Ronda 20
 
 Solo después tiene sentido pelearse con la ficha.
 

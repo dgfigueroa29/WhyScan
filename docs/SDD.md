@@ -1403,6 +1403,7 @@ información que solo existía como posición o como color":
 | Dependencias                     | CI, en cada PR     | Que lo que añade un PR no traiga vulnerabilidades conocidas de severidad alta (`dependencies.yml`), sobre el grafo que `dependency-submission` publica desde `main`                                                                                                                               | dependency-review-action                          |
 | **Tamaño del binario**           | CI, tras `assembleRelease` | Que el APK de release no crezca más de un 2 % sobre la línea base grabada, y que no desaparezca ninguna ABI. Con el reparto por cubos, que es lo que atribuye el peso (`tools/binary_size.py`, §7.6)                                                                                              | python3                                           |
 | **Barrido del parseo**           | `commonTest`       | Cinco invariantes sobre 5.000 entradas generadas de una gramática del dominio: que nada lance, que todo destino pase la lista blanca, que un enlace solo sea `http`/`https`, que ningún delimitador del código llegue sin codificar a un `mailto:`/`tel:`/`sms:`, y que deletrear no altere el valor (`ValueParsingFuzzTest`, §13.7)                                          | kotlin-test                                       |
+| **Ciclo de vida de la sesión**   | `commonTest`       | Que volver al primer plano no arranque una sesión por su cuenta —el defecto que encerraba al usuario—, que el motor con pantalla propia no se pare al irse la app al fondo, que uno normal sí se pare y vuelva, y que una cámara pausada a mano no vuelva sola (`ScannerLifecycleTest`, §9.10) | kotlin-test                                       |
 | **Cancelar no degrada**          | `commonTest`       | Que un `Failed(Cancelled)` termine la cadena en vez de abrir el motor siguiente, que no emita `EngineSwitched` y que no se le cuente al usuario como error (`FallbackScannerEngineTest`, §7.5)                                                                                                     | kotlin-test                                       |
 | Probar un motor                  | `commonTest`       | Que "Probar ahora" elija el motor y abra la pantalla completa, que cerrarla no deshaga la elección, que una sesión sin lecturas la cierre sola y que salir de la pantalla tampoco la deje abierta (§9.10)                                                                                          | kotlin-test                                       |
 | Enlaces legales                  | `commonTest`       | Que un enlace que nadie sabe abrir se le cuente al usuario, y que uno que sí se abre **no** diga nada — porque abrir el navegador ya es el feedback (§12)                                                                                                                                          | kotlin-test, turbine                              |
@@ -2296,6 +2297,38 @@ reabriría la cámara que el usuario acaba de cerrar a mano con el botón de pau
 **Los resultados en pantalla tienen tope** (cien). Una sesión continua larga los acumulaba sin
 límite. Lo que se recorta no se pierde —el historial guarda todo, y ese es su trabajo— y deja de
 ocupar memoria en una pantalla donde nadie se desplaza cien lecturas hacia abajo.
+
+#### Navegación y ciclo de vida son dos preguntas, no una
+
+`ScreenShown`/`ScreenHidden` responden a **llegar a la pantalla y salir de ella**;
+`Foregrounded`/`Backgrounded`, a **primer plano y fondo**. Los dos pares llegaron a estar atados al
+mismo efecto y eso dejó al usuario encerrado dentro de la cámara, así que la distinción vale escrita:
+
+| Evento                        | Qué hace                                                                          |
+|-------------------------------|-------------------------------------------------------------------------------------|
+| `ScreenShown`                 | Refresca el catálogo y **arma el arranque automático**                             |
+| `ScreenHidden`                | Cierra la pantalla completa, para la sesión y borra cualquier marca de reanudación |
+| `Backgrounded`                | Apaga la cámara y apunta que estaba corriendo — **salvo** si el motor activo abre su propia pantalla |
+| `Foregrounded`                | Devuelve la cámara **solo** si la habíamos quitado nosotros. Nunca arranca por su cuenta |
+
+**El arranque automático cuelga de llegar a la pantalla y de nada más.** Cuando colgaba también del
+primer plano, la secuencia se cerraba sobre sí misma: el Google Code Scanner abre su propia pantalla
+en otro proceso, así que arrancar la sesión mandaba WhyScan al fondo; cerrar esa pantalla devolvía
+WhyScan al primer plano; eso contaba como llegar a la pantalla; la sesión arrancaba; el motor abría
+su pantalla otra vez. Ni la X, ni atrás, ni el gesto. Y de propina, irse al fondo cancelaba el
+`sessionJob`, de modo que la lectura recién hecha moría en una corrutina cancelada.
+
+**`providesOwnUi` es lo que hace que el caso tenga nombre en vez de ser una excepción escondida.**
+Cuando el motor activo declara esa capacidad, estar en segundo plano no significa que el usuario se
+haya ido: significa que el motor está trabajando, en otro proceso, porque lo arrancamos nosotros.
+Se lee de la capacidad declarada y no de una lista de motores, así que el próximo motor con pantalla
+propia hereda el comportamiento sin tocar el ViewModel (RNF-07).
+
+Queda un caso raro **abierto a propósito**: si el sistema se lleva la pantalla del motor sin devolver
+resultado, la sesión espera algo que no llegará. Se podría inferir al volver al primer plano —si
+estamos delante nosotros, esa pantalla ya no está—, pero el resultado bueno también llega por ahí y
+el orden entre los dos no está garantizado: el arreglo se comería lecturas correctas. Sale solo
+saliendo de la pantalla.
 
 #### Probar un motor: el visor a pantalla completa
 
