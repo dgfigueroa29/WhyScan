@@ -19,8 +19,8 @@ kotlin {
         commonMain.dependencies {
             api(project(":core:scanner-api"))
             api(project(":core:scanner-ui"))
-            implementation(compose.ui)
-            implementation(compose.foundation)
+            implementation(libs.compose.ui)
+            implementation(libs.compose.foundation)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

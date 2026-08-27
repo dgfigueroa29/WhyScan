@@ -17,6 +17,7 @@ import com.whyscan.core.platform.ImagePicker
 import com.whyscan.core.platform.PlatformActions
 import com.whyscan.core.scanner.BarcodeScannerEngine
 import com.whyscan.engines.manual.ManualInputScannerEngine
+import com.whyscan.engines.ocr.VisionOcrEngine
 import com.whyscan.engines.vision.VisionScannerEngine
 import com.whyscan.engines.zxing.ZXingCppEngine
 import com.whyscan.platform.IosFileSaver
@@ -32,12 +33,16 @@ actual fun platformModule(): Module = module {
 
     single { VisionScannerEngine() }
     single { ZXingCppEngine() }
+    single { VisionOcrEngine() }
     single { ManualInputScannerEngine() }
 
+    // El orden de esta lista no decide nada —de eso se encarga `EnginePriorityPolicy`—, pero se
+    // mantiene igual que el de la cadena para que leer las dos juntas no confunda.
     single<List<BarcodeScannerEngine>> {
         listOf(
             get<VisionScannerEngine>(),
             get<ZXingCppEngine>(),
+            get<VisionOcrEngine>(),
             get<ManualInputScannerEngine>(),
         )
     }

@@ -1,9 +1,8 @@
-// `compose.uiTest` está marcado como experimental y sin esto el script **no compila**: no es un
-// aviso, es un error, y Gradle lo reporta junto a las deprecaciones de los demás accessors de
-// `compose.*`, que sí son solo avisos. Se acepta a conciencia por lo mismo que
-// `-Xexpect-actual-classes` en el convention plugin: la anotación dice que la API puede cambiar,
-// no que haya un problema en este código.
-@file:OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
+// Aquí vivía un `@file:OptIn(ExperimentalComposeLibrary::class)`, obligatorio para poder escribir
+// `compose.uiTest`: ese accesor estaba marcado como experimental y sin la anotación el script **no
+// compilaba**. Al pasar a la coordenada explícita deja de hacer falta, porque lo experimental era
+// el accesor y no el artefacto. Un opt-in menos que justificar es la clase de ganancia pequeña que
+// esta migración trae de propina.
 
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
@@ -61,10 +60,10 @@ kotlin {
             // Único módulo que conoce a todos los motores: es el composition root.
             implementation(project(":engines:manual"))
 
-            implementation(compose.runtime)
-            implementation(compose.foundation)
-            implementation(compose.material3)
-            implementation(compose.components.resources)
+            implementation(libs.compose.runtime)
+            implementation(libs.compose.foundation)
+            implementation(libs.compose.material3)
+            implementation(libs.compose.components.resources)
 
             implementation(project.dependencies.platform(libs.koin.bom))
             implementation(libs.koin.core)
@@ -95,7 +94,7 @@ kotlin {
         // Robolectric en el lado de Android.
         val desktopTest by getting {
             dependencies {
-                implementation(compose.uiTest)
+                implementation(libs.compose.ui.test)
                 implementation(compose.desktop.currentOs)
             }
         }
@@ -105,7 +104,7 @@ kotlin {
             // debe cargar ML Kit ni Play Services (RNF-06).
             implementation(project(":engines:gms-code-scanner"))
             implementation(project(":engines:mlkit-camerax"))
-            implementation(project(":engines:mlkit-ocr"))
+            implementation(project(":engines:ocr"))
             implementation(project(":engines:zxing-cpp"))
 
             // Room KMP no soporta wasmJs, así que la base de datos se enlaza en los tres targets
@@ -122,6 +121,7 @@ kotlin {
             // Motor de iOS: no debe enlazarse en ningún otro binario (RNF-06).
             implementation(project(":engines:vision-ios"))
             implementation(project(":engines:zxing-cpp"))
+            implementation(project(":engines:ocr"))
         }
 
         desktopMain.dependencies {

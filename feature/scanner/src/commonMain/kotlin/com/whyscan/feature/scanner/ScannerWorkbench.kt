@@ -43,6 +43,7 @@ import com.whyscan.feature.scanner.resources.formats_hint
 import com.whyscan.feature.scanner.resources.formats_title
 import com.whyscan.feature.scanner.resources.session_error
 import com.whyscan.feature.scanner.resources.session_switched_from
+import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 // El banco de motores: lo que solo se ve con el modo avanzado encendido.
@@ -182,7 +183,13 @@ internal fun EngineCard(
             )
             Text(
                 text = buildString {
-                    append(stringResource(Res.string.engine_formats_count, capabilities.supportedFormats.size))
+                    append(
+                        pluralStringResource(
+                            Res.plurals.engine_formats_count,
+                            capabilities.supportedFormats.size,
+                            capabilities.supportedFormats.size,
+                        ),
+                    )
                     if (capabilities.supportsContinuousScan) {
                         append(stringResource(Res.string.engine_supports_continuous))
                     }

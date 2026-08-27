@@ -44,7 +44,10 @@
     <!-- Borrado. Una fila va directo; vaciar todo pregunta antes. -->
     <string name="history_delete">Eliminar</string>
     <string name="history_clear_title">¿Borrar todo el historial?</string>
-    <string name="history_clear_body">Se van a eliminar %1$d lecturas, con sus notas. No hay copia en ninguna parte, así que no se puede deshacer.</string>
+    <plurals name="history_clear_body">
+        <item quantity="one">Se va a eliminar %1$d lectura, con su nota. No hay copia en ninguna parte, así que no se puede deshacer.</item>
+        <item quantity="other">Se van a eliminar %1$d lecturas, con sus notas. No hay copia en ninguna parte, así que no se puede deshacer.</item>
+    </plurals>
     <string name="history_clear_confirm">Borrar todo</string>
     <string name="history_clear_cancel">Conservarlo</string>
 

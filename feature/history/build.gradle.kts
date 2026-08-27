@@ -1,5 +1,11 @@
 plugins {
     id("whyscan.kmp.compose")
+
+    // Ronda 13: el suelo de cobertura cubría `:core:domain` y `:core:data`, y los cuatro
+    // ViewModels —donde vive la máquina de estados— quedaban fuera. Tenían tests, así que el
+    // problema no era la falta de red: era que **nadie sabía el número**, que es exactamente el
+    // reproche con el que se abrió la medición en la Ronda 5, un módulo más allá.
+    alias(libs.plugins.kover)
 }
 
 android {
@@ -19,7 +25,7 @@ kotlin {
             implementation(project(":core:platform"))
             api(project(":core:designsystem"))
 
-            implementation(compose.components.resources)
+            implementation(libs.compose.components.resources)
 
             // Agrupar por día exige saber en qué día cayó un instante, y eso es zona horaria y
             // calendario. Ver la nota del catálogo de versiones.

@@ -149,7 +149,7 @@ private fun ScannerLayout(
  * La disposición del banco de pruebas: visor con proporción fija arriba y el catálogo debajo.
  *
  * Aquí el visor **sí** se desplaza con el resto: la pregunta que se responde en esta pantalla es
- * "qué motor lee mejor", y para contestarla hace falta ver los ocho motores y sus métricas, no
+ * "qué motor lee mejor", y para contestarla hace falta ver todos los motores y sus métricas, no
  * mantener el encuadre.
  */
 @Composable

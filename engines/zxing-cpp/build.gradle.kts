@@ -23,7 +23,7 @@ kotlin {
         commonMain.dependencies {
             api(project(":core:scanner-api"))
             api(project(":core:scanner-ui"))
-            implementation(compose.ui)
+            implementation(libs.compose.ui)
         }
         androidMain.dependencies {
             implementation(libs.lifecycle.runtime.compose)

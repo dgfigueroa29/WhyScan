@@ -3,6 +3,23 @@
 Cada fase es entregable e independientemente verificable. Una fase no se cierra hasta que su
 criterio de salida se cumple en CI.
 
+> ## El foco es Android. iOS no se toca hasta nuevo aviso
+>
+> Esto **manda sobre todo lo que hay más abajo**, incluidas las casillas sin marcar. Un pendiente de
+> iOS —de la Fase 3 o de la parte de iOS de cualquier otra fase— no es trabajo disponible: es
+> trabajo aplazado. No se retoma por iniciativa propia, ni aunque sea lo que mejor se pueda hacer
+> sin dispositivo; **poder hacerlo no lo convierte en prioridad**. Lo desbloquea el dueño del
+> proyecto diciéndolo, no el roadmap.
+>
+> El motivo lleva escrito desde la Fase 3 y sigue valiendo: sin dispositivos Apple no se puede
+> *probar* nada de esa plataforma, y enlazar el framework no acerca la app a la tienda. Android es
+> lo que se publica.
+>
+> **Se registró después de saltárselo.** El OCR de iOS de la Fase 4 se implementó en agosto de 2026
+> con este documento ya diciendo que iOS estaba despriorizado; el trabajo quedó hecho y en verde,
+> pero la elección fue equivocada. Queda aquí y en `CLAUDE.md` para que el criterio no dependa de
+> volver a leer la Fase 3.
+
 ---
 
 ## Fase 1 — Fundaciones ✅ (entregable actual)
@@ -166,13 +183,43 @@ Android e iOS sobre el mismo set de imágenes de referencia.
 
 - [x] `:engines:browser-detector` — `BarcodeDetector` con detección de soporte del navegador y de
   contexto seguro, más decodificación de imagen estática vía `createImageBitmap`
-- [x] `:engines:mlkit-ocr` — Text Recognition en Android + `OcrCodeInterpreter`: lee el número
+- [x] `:engines:ocr` — Text Recognition en Android + `OcrCodeInterpreter`: lee el número
   impreso bajo el código y solo lo emite si el dígito de control cuadra
 - [x] Preview de Web (D14): el `<video>` vive en el documento, sobre el canvas, y el composable solo
   le dice qué rectángulo ocupar. Tapa el overlay, y eso pasa a ser una capacidad declarada
   (`occludesOverlay`) en vez de un dibujo invisible
-- [ ] OCR en iOS: ML Kit se distribuye por CocoaPods, que este proyecto no usa. La alternativa sin
-  dependencias es `VNRecognizeTextRequest` del framework Vision, reutilizando `OcrCodeInterpreter`
+- [x] **OCR en iOS, con el reconocedor del sistema.** ML Kit se distribuye por CocoaPods, que este
+  proyecto no usa, así que iOS va por `VNRecognizeTextRequest` del framework Vision — cero
+  dependencias nuevas y cero bytes de modelo en el binario. Reutiliza `OcrCodeInterpreter`
+  entero: **toda la parte que decide algo es la misma que en Android**, y con ella sus tests.
+  Tres decisiones que no eran obvias y que conviene tener escritas:
+  **(1)** es un **motor propio del catálogo** (`VISION_OCR`) y no un `actual` de `MLKIT_OCR`. Son
+  dos reconocedores de dos fabricantes; presentarlos como uno haría que el comparador atribuyera a
+  ML Kit lo que leyó Vision, que es el mismo error que D13 evitó con zxing-java. De paso se
+  corrige algo que llevaba desde la Fase 4: `MLKIT_OCR` **declaraba iOS**, así que el catálogo
+  prometía en un iPhone un motor que solo podía responder `NotImplemented`;
+  **(2)** `AVCaptureVideoDataOutput` y no la salida de metadatos, por lo mismo que zxing-cpp — la
+  de metadatos entrega códigos ya decodificados, y el objeto de este motor es precisamente el
+  código que nadie consiguió decodificar;
+  **(3)** `usesLanguageCorrection = false`. La corrección lingüística está entrenada para arreglar
+  texto, y sobre trece cifras solo puede inventar. Con `recognitionLevel = .accurate`, que cuesta
+  caro por frame y por eso el motor descarta frames tarde a propósito.
+  **Dos tandas de `iOS (manual)`, y la primera dejó algo que merece quedar escrito**: los diez
+  errores estaban todos en un archivo y eran todos la misma cosa —**cinterop no traduce igual todos
+  los `NS_ENUM`**—. Los de AVFoundation que usa el resto del proyecto (`AVAuthorizationStatus…`)
+  son declaraciones de nivel superior; los de UIKit (`UIDeviceOrientation`, `UIImageOrientation`)
+  **no existen sueltas** y hay que cualificarlas por su tipo; y los `kCGImagePropertyOrientation*`
+  de ImageIO vuelven a ser de nivel superior, aunque su tipo sí se importe. Es la tercera vez en
+  este proyecto que el fallo de Kotlin/Native es "importé como una cosa lo que cinterop genera como
+  otra" —las dos anteriores fueron los miembros de AVFoundation y el `Dispatchers.IO` de
+  `:core:database`—, y ninguna de las tres la puede ver nada que no compile para iOS. Lo demás
+  —`performRequests`, `VNImageRequestHandler`, `topCandidates` y las cuatro esquinas de
+  `VNRecognizedTextObservation`— compiló a la primera
+- [ ] Lo que sigue sin comprobarse del OCR de iOS, dicho aparte del cableado: que **lea**. El job
+  `iOS (manual)` enlaza el framework entero con el motor dentro —comprobado, en verde—, y eso cubre
+  la superficie de cinterop, que es donde han estado todos los fallos de este proyecto en
+  Kotlin/Native. No cubre que Vision encuentre los dígitos, ni que la orientación con la que se le
+  pasan los frames sea la correcta. Hace falta un iPhone, igual que el resto de la Fase 3
 - [x] Escaneo desde imagen/galería (RF-07) con selector en las cuatro plataformas: *photo picker*
   en Android, `UIImagePickerController` en iOS, `JFileChooser` en escritorio e `<input
       type=file>` en Web. Ninguno pide permisos: los cuatro corren fuera de la app y devuelven solo
@@ -443,9 +490,8 @@ sea explícita.
   en un dispositivo: leer la revisión del estado observado la daba por `null` durante la primera
   composición, así que a un usuario con novedades pendientes se le habrían marcado como vistas
   antes de que llegara su valor de disco
-- [ ] **Baseline Profile.** Es la optimización con mejor relación resultado/esfuerzo en Android y
-  encaja mal con lo que este proyecto puede hacer sin dispositivo, así que conviene decidirlo con
-  datos del punto anterior y no antes
+- [x] ~~**Baseline Profile.**~~ Se aplazó aquí para decidirlo con datos y se resolvió en la Ronda 7:
+  módulo, cableado, ADR-0013 y —desde esta revisión— el perfil generado y versionado
 
 **Deuda de calidad que ya se puede ver**
 
@@ -556,7 +602,7 @@ salió, ordenado por lo que costaría equivocarse.
   aplica nada y comprueba que `koinInject` devuelve la misma instancia que `koin.get()`, para un
   tipo de los módulos comunes y otro que depende del `platformModule`
 
-### Ronda 7 — arranque: el baseline profile 🔜
+### Ronda 7 — arranque: el baseline profile ✅
 
 - [x] **Baseline profile** (ver [ADR-0013](adr/ADR-0013-baseline-profile.md)). La app arranca
   Compose, monta el grafo de Koin con cinco motores y abre Room: todo eso lo **interpreta** ART la
@@ -570,11 +616,21 @@ salió, ordenado por lo que costaría equivocarse.
   perfil del repositorio cuando lo haya y sigue adelante cuando no. La **grabación** vive en
   `baseline-profile.yml` y se lanza a mano, igual que iOS y por el mismo motivo: no es un criterio
   para aceptar un cambio, es un artefacto
-- [ ] **Lanzar el workflow y commitear el perfil generado.** Es lo único de esta ronda que sigue sin
-  hacerse, y conviene decir por qué con precisión: el entorno de desarrollo **no alcanza el maven
-  de Google**, así que aquí no se puede ni resolver el plugin, y mucho menos arrancar un emulador.
-  Un clic en Actions → "Baseline profile (manual)" lo produce. Hasta entonces el perfil no existe
-  y la app arranca como arrancaba: el cableado no miente sobre eso
+- [x] **El perfil existe.** `baseline-prof.txt` (31.575 líneas) y `startup-prof.txt` (27.831) en
+  `androidApp/src/release/generated/baselineProfiles/`, que es de donde los toma la build de
+  release. La grabación recorrió la app de verdad y no solo el framework: 2.325 entradas de
+  `com/whyscan` —`AppKt`, `Navigator`, el repositorio de preferencias, los destinos— junto a 14.205
+  de Compose, 418 de Room y 367 de Koin, que son exactamente las tres cosas que ADR-0013 señala
+  como el coste del primer arranque
+- [x] **Y el workflow lo commitea solo, que es lo que hacía falta para que existiera.** Lo que lo
+  mantuvo pendiente no fue el emulador: fue el último paso, que era manual. El propio workflow
+  decía "descarga el artefacto, cópialo a `androidApp/src/…` y haz commit", y la tarea escribe ese
+  archivo **dentro del runner**, que se destruye al terminar. Así que cada ejecución producía el
+  perfil y lo tiraba, salvo que alguien con el repositorio delante lo rescatara a mano. Un
+  artefacto generado que hay que mover a mano es un artefacto que no se mueve — y este llevaba una
+  ronda entera sin moverse. Ahora el job hace `git commit` sobre la rama en la que se lanzó, y solo
+  si el perfil cambió: que no cambie también es información, quiere decir que el camino de arranque
+  sigue siendo el mismo
 
 ### Ronda 8 — una marca que distingue en vez de agrupar ✅
 
@@ -607,6 +663,196 @@ de Play, junto a sus competidores, eso no distingue: **agrupa**.
 > interrogación jugando con el nombre, que compite con «ayuda» en una cuadrícula de aplicaciones.
 > Cerradas esas dos, la única dirección honesta era mirar el objeto que la app lee.
 
+---
+
+## Auditoría por pilares — rondas 9 a 14 🚧
+
+Una ronda por pilar, abiertas a la vez y cerrables por separado. El criterio para que algo entre
+aquí es que **se pueda señalar el archivo y la línea**: lo que solo se puede intuir sin un
+dispositivo ya tiene su sitio en "Pendiente para publicar" y no se disfraza de hallazgo.
+
+Conviene decir lo que esta auditoría **no** es. No es una lista de buenas prácticas contrastada
+contra la app: es lo que quedó después de mirar el código y descartar lo que ya estaba bien. Esa
+segunda parte también se escribe —abajo, en cada ronda— porque saber dónde **no** hace falta gastar
+escrutinio vale tanto como saber dónde sí, y porque una auditoría que solo enumera defectos invita a
+tocar cosas que funcionan.
+
+### Ronda 9 — seguridad y privacidad ✅
+
+- [x] **El portapapeles ya no enseña lo que se copia.** `copyToClipboard` marca el contenido con el
+  extra `android.content.extra.IS_SENSITIVE`, así que Android 13+ deja de pintar la
+  **previsualización flotante** con el texto copiado. Sin eso, copiar un QR de WiFi —cuyo `rawValue`
+  es literalmente `WIFI:T:WPA;S:red;P:clave;;`— enseñaba la contraseña encima de cualquier app,
+  delante de quien estuviera mirando la pantalla.
+  **Es exactamente la forma del hallazgo del backup de la Ronda 5**, y por eso importa más que su
+  tamaño: la garantía de privacidad de este producto se apoya en no tener `INTERNET`, y esto —igual
+  que el backup— **no lo hacía la app**, lo hacía un proceso del sistema al que ese permiso le da
+  igual. Van dos puertas del mismo tipo; conviene asumir que hay más y buscarlas por ahí.
+  Se marca **siempre** y no solo cuando el valor parece secreto, porque el usuario ya está viendo el
+  valor en pantalla justo encima del botón: la previsualización no le informa de nada y su peor caso
+  es una credencial a la vista. Con esa asimetría, clasificar qué es sensible añadiría una decisión
+  que puede equivocarse a cambio de no ganar nada.
+  Y no se afirma: `AndroidPlatformActionsTest` lo comprueba con Robolectric, que da un
+  `ClipboardManager` de verdad en la JVM y corre en cada pull request.
+- [x] **La lista blanca de esquemas se comprueba en el borde, no solo en el dominio.**
+  `isOpenableUri` en `:core:platform` acepta los seis esquemas que `ResultActionsFactory` puede
+  producir —`http`, `https`, `mailto`, `tel`, `sms`, `geo`— y rechaza todo lo demás fallando
+  cerrado. Lo consultan las implementaciones de Android, Escritorio y Web antes de entregarle nada
+  al sistema.
+  Lo que había antes no era un agujero abierto: era que **lo único que impedía que llegara un
+  `javascript:` o un `intent://` era que nadie llamaba a `openUrl` de otro modo**, y eso es una
+  propiedad del grafo de llamadas, no del método. Se cumplía hoy y dejaba de cumplirse el día que
+  alguien añadiera un camino, sin que nada avisara.
+  **Donde más falta hacía era en Web**, y no se vio hasta escribirlo: `window.open("javascript:…")`
+  no abre otra app, **ejecuta** ese código dentro de nuestra página. Es la única de las cuatro
+  plataformas donde el esquema equivocado no es un problema de otro.
+  La lista queda escrita dos veces, una en cada lado de una separación que debe existir —el dominio
+  no sabe que hay un sistema operativo—, así que `OpenableUriDriftTest` ata las dos: comprueba que
+  todo lo que el dominio ofrece abrir pasa el borde, y falla en las dos direcciones.
+- [ ] **Falta iOS, y es una línea.** `IosPlatformActions.openUrl` sigue sin la guarda. No se tocó
+  por la regla de arriba —iOS no se toca por iniciativa propia— y no por falta de importancia; se
+  cierra en cuanto la plataforma se desbloquee. Queda escrito para que la asimetría no se descubra
+  por sorpresa.
+
+*Sin comprobar en dispositivo:* que la capa del fabricante respete el extra del portapapeles por
+debajo de API 33, donde la constante existe desde antes que su documentación.
+
+**Mirado y correcto, para no volver a gastar escrutinio ahí.** El manifiesto está bien y no por
+casualidad: sin `INTERNET`, `allowBackup="false"` con `dataExtractionRules`,
+`usesCleartextTraffic="false"`, un único `exported="true"` que es el `MAIN`/`LAUNCHER`, y
+`uses-feature` de cámara declarado como no obligatorio. `percentEncode` cubre `mailto:`, `tel:` y
+`sms:`. El CSV neutraliza fórmulas y el texto plano no, con un test que fija por qué. Nada de esto
+hizo falta tocarlo.
+
+### Ronda 10 — accesibilidad ✅
+
+- [x] **El lector de pantalla ya lee el código como un código.** `spokenValue` en `:core:domain`
+  devuelve el valor con los caracteres separados cuando lo que hay es un código, y tal cual cuando
+  es prosa. Antes las etiquetas habladas interpolaban el `rawValue` crudo, así que TalkBack
+  pronunciaba un EAN-13 como *"siete billones quinientos un mil…"*. Para cualquier app eso sería un
+  detalle; para **esta** es el producto: el motivo entero de que el valor vaya en monoespaciada es
+  que alguien lo coteja **carácter a carácter** contra una etiqueta impresa, y a quien no ve la
+  pantalla se le estaba negando justo eso.
+  **El valor visible también lo lleva**, y ese era el sitio que faltaba en el hallazgo: se habían
+  mirado las etiquetas de los botones, pero el `Text` con el valor no tenía ninguna descripción, así
+  que era el primer sitio donde el lector se equivocaba.
+- [x] **Deletrear no siempre ayuda, y esa es la mitad de la decisión.** Una URL leída letra a letra
+  —`h t t p s d o s p u n t o s…`— no la entiende nadie, y un vCard entero es absurdo. Así que se
+  deletrea solo lo que **no es una palabra**: un `Product`, que es un GTIN por definición, y un texto
+  corto, sin espacios y mayoritariamente numérico —un número de serie, un lote, un Code 128 que
+  ningún motor clasificó—. Se exige *mayoría* de dígitos y no *algún* dígito para que `edificio2` se
+  siga leyendo como palabra; con la regla laxa el arreglo habría sido peor que el defecto.
+  Y no se toca nada del valor: ni se quitan guiones ni se agrupa de tres en tres, porque lo que se
+  anuncia tiene que ser lo mismo que hay en la pantalla y en la etiqueta o el cotejo deja de valer.
+- [x] **Vive en el dominio, y conviene decir por qué no contradice a D15.** Lo que se decide ahí no
+  es *cómo suena* sino **qué clase de valor es** —código o prosa—, que es una afirmación sobre el
+  significado y la misma en los cuatro idiomas. La frase que envuelve al valor ("Copiar %s") la
+  sigue poniendo la pantalla con sus recursos.
+- [ ] **Lo que no cubre ningún test es el cableado.** `spokenValue` tiene ocho casos en
+  `commonTest`, pero que las seis llamadas de `ScannerResults` y `HistoryRow` sigan usándolo no lo
+  comprueba nadie: alguien puede volver a poner `rawValue` y todo seguiría en verde. Cubrirlo pide
+  un test de semántica sobre la pantalla del historial con datos sembrados, que es trabajo de la
+  Ronda 13 y no de esta.
+
+*Sin comprobar en dispositivo:* que la separación por espacios produzca exactamente la prosodia
+esperada en TalkBack y VoiceOver. Es la técnica habitual y no depende del idioma, pero cómo suena de
+verdad solo lo dice un teléfono.
+
+**Mirado y correcto.** Los seis `contentDescription = null` son **todos** decorativos y cinco llevan
+escrito por qué: el icono repite lo que dice el texto de al lado, y anunciarlo haría que el lector
+recorriera cada ítem dos veces. Es la decisión correcta y está tomada a conciencia, no por olvido —
+que es el caso habitual cuando se ve un `null` ahí. No hay un solo `Modifier.clickable` propio en
+todo el proyecto, así que los 48 dp de objetivo táctil los pone Material y no dependen de nadie.
+`ContrastTest` mide 56 pares en los dos temas.
+
+**Lo que esta ronda no puede cerrar:** TalkBack de verdad, los objetivos táctiles medidos y el
+comportamiento con la escala tipográfica al máximo. Eso sigue necesitando un teléfono y ya está en
+su bloque.
+
+### Ronda 11 — internacionalización ✅
+
+- [x] **Siete cadenas que contaban cosas pasan a `<plurals>`**, y eran siete y no una: el hallazgo
+  original solo había mirado `history_clear_body`. Al ir a arreglarlo aparecieron
+  `engine_formats_count`, `comparison_frames`, `comparison_failures`, `a11y_detections_in_view`,
+  `comparison_needs_two_engines` y `comparison_counts`. Vale la pena decirlo porque es el patrón de
+  siempre: la auditoría encuentra el ejemplar visible y el arreglo encuentra la familia.
+  El peor era el que estaba a la vista: *"Se van a eliminar **1 lecturas**"*, en el **único diálogo
+  irreversible de la app** — justo donde peor sienta que el texto parezca descuidado, porque es
+  donde el usuario decide si fiarse.
+- [x] **`comparison_counts` no se podía pluralizar tal cual, y ahí estaba lo interesante.** Llevaba
+  **dos** contadores —"%1$d códigos distintos · %2$d lecturas"— y `pluralStringResource` elige la
+  forma a partir de **una** cantidad. Se parte en dos plurales y la cadena queda como plantilla de
+  unión (`%1$s · %2$s`), lo que además conserva el separador dentro del catálogo: juntarlos en
+  Kotlin habría metido puntuación traducible en el código.
+- [x] **`tools/checks.py` aprende a mirar plurales**, y no solo su paridad entre idiomas: comprueba
+  que las dos lenguas declaren **las mismas cantidades**. Una `<item quantity="one">` que falte no
+  rompe la compilación — revienta en ejecución y **solo con el número que la usa**, que es la clase
+  de fallo que aparece con un elemento en la lista y no con dos. Comprobado borrando una a propósito
+  antes de subirlo: la caza y dice qué idioma y qué cantidad.
+
+**Y la fecha del historial se queda como está, que también es una decisión.** El hallazgo decía que
+`history_date` fija el orden día-mes-año y que el inglés, al ser el respaldo de todo idioma que no
+sea español, se lo impone a todo el mundo. Es cierto, pero **cambiarlo no lo arregla**: sin un
+formateador que conozca el locale —y en KMP común no lo hay— cualquier orden fijo se equivoca con
+alguien. Y entre los dos, día-mes-año es el que usan más hablantes de inglés y casi toda Europa, así
+que como respaldo genérico es la mejor de las dos opciones malas. Se deja escrito para no volver a
+"arreglarlo" dando la vuelta a la moneda.
+
+**Mirado y correcto.** 203 claves con paridad inglés/español comprobada en CI antes que ninguna otra
+cosa, y el inglés en la carpeta sin calificador para que sea el respaldo real. Eso ya evita el
+defecto grande —un idioma con huecos— que es el que rompe pantallas.
+
+### Ronda 12 — resiliencia 🚧
+
+Esta ronda se abre **sin hallazgos bloqueantes**, y decirlo es el resultado: se buscó el fallo y no
+está.
+
+- Los quince `launchCatching` cubren lo que toca disco. Quedan dos `viewModelScope.launch` crudos y
+  los dos están bien: uno lleva `.catch` **sobre el flujo** —que intercepta lo de aguas arriba y deja
+  subir un defecto propio, y está razonado en el código—, y el otro solo emite a un `SharedFlow`.
+- Las tres previews de Android atan el controlador de cámara al `LifecycleOwner`, así que irse a
+  segundo plano suelta la cámara sin que nadie tenga que acordarse.
+- [ ] **Lo único que queda es un hueco de conocimiento, no un defecto conocido:** la *sesión* de
+  escaneo sigue viva en segundo plano aunque la cámara se desate, porque `DisposableEffect` no se
+  dispara al minimizar. No se le conoce consecuencia —sin frames no hay trabajo— pero tampoco hay
+  nada que lo compruebe, y "no se le conoce consecuencia" es precisamente lo que se dijo del driver
+  de Room y del `Executor` de Koin. Vale una comprobación explícita, no una reescritura.
+
+### Ronda 13 — verificación 🚧
+
+El hallazgo era que el suelo de cobertura exigía 80 % en `:core:domain` y `:core:data` mientras los
+cuatro ViewModels —scanner (483 líneas), history (231), comparison (140), settings (87)— vivían en
+`:feature:*`, **fuera del gate**. Tienen tests, así que nunca fue "no está probado": era que **nadie
+sabía el número**, el mismo reproche con el que se abrió la medición en la Ronda 5, un módulo más
+allá.
+
+- [x] **Paso uno: medir.** Kover aplicado a los tres módulos de feature y sus informes generados en
+  CI. Entran en `coverage.py` **sin suelo**, que es un modo nuevo del script y no un descuido:
+  `modulo=80` fija el suyo, `--min` pone el de por defecto, y un módulo a secas se mide y se informa
+  sin poder fallar.
+  Inventar un umbral antes de la primera medición solo tiene dos finales y los dos son malos: o
+  rompe CI el primer día, o se elige tan bajo que no exige nada. Es exactamente cómo se hizo con
+  dominio y datos —primero el número, después el suelo—, y aquella primera medición encontró algo
+  que ningún umbral habría encontrado: código muerto.
+- [ ] **Paso dos: fijar el suelo, con el dato delante.** Y decidir con él una pregunta que ahora
+  mismo no se puede contestar a ciegas: si el número de un módulo de Compose significa algo tal
+  cual, o si hay que excluir los `@Composable` para que hable de la lógica en vez de la UI. La lista
+  de "paquetes con menos cobertura" que imprime el script lo va a decir en la primera ejecución.
+- [ ] **Paso tres: el cableado de la Ronda 10.** Las seis llamadas a `spokenValue` no las comprueba
+  nadie. Un test de semántica sobre el historial con datos sembrados cerraría eso y de paso subiría
+  el número por donde hay que subirlo — cubriendo comportamiento, no líneas.
+
+### Ronda 14 — rendimiento: sin baseline no hay ronda 🚧
+
+- [ ] **No se abre con hallazgos a propósito.** Con el baseline profile ya generado, lo único que
+  queda por decir del arranque es **cuánto** mejora, y eso exige medir contra un punto de partida en
+  un dispositivo. Cualquier afirmación que se escribiera aquí hoy —recomposiciones de más, tamaño
+  del APK, latencia por motor— sería una intuición con formato de dato. El proyecto ya tiene el
+  instrumento para lo primero (`:baselineprofile` con macrobenchmark) y para lo último
+  (`EngineScoreboard`, que mide latencia por motor **dentro de la app**). Lo que falta es el
+  teléfono, y hasta entonces esta ronda existe para que el hueco tenga nombre en vez de parecer que
+  nadie lo miró.
+
 ### Antes de la ficha de Play, esto va primero
 
 Lo de abajo es trámite de tienda. Lo de esta lista no. Se hizo el repaso a propósito antes de tocar
@@ -631,8 +877,9 @@ nada de Play, y salió algo que no estaba en ninguna lista:
 - [ ] **Objetivos táctiles y `enableEdgeToEdge`** (RNF-05, pendiente desde la Fase 5). Es la clase
   de
   cosa que no rompe, se ve mal, y se ve mal precisamente en la primera pantalla
-- [ ] **Generar el baseline profile** lanzando `baseline-profile.yml`. Un clic y quince minutos de
-  runner, y es lo que separa "la app arranca" de "la app arranca rápido la primera vez"
+- [x] **Generar el baseline profile.** Hecho: el perfil está versionado y `baseline-profile.yml` lo
+  regenera y lo commitea solo. Es lo que separa "la app arranca" de "la app arranca rápido la
+  primera vez" — con la salvedad de siempre, que **cuánto** más rápido solo lo dice un dispositivo
 
 Solo después tiene sentido pelearse con la ficha.
 
@@ -673,7 +920,7 @@ y qué lo compensa:
 
 | Se comprueba sin dispositivo                                                                                                                                                                                                                                                              | Sigue sin comprobarse                                                                                                                                                         |
 |-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Que el descriptor de los ocho motores es coherente: IDs únicos, fases válidas, sin prometer control de cámara con UI propia (`ScannerEngineCatalogTest`)                                                                                                                                  | Que el motor **lea** un código real                                                                                                                                           |
+| Que el descriptor de los nueve motores es coherente: IDs únicos, fases válidas, sin prometer control de cámara con UI propia (`ScannerEngineCatalogTest`)                                                                                                                                  | Que el motor **lea** un código real                                                                                                                                           |
 | Que la selección, el fallback, los límites de petición y el plazo se comportan según el contrato, incluida la cadena completa que llega al ViewModel                                                                                                                                      | Que la cámara arranque, y que se libere al cancelar                                                                                                                           |
 | Que lo declarado tenga quien lo cumpla, en todo lo instanciable sin `Context`                                                                                                                                                                                                             | Lo mismo en los motores de Android e iOS, que necesitan `Context` o `AVCaptureSession`                                                                                        |
 | Que ZXing (Java) **lea de verdad** un QR y un EAN-13 desde píxeles, filtre por formato y distinga "no hay código" de "no es una imagen"                                                                                                                                                   | Lo mismo en los motores que necesitan cámara                                                                                                                                  |
@@ -689,34 +936,52 @@ está cubierta.
 
 ---
 
-## D19, primera pieza: los accesores `compose.*` de los scripts de build
+## D19, los accesores `compose.*` de los scripts de build — cerrados
 
-Un fallo de CI dejó ver lo que desde el entorno de desarrollo no se puede leer, porque no alcanza el
-maven de Google y ninguna tarea de Gradle se puede lanzar. Vale la pena escribirlo mientras está a
-mano, que es justo lo que D19 reprocha no haber hecho antes.
-
-Cada `implementation(compose.algo)` de los scripts de build emite:
+Cada `implementation(compose.algo)` emitía esto, y eran **27 de los 44 avisos** del inventario:
 
 ```
 w: composeApp/build.gradle.kts:57:36: 'runtime: String' is deprecated. Specify dependency directly
 ```
 
-Y así con `foundation`, `animation`, `material3`, `components` y `resources` en `:composeApp`, más
-`runtime` en `:androidApp`. Los demás módulos no aparecían en ese log porque la build se cayó antes
-de configurarlos, así que la lista completa es más larga: el convention plugin
-`whyscan.kmp.compose` los usa también.
+Ahora hay coordenadas explícitas en el catálogo de versiones y **26 sustituciones** en doce scripts.
+Lo que no se tocó, porque no estaba deprecado ni es un `String`: `compose.desktop.currentOs`, el
+bloque `compose.resources { }` y el bloque `compose.desktop { }`.
 
-Tres cosas que conviene tener claras antes de arreglarlo:
+**Lo que bloqueaba esto era creer que había que adivinar las coordenadas, y no había que adivinar
+nada.** El razonamiento anterior decía —con buen criterio— que acertarlas sin poder compilar
+rompería el build entero. La salida no era compilar: era **leerlas**. Están dentro de
+`org.jetbrains.compose:compose-gradle-plugin:1.11.1`, en la clase `ComposePlugin$Dependencies`, que
+es literalmente lo que los accesores devolvían; y el jar se descarga de Maven Central, que **sí** se
+alcanza desde el entorno de desarrollo aunque el maven de Google no. Media hora de mirar en vez de
+una tanda de CI a ciegas.
 
-- **No son errores, aunque Gradle los cuente como tales.** El compilador los emite como `w:`; cuando
-  *además* hay un error de verdad en el mismo script, el informe de "Script compilation errors" los
-  lista todos juntos y suma. Eso es lo que hizo que un fallo por otra cosa pareciera ocho.
-- **El arreglo lo dice el propio aviso**: "Specify dependency directly", es decir, coordenadas
-  explícitas en vez del accesor del plugin. No es una línea: hay que decidir de dónde sale la
-  versión
-  para no dispersar por los módulos lo que hoy centraliza el plugin de Compose.
-- **Es una familia, no el total.** D19 sigue abierta: falta el resto del build y falta la postura
-  —limpiar y activar `allWarningsAsErrors`, o aceptar el ruido por escrito—.
+Menos mal que se miró, porque **dos de las ocho no siguen la versión del plugin** y ninguna de las
+dos se habría acertado:
+
+- **`material3` va en 1.9.0, no en 1.11.1.** No existe un `org.jetbrains.compose.material3:material3`
+  1.11.1 publicado: el artefacto salta de `1.11.0-alpha07` a `1.12.0-alpha01`. Escribir la versión
+  del plugin ahí habría roto la resolución, que es exactamente el desastre que se temía.
+- **`material-icons-extended` está clavado en 1.7.3** y no recibe más actualizaciones. Eso lo decía
+  ya el segundo aviso que D19 dejó vivo; ahora está escrito junto a la coordenada, con la salida que
+  propone el propio plugin —migrar a Material Symbols como recursos vectoriales—.
+
+De propina se fue un `@file:OptIn(ExperimentalComposeLibrary::class)` de `:composeApp`: existía solo
+para poder escribir `compose.uiTest`, y lo experimental era el accesor, no el artefacto.
+
+Dos cosas que conviene no perder:
+
+- **Nunca fueron errores, aunque Gradle los contara como tales.** El compilador los emite como `w:`;
+  cuando *además* hay un error de verdad en el mismo script, el informe de "Script compilation
+  errors" los lista todos juntos y suma. Eso es lo que hizo que un fallo por otra cosa pareciera
+  ocho.
+- **Y el convention plugin no los usaba.** Este documento afirmaba que `whyscan.kmp.compose` también
+  los tenía, y no: son once líneas que solo aplican tres plugins. Era una suposición razonable sobre
+  un archivo que nadie volvió a abrir, escrita con el mismo tono que los hechos comprobados.
+
+**Lo que queda de D19 es la postura, no la limpieza.** Con estos 27 fuera, el inventario baja a 17
+avisos. Activar `allWarningsAsErrors` vuelve a ser una decisión discutible en vez de imposible, y es
+lo único que sigue abierto.
 
 ---
 

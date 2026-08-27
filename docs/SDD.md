@@ -236,7 +236,7 @@ WhyScan/
 ├── core/
 │   ├── model/                         # KMP puro: Barcode, BarcodeFormat, ScanResult
 │   ├── scanner-api/                   # SPI: BarcodeScannerEngine, Capabilities, Availability
-│   │                                  #      + catálogo declarativo de los 8 motores
+│   │                                  #      + catálogo declarativo de los 9 motores
 │   ├── scanner-ui/                    # capacidad de UI del motor: CameraPreviewEngine (ADR-0007)
 │   ├── scanner-testing/               # suite de contrato que todo motor hereda (§13.2)
 │   ├── database/                      # Room KMP: historial persistente (sin target wasmJs)
@@ -255,7 +255,8 @@ WhyScan/
 │   ├── zxing-cpp/                     # Android + iOS — baseline de comparación (ADR-0008)
 │   ├── zxing-java/                    # Desktop — com.google.zxing:core, solo imagen (D13)
 │   ├── browser-detector/              # Wasm/JS — BarcodeDetector del navegador
-│   └── mlkit-ocr/                     # Android — lee el número impreso bajo el código
+│   └── ocr/                           # Android (ML Kit) + iOS (Vision) — lee el número
+│                                      #   impreso bajo el código; el intérprete es común
 │
 ├── feature/
 │   ├── scanner/                       # pantalla de escaneo, selector de motor y comparador
@@ -304,7 +305,7 @@ WhyScan/
 | `:engines:zxing-cpp`        |    ✅    |  ✅  |  —  |   —    |
 | `:engines:zxing-java`       |    —    |  —  |  ✅  |   —    |
 | `:engines:browser-detector` |    —    |  —  |  —  |   ✅    |
-| `:engines:mlkit-ocr`        |    ✅    |  —  |  —  |   —    |
+| `:engines:ocr`              |    ✅    |  ✅  |  —  |   —    |
 | `:feature:scanner`          |    ✅    |  ✅  |  ✅  |   ✅    |
 | `:feature:history`          |    ✅    |  ✅  |  ✅  |   ✅    |
 | `:feature:settings`         |    ✅    |  ✅  |  ✅  |   ✅    |
@@ -1608,7 +1609,7 @@ subir Compose.
 | **1. Fundaciones** (este entregable) | Build KMP/CMP, version catalog, estructura de módulos, modelo de dominio, SPI completo, registro, selección + fallback, UI de catálogo y escaneo, motor de entrada manual, tests de dominio                                                              | La app arranca en Android, Desktop y Web; el catálogo lista los 8 motores con su estado; los tests de selección y fallback pasan |
 | **2. Android real** ✅                | `:engines:gms-code-scanner`, `:engines:mlkit-camerax`, preview CameraX + overlay, permisos, convention plugins, historial con Room, CI en GitHub Actions                                                                                                 | Escaneo real en Android con dos motores intercambiables en caliente                                                              |
 | **3. iOS** ⏸️                        | Escrito: `:engines:vision-ios`, preview con `UIKitView`, shell Xcode, `:engines:zxing-cpp`, revisión de ADR-0005 · **despriorizada**: sin dispositivos Apple no se puede compilar ni verificar nada                                                      | Escaneo real en iOS; ZXing-cpp comparable entre Android e iOS                                                                    |
-| **4. Web y OCR**                     | ✅ `:engines:browser-detector`, `:engines:mlkit-ocr` (Android), preview de Web (D14) y escaneo desde imagen (RF-07) en las cuatro plataformas · pendiente: OCR en iOS con Vision                                                                          | Las cuatro plataformas escanean; OCR disponible como alternativa                                                                 |
+| **4. Web y OCR** ✅                   | `:engines:browser-detector`, `:engines:ocr` con sus dos motores —ML Kit en Android y `VNRecognizeTextRequest` en iOS—, preview de Web (D14) y escaneo desde imagen (RF-07) en las cuatro plataformas                                                     | Las cuatro plataformas escanean; OCR disponible como alternativa                                                                 |
 | **5. Producto**                      | ✅ `ComparingScannerEngine`, `EngineScoreboard`, pantalla de comparación, acciones sobre el resultado (RF-13), exportación del historial a CSV/JSON y build de release con R8 · pendiente: Play Feature Delivery, accesibilidad y auditoría de privacidad | G5 medible en la app                                                                                                             |
 
 ### 14.1 Qué se elimina en la Fase 1

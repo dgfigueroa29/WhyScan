@@ -87,6 +87,22 @@ class ScannerEngineCatalogTest {
             }
     }
 
+    @Test
+    fun `los dos motores de OCR no se solapan en ninguna plataforma`() {
+        // Hacen el mismo oficio con reconocedores distintos —ML Kit en Android, Vision en iOS—, así
+        // que en una plataforma dada solo puede haber uno. Solaparlos pondría dos entradas
+        // indistinguibles en el catálogo y en el comparador: el usuario vería dos filas que dicen
+        // "lee el número impreso" sin poder saber cuál está usando.
+        val shared = ScannerEngineCatalog.mlKitOcr.platforms
+            .intersect(ScannerEngineCatalog.visionOcr.platforms)
+
+        assertEquals(
+            emptySet(),
+            shared,
+            "los dos motores de OCR se declaran a la vez en $shared",
+        )
+    }
+
     private companion object {
         const val MAX_PHASE = 5
     }

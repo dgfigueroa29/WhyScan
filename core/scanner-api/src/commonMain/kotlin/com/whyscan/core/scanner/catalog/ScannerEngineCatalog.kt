@@ -164,7 +164,10 @@ object ScannerEngineCatalog {
         vendor = "Google",
         description = "No decodifica la simbología: lee el número impreso bajo el código y valida " +
             "su dígito de control. Recupera códigos que ningún decodificador puede leer.",
-        platforms = setOf(ScannerPlatform.Android, ScannerPlatform.Ios),
+        // Solo Android. Declaró iOS mientras allí no había OCR, y eso hacía que el catálogo
+        // prometiera en un iPhone un motor que respondía `NotImplemented`. Lo que llegó a iOS no es
+        // este motor sino [visionOcr], con otro reconocedor detrás.
+        platforms = setOf(ScannerPlatform.Android),
         plannedPhase = 4,
         requiresDependency = "com.google.mlkit:text-recognition",
         strength = "Última alternativa cuando el código está dañado o borroso",
@@ -181,6 +184,32 @@ object ScannerEngineCatalog {
             // `com.google.mlkit:text-recognition` es la variante *bundled*: el modelo latino viaja
             // en el APK. No hay descarga en el primer uso, a diferencia del detector de códigos.
             requiresRuntimeDownload = false,
+        ),
+    )
+
+    val visionOcr = ScannerEngineDescriptor(
+        id = ScannerEngineId.VisionOcr,
+        displayName = "Vision Text Recognition (OCR)",
+        vendor = "Apple",
+        description = "El mismo oficio que el OCR de ML Kit, con el reconocedor de texto del " +
+            "sistema: lee el número impreso bajo el código y valida su dígito de control.",
+        platforms = setOf(ScannerPlatform.Ios),
+        plannedPhase = 4,
+        requiresDependency = null,
+        strength = "Última alternativa cuando el código está dañado, y sin añadir un solo byte al " +
+            "binario: el reconocedor viene con el sistema",
+        limitation = "Solo sirve para simbologías cuyo valor va impreso en texto (1D de producto)",
+        capabilities = ScannerCapabilities(
+            supportedFormats = BarcodeFormat.oneDimensional,
+            sources = setOf(ScanSource.LiveCamera, ScanSource.StaticImage),
+            supportsMultipleCodes = true,
+            supportsContinuousScan = true,
+            supportsTorch = true,
+            supportsZoom = true,
+            // `VNRecognizedTextObservation` hereda las cuatro esquinas de `VNRectangleObservation`,
+            // así que el overlay recibe un cuadrilátero real y no un rectángulo deducido.
+            reportsCornerPoints = true,
+            reportsConfidence = true,
         ),
     )
 
@@ -212,6 +241,7 @@ object ScannerEngineCatalog {
         zxingJava,
         browserDetector,
         mlKitOcr,
+        visionOcr,
         manualInput,
     )
 

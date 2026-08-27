@@ -17,7 +17,7 @@ kotlin {
             api(project(":core:scanner-api"))
             // Aporta su propia superficie de preview (ADR-0007), así que necesita Compose.
             api(project(":core:scanner-ui"))
-            implementation(compose.ui)
+            implementation(libs.compose.ui)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

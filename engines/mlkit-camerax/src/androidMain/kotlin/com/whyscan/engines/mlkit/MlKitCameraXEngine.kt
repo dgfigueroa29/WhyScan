@@ -142,7 +142,7 @@ class MlKitCameraXEngine(
             .apply {
                 // Si la petición incluye formatos que ML Kit no conoce se deja el detector en modo
                 // "todos": el filtrado fino lo aplica el dominio, que es quien garantiza el mismo
-                // comportamiento observable en los ocho motores.
+                // comportamiento observable en todos los motores.
                 formats?.let { setBarcodeFormats(it.first(), *it.drop(1).toIntArray()) }
             }
             .build()
