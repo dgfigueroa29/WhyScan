@@ -8,10 +8,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Card
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -110,24 +115,37 @@ private fun Header(state: ComparisonState, onAction: (ComparisonAction) -> Unit)
                 )
             }
 
+            // Los tres controles son iconos y no palabras. Son los mandos de siempre —arrancar,
+            // parar, volver a empezar— y con la palabra ocupaban la fila entera: en un teléfono
+            // estrecho o con el cuerpo de letra subido, "Reiniciar" se salía por la derecha. Lo que
+            // dicen sigue estando: es su descripción hablada, que es la misma cadena de antes.
             Row(
                 horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Button(
+                FilledIconButton(
                     onClick = { onAction(ComparisonAction.Start) },
                     enabled = !state.isRunning && !state.notEnoughEngines,
                 ) {
-                    Text(stringResource(Res.string.comparison_start))
+                    Icon(
+                        imageVector = Icons.Filled.PlayArrow,
+                        contentDescription = stringResource(Res.string.comparison_start),
+                    )
                 }
-                OutlinedButton(
+                OutlinedIconButton(
                     onClick = { onAction(ComparisonAction.Stop) },
                     enabled = state.isRunning,
                 ) {
-                    Text(stringResource(Res.string.action_stop))
+                    Icon(
+                        imageVector = Icons.Filled.Stop,
+                        contentDescription = stringResource(Res.string.action_stop),
+                    )
                 }
-                OutlinedButton(onClick = { onAction(ComparisonAction.Reset) }) {
-                    Text(stringResource(Res.string.comparison_reset))
+                OutlinedIconButton(onClick = { onAction(ComparisonAction.Reset) }) {
+                    Icon(
+                        imageVector = Icons.Filled.Refresh,
+                        contentDescription = stringResource(Res.string.comparison_reset),
+                    )
                 }
             }
 

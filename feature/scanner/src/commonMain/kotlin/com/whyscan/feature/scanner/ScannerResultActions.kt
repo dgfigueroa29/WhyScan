@@ -1,6 +1,10 @@
 package com.whyscan.feature.scanner
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.vector.ImageVector
 import com.whyscan.core.domain.scan.OpenKind
 import com.whyscan.core.domain.scan.ResultAction
 import com.whyscan.core.domain.scan.ShareableContent
@@ -8,13 +12,11 @@ import com.whyscan.feature.scanner.resources.Res
 import com.whyscan.feature.scanner.resources.a11y_copy_value
 import com.whyscan.feature.scanner.resources.a11y_open_value
 import com.whyscan.feature.scanner.resources.a11y_share_value
-import com.whyscan.feature.scanner.resources.result_copy
 import com.whyscan.feature.scanner.resources.result_open_email
 import com.whyscan.feature.scanner.resources.result_open_link
 import com.whyscan.feature.scanner.resources.result_open_map
 import com.whyscan.feature.scanner.resources.result_open_phone
 import com.whyscan.feature.scanner.resources.result_open_sms
-import com.whyscan.feature.scanner.resources.result_share
 import com.whyscan.feature.scanner.resources.share_separator
 import com.whyscan.feature.scanner.resources.share_wifi
 import com.whyscan.feature.scanner.resources.share_wifi_with_password
@@ -33,17 +35,41 @@ internal fun ResultAction.spokenResource(): StringResource = when (this) {
     is ResultAction.Open -> Res.string.a11y_open_value
 }
 
-/** Cómo se llama en pantalla cada acción sobre el resultado (RF-13). */
-internal fun ResultAction.labelResource(): StringResource = when (this) {
-    ResultAction.Copy -> Res.string.result_copy
-    ResultAction.Share -> Res.string.result_share
-    is ResultAction.Open -> when (kind) {
-        OpenKind.Link -> Res.string.result_open_link
-        OpenKind.Email -> Res.string.result_open_email
-        OpenKind.Phone -> Res.string.result_open_phone
-        OpenKind.Sms -> Res.string.result_open_sms
-        OpenKind.Map -> Res.string.result_open_map
-    }
+/**
+ * Cómo se dibuja una acción sobre el resultado: con símbolo o con palabra.
+ *
+ * No es una preferencia estética, es dónde cabe. Una lectura ofrece hasta tres acciones y debajo va
+ * la de anotar: con cuatro palabras seguidas, la fila se salía de la pantalla en cuanto el idioma
+ * alargaba una etiqueta —"Abrir enlace", "Compartir"— o el usuario subía el tamaño de letra.
+ *
+ * La línea entre unas y otras es si el símbolo **basta**. Copiar y compartir tienen uno que ya no
+ * hay que aprender, y su palabra no añadía nada. Abrir no lo tiene: "Abrir enlace", "Llamar",
+ * "Escribir", "Enviar SMS" y "Ver en el mapa" son cinco cosas distintas que ningún icono separa, y
+ * ahí la palabra es lo único que dice qué va a pasar al tocar.
+ *
+ * Para quien no ve la pantalla no cambia nada: la descripción hablada sigue siendo la de
+ * [spokenResource], que además lleva el valor dentro (RNF-05).
+ */
+internal sealed interface ResultActionLook {
+
+    data class Symbol(val icon: ImageVector) : ResultActionLook
+
+    data class Word(val label: StringResource) : ResultActionLook
+}
+
+/** Ver [ResultActionLook]. */
+internal fun ResultAction.look(): ResultActionLook = when (this) {
+    ResultAction.Copy -> ResultActionLook.Symbol(Icons.Filled.ContentCopy)
+    ResultAction.Share -> ResultActionLook.Symbol(Icons.Filled.Share)
+    is ResultAction.Open -> ResultActionLook.Word(
+        when (kind) {
+            OpenKind.Link -> Res.string.result_open_link
+            OpenKind.Email -> Res.string.result_open_email
+            OpenKind.Phone -> Res.string.result_open_phone
+            OpenKind.Sms -> Res.string.result_open_sms
+            OpenKind.Map -> Res.string.result_open_map
+        },
+    )
 }
 
 /**

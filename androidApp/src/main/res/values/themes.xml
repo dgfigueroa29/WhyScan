@@ -9,10 +9,34 @@
         que ese arranque no sea blanco en un teléfono en modo oscuro. Queda un caso que esto no
         puede cubrir: forzar el tema oscuro dentro de la app con el sistema en claro: el fondo de
         arranque lo elige el sistema por su propia configuración, antes de que nadie pueda leer las
-        preferencias. Resolverlo del todo exige `androidx.core:core-splashscreen`, que es una
-        dependencia nueva y una decisión aparte.
+        preferencias. Eso lo cierra ahora `MainActivity`, sujetando la pantalla de arranque hasta que
+        la primera composición ha resuelto el tema de verdad.
     -->
     <style name="Theme.WhyScan" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@color/whyscan_window_background</item>
+    </style>
+
+    <!--
+        La pantalla de arranque, y por qué existe teniendo ya un `windowBackground`.
+
+        Ese fondo cubría el hueco, sí, pero lo cubría con **un rectángulo de color**: durante el
+        arranque en frío —que es el que Play mide en Vitals y el que sufre quien tiene el teléfono
+        más lento— la app no era nada. La API del sistema pone ahí la marca, centrada y con la misma
+        animación que el resto de las apps del teléfono, y encima resuelve un defecto que el color
+        solo no podía: `postSplashScreenTheme` hace el relevo al tema normal en el momento exacto,
+        sin el parpadeo de dos ventanas.
+
+        No lleva `values-night/` gemelo, a diferencia de `Theme.WhyScan`: `Theme.SplashScreen` ya es
+        DayNight, y tanto el fondo como el tema de destino se resuelven por configuración.
+
+        El icono es la capa de primer plano del icono adaptativo —la misma marca del lanzador—, que
+        es lo que hace que abrir la app se sienta como la continuación de haberla tocado y no como
+        otra pantalla. En API 31+ el sistema lo enmascara igual que el lanzador; por debajo lo pinta
+        la biblioteca de compatibilidad.
+    -->
+    <style name="Theme.WhyScan.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/whyscan_window_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="postSplashScreenTheme">@style/Theme.WhyScan</item>
     </style>
 </resources>

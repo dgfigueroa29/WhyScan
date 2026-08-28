@@ -41,6 +41,7 @@ el comparador en paralelo y las latencias por lectura.
 | Acciones sobre el resultado (RF-13)              | ✅ copiar, compartir y abrir, según el significado del código                                                                                                                                                                                                                                                                                  |
 | Navegación                                       | ✅ propia, con backstack que sobrevive a que el sistema mate el proceso                                                                                                                                                                                                                                                                        |
 | Build de release con R8                          | ✅ `minify` y `shrinkResources`, con `assembleRelease` en CI                                                                                                                                                                                                                                                                                   |
+| Tamaño del binario                               | ✅ medido en cada PR y repartido por cubos —código, nativas por ABI, assets—, con la tercera razón de [ADR-0009](docs/adr/ADR-0009-play-feature-delivery-aplazado.md) por fin instrumentada. Falta grabar la primera línea base, que solo produce CI |
 | Marca, icono y tema                              | ✅ **El módulo fugado**: el patrón de localización de un QR con el anillo abierto y su módulo central ya fuera ([ADR-0014](docs/adr/ADR-0014-la-marca-sale-del-objeto.md)). Grafito cálido con un único acento esmeralda, los ~30 roles de Material 3 declarados, icono adaptativo con capa monocroma y escala tipográfica y de formas propias |
 | Selector de tema claro/oscuro                    | ✅ Sistema / Claro / Oscuro, persistido, con las barras del sistema siguiendo al tema **de la app**                                                                                                                                                                                                                                            |
 | Idiomas inglés y español                         | ✅ los cuatro catálogos en `values/` (inglés, respaldo de cualquier idioma) y `values-es/`, con selector propio ([ADR-0011](docs/adr/ADR-0011-idioma-de-la-app-por-encima-del-sistema.md)) y `localeConfig` para el selector por app de Android 13+                                                                                            |
@@ -53,14 +54,18 @@ el comparador en paralelo y las latencias por lectura.
 | Migraciones de la base                           | ✅ `@AutoMigration`, y un test que abre una base v1 con datos y comprueba que siguen ahí                                                                                                                                                                                                                                                       |
 | Que el grafo de Koin resuelva                    | ✅ los módulos comunes, escritorio **y Android** (este con Robolectric, en la JVM y sin emulador). D18 cerrada                                                                                                                                                                                                                                 |
 | Que la app **se monte**                          | ✅ `AppCompositionTest` compone `App()` entera con el grafo real y cambia de destino, sin emulador ni ventana                                                                                                                                                                                                                                  |
-| Transiciones entre pantallas                     | ✅ *fade through* de Material 3 al cambiar de destino, en lugar del corte seco que había                                                                                                                                                                                                                                                       |
-| Baseline profile                                 | 🚧 cableado listo y comprobado en CI ([ADR-0013](docs/adr/ADR-0013-baseline-profile.md)); **falta lanzar la grabación**, que necesita un emulador y vive en el workflow `Baseline profile (manual)`                                                                                                                                           |
+| Transiciones y movimiento                        | ✅ *fade through* entre destinos, salida animada de la pantalla de arranque, entrada de la pantalla completa y llegada de una lectura nueva. Lo que **no** se anima está decidido y escrito (§9.12 del SDD) |
+| Pantalla de arranque                             | ✅ la marca del lanzador con `core-splashscreen`, sujeta hasta que la primera composición resuelve el tema — cierra el destello claro de quien tiene el tema oscuro forzado |
+| Probar un motor sin salir del catálogo           | ✅ "Probar ahora" junto a "Elegir": elige el motor, reinicia la sesión con él y abre el visor a pantalla completa ([ADR-0015](docs/adr/ADR-0015-probar-un-motor-es-un-dialogo.md)) |
+| Acciones que caben en cualquier pantalla         | ✅ copiar, compartir, anotar y borrar son iconos; abrir conserva la palabra, porque son cinco acciones distintas que ningún icono separa. La descripción hablada sigue llevando el valor dentro |
+| Política de privacidad y términos de uso         | ✅ escritos, comprobables contra el código y enlazados desde Ajustes → Acerca de, en los dos idiomas (`docs/legal/`) |
+| Baseline profile                                 | ✅ grabado y versionado ([ADR-0013](docs/adr/ADR-0013-baseline-profile.md)); se regenera desde el workflow `Baseline profile (manual)`. Lo que sigue sin saberse es **cuánto** mejora el arranque: eso exige un dispositivo |
 | Qué hay de nuevo                                 | ✅ una vez tras cada actualización, y siempre accesible desde Ajustes. A quien acaba de instalar no se le estrena nada                                                                                                                                                                                                                         |
 | Accesibilidad (RNF-05)                           | ✅ contraste AA **verificado por test** (56 pares, los dos temas), semántica para lectores de pantalla y **modo dislexia** que ajusta la escala tipográfica entera                                                                                                                                                                             |
 | Privacidad (RNF-03)                              | ✅ auditada: sin trazas, sin cliente HTTP, sin analítica, sin permiso `INTERNET` y **sin copia de seguridad del sistema** — esa última era la puerta que no pasaba por la app, y la vigila un chequeo en CI                                                                                                                                    |
 | ZXing en Java (Desktop)                          | ✅ el único decodificador de escritorio; **verificado de verdad**, decodificando imágenes generadas en el test                                                                                                                                                                                                                                 |
 
-El catálogo muestra las ocho alternativas con su estado real; los motores aún no implementados se
+El catálogo muestra las nueve alternativas con su estado real; los motores aún no implementados se
 declaran como tales, con la fase en la que llegan. Ver `docs/ROADMAP.md`.
 
 Lo que queda fuera por ahora, y por qué:
@@ -148,8 +153,15 @@ Lo que queda fuera por ahora, y por qué:
 | [`docs/ENGINES.md`](docs/ENGINES.md) | Catálogo de motores: formatos, capacidades y prioridad por plataforma          |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Fases, criterios de salida y deuda técnica aceptada                            |
 | [`docs/adr/`](docs/adr/)             | Decisiones de arquitectura con su contexto y sus consecuencias                 |
+| [`docs/legal/`](docs/legal/)         | Política de privacidad y términos de uso, en español e inglés                  |
 
 Lectura mínima para tocar código: **§7 del SDD** (el Scanner Engine SPI) y **ADR-0002**.
+
+**Para retomar el proyecto**, lo primero es
+[«Por dónde seguir»](docs/ROADMAP.md#por-dónde-seguir), al principio del ROADMAP: dice qué queda
+abierto, qué lo bloquea y dónde vive el detalle de cada cosa. Está separado en tres grupos porque el
+bloqueo no es el mismo — lo que se puede hacer ya, lo que espera un número que solo produce CI, y lo
+que necesita un teléfono.
 
 ---
 
@@ -251,6 +263,22 @@ por segundo, tres segundos apuntando a un QR emitían noventa lecturas idéntica
 usuario. La regla es una ventana de dos segundos y no "una vez por sesión", porque volver a leer el
 mismo código es un caso de uso real — contar unidades iguales en un inventario.
 
+**Cerrar la cámara la hacía aparecer otra vez**, y el defecto llevaba ahí desde la Fase 2. El Google
+Code Scanner encabeza la cadena en Android y abre **su propia pantalla** a pantalla completa; al
+cerrarla con el botón atrás emitía `Cancelled`, que es un error fatal, y la cadena de fallback hacía
+con él lo que hace con cualquier fallo fatal: pasar al motor siguiente, que vuelve a abrir la
+cámara. El fallo de fondo era conceptual — `isFatal` contestaba *"¿puede seguir esta sesión?"* y se
+le estaba pidiendo además *"¿merece la pena probar otro motor?"*. Ahora son dos preguntas: cancelar
+no es una avería, es el usuario diciendo que no quiere seguir (§7.5 del SDD).
+
+**Se puede probar un motor sin salir del catálogo.** "Elegir" guardaba una preferencia y devolvía al
+usuario a la misma lista de fichas, donde a la vista no cambiaba nada; la pregunta que uno se hace
+delante de ese catálogo es *qué tal lee **este***, y esa solo la contesta la cámara abierta.
+"Probar ahora" elige el motor, reinicia la sesión con él y abre el visor a pantalla completa —un
+`Dialog` y no un destino, porque la pantalla vive dentro del `Scaffold` y no puede quitarse el
+recorte que ese `Scaffold` le impone
+([ADR-0015](docs/adr/ADR-0015-probar-un-motor-es-un-dialogo.md)).
+
 **Pausado es un estado con nombre.** Lo era en la píldora de estado y no en el visor: al pausar
 desaparece la superficie de preview, y el `when` que decide qué ocupa ese hueco no tenía un caso
 para
@@ -344,6 +372,13 @@ Lo ejecuta también CI, como primer paso y antes incluso de instalar Java. Eso n
 lo que impide que estas comprobaciones se desincronicen en silencio de lo que detekt exige de
 verdad.
 
+**`tools/binary_size.py` mide el APK y avisa cuando engorda.** RNF-06 dice que el binario no debe
+crecer por motores que el usuario no usa y ADR-0009 aplaza la solución diciendo, entre otras cosas,
+que **no hay medición con la que decidir qué partir**. Ya la hay: reparte el zip en cubos —código,
+nativas **por ABI**, assets, recursos—, compara con la línea base versionada y falla si crece más de
+un 2 % o si desaparece una ABI. No es el tamaño de descarga de Play, y el script lo dice: es una
+medida estable con la misma metodología, que es lo que hace falta para detectar un salto.
+
 **`tools/check_resolved_versions.py` cruza lo declarado con lo resuelto.** Declarar una versión no
 la
 impone: si otro punto del grafo pide una superior, Gradle resuelve la mayor para todo el classpath y
@@ -370,3 +405,22 @@ cada PR a propósito — ver [ADR-0013](docs/adr/ADR-0013-baseline-profile.md).
 
 El coste es constante: **un módulo y una entrada en el catálogo**. Ni la UI ni el dominio cambian.
 Los ocho pasos están en [`docs/ENGINES.md`](docs/ENGINES.md#cómo-añadir-un-motor).
+
+---
+
+## Licencia
+
+[Apache-2.0](LICENSE).
+
+Se eligió sobre MIT por una diferencia concreta y no por costumbre: **Apache-2.0 incluye una
+concesión expresa de patentes** de quien contribuye a quien usa, y la retira automáticamente a quien
+demande por patentes. En un lector de códigos de barras —un terreno con patentes vivas sobre
+simbologías y sobre técnicas de decodificación— esa cláusula es exactamente la que hace falta. MIT
+no dice nada sobre patentes, y el silencio en un tema así no es neutral.
+
+Es además la licencia del ecosistema en el que vive el proyecto: Kotlin, Compose Multiplatform,
+AndroidX, ZXing y ML Kit son todas Apache-2.0 o compatibles.
+
+**Antes de esto no había archivo de licencia**, y sin él el código estaba, por defecto, con todos
+los derechos reservados — mientras los términos de uso decían que era público. Una de las dos cosas
+tenía que ceder, y no iba a ser la del documento que lee el usuario.

@@ -22,6 +22,49 @@ criterio de salida se cumple en CI.
 
 ---
 
+## Por dónde seguir
+
+**Esto es un índice, no una lista aparte.** Cada fila remite a la ronda donde vive el detalle y el
+porqué; si algo cambia, se cambia **allí** y aquí solo el enlace. Una segunda copia de lo pendiente
+se desincroniza sola — es exactamente lo que acababa de pasar con dos casillas que seguían abiertas
+teniendo el trabajo hecho: el cableado de accesibilidad de la Ronda 10 y el `KoinContext` de D20.
+
+### Se puede hacer ahora, sin nada que esperar
+
+| Qué                                                                 | Dónde                        | Nota                                                                       |
+|---------------------------------------------------------------------|------------------------------|------------------------------------------------------------------------------|
+| **Tests de captura** (Roborazzi u otro)                             | propuestas de la Ronda 16    | Lo más caro y lo que más cierra: "que se vea bien" lleva desde la Fase 1 escrito como incubrible, y **no lo es** — Robolectric ya se usa aquí. Antes de comprometerse, un *spike* de una pantalla: los tests de captura son célebres por volverse ruido |
+| **Métricas del compilador de Compose**                              | propuestas de la Ronda 16    | `reportsDestination`: parámetros inestables y composables no saltables. Sin dispositivo, es lo único que dice algo real sobre recomposiciones |
+| **`IosPlatformActions.openUrl` sin la guarda de esquemas**          | [Ronda 9](#ronda-9--seguridad-y-privacidad-) | Una línea. Cae dentro de "lo mínimo para que iOS siga compilando", no de trabajar en iOS |
+
+### Bloqueado por un número que solo produce CI
+
+| Qué                                       | Dónde                                              | Qué lo desbloquea                                                    |
+|-------------------------------------------|-----------------------------------------------------|-----------------------------------------------------------------------|
+| **Suelo de cobertura de las features**    | [Ronda 13](#ronda-13--verificación-), paso dos      | Leer la tabla de cobertura de un run y decidir con ella, incluido si excluir los `@Composable` |
+| **Primera línea base del tamaño del binario** | [Ronda 19](#ronda-19--el-tamaño-del-binario-deja-de-ser-una-opinión-) | Bajar el artefacto `tamano-binario` de un run y commitear su JSON en `tools/binary-size.json` |
+
+Las dos tienen la misma forma y el mismo motivo: **aquí no compila nada**, así que la primera
+medición la produce CI y no una consola. Adelantarse a ellas es inventarse el dato.
+
+### Necesita un teléfono Android
+
+| Qué                                                    | Dónde                                                                 |
+|--------------------------------------------------------|------------------------------------------------------------------------|
+| Ver con los ojos lo de las Rondas 15 a 19               | pantalla de arranque, pantalla completa, animaciones, arreglo de cancelar |
+| Medir el arranque contra un punto de partida            | [Ronda 14](#ronda-14--rendimiento-sin-baseline-no-hay-ronda-)          |
+| Objetivos táctiles y `enableEdgeToEdge` (RNF-05)        | pendiente desde la Fase 5                                              |
+| RNF-01 (<500 ms de detección) y RNF-02 (<1 s de cámara) | nunca medidos                                                          |
+
+### Fuera de alcance por decisión, no por olvido
+
+- **iOS**, entero: lo manda `CLAUDE.md` y la Fase 3. Incluye D21, el `.xcodeproj` y que el OCR
+  **lea**.
+- **Play**: ficha, firma, `bundle`, formulario de seguridad de datos, y ADR-0009 (Play Feature
+  Delivery), que además exige distribuir por Play para ejecutarse.
+
+---
+
 ## Fase 1 — Fundaciones ✅ (entregable actual)
 
 Convertir el repositorio en un proyecto Compose Multiplatform con la arquitectura de motores
@@ -748,11 +791,12 @@ hizo falta tocarlo.
   es *cómo suena* sino **qué clase de valor es** —código o prosa—, que es una afirmación sobre el
   significado y la misma en los cuatro idiomas. La frase que envuelve al valor ("Copiar %s") la
   sigue poniendo la pantalla con sus recursos.
-- [ ] **Lo que no cubre ningún test es el cableado.** `spokenValue` tiene ocho casos en
-  `commonTest`, pero que las seis llamadas de `ScannerResults` y `HistoryRow` sigan usándolo no lo
-  comprueba nadie: alguien puede volver a poner `rawValue` y todo seguiría en verde. Cubrirlo pide
-  un test de semántica sobre la pantalla del historial con datos sembrados, que es trabajo de la
-  Ronda 13 y no de esta.
+- [x] **El cableado tampoco lo cubría ningún test, y ya sí.** `spokenValue` tenía ocho casos en
+  `commonTest`, pero que las seis llamadas de `ScannerResults` y `HistoryRow` siguieran usándolo no
+  lo comprobaba nadie: alguien podía volver a poner `rawValue` y todo seguiría en verde. Lo cierra
+  `HistorySemanticsTest` en la Ronda 17, que compone la pantalla y afirma sobre lo que **oye** un
+  lector de pantalla. Dejó de ser opcional en la Ronda 15: desde que copiar, compartir, anotar y
+  eliminar son iconos, la descripción hablada es lo único que nombra a esos botones.
 
 *Sin comprobar en dispositivo:* que la separación por espacios produzca exactamente la prosodia
 esperada en TalkBack y VoiceOver. Es la técnica habitual y no depende del idioma, pero cómo suena de
@@ -812,11 +856,18 @@ está.
   subir un defecto propio, y está razonado en el código—, y el otro solo emite a un `SharedFlow`.
 - Las tres previews de Android atan el controlador de cámara al `LifecycleOwner`, así que irse a
   segundo plano suelta la cámara sin que nadie tenga que acordarse.
-- [ ] **Lo único que queda es un hueco de conocimiento, no un defecto conocido:** la *sesión* de
-  escaneo sigue viva en segundo plano aunque la cámara se desate, porque `DisposableEffect` no se
-  dispara al minimizar. No se le conoce consecuencia —sin frames no hay trabajo— pero tampoco hay
-  nada que lo compruebe, y "no se le conoce consecuencia" es precisamente lo que se dijo del driver
-  de Room y del `Executor` de Koin. Vale una comprobación explícita, no una reescritura.
+- [x] **Cerrado, y no con una comprobación sino quitando la pregunta.** Lo que quedaba era un hueco
+  de conocimiento: la *sesión* seguía viva en segundo plano aunque la cámara se desatara, porque
+  `DisposableEffect` no se dispara al minimizar. Al mirarlo de cerca, lo que soltaba la cámara era
+  que **cada preview de Android** ata su controlador al `LifecycleOwner` por su cuenta — es decir,
+  la propiedad se cumplía por debajo, en cada motor, y no en la pantalla. Eso no es una garantía:
+  es una coincidencia que se rompe con el primer motor que se olvide. `LifecycleStartEffect` la
+  sube al sitio donde se puede afirmar. Y "no se le conoce consecuencia" era precisamente lo que se
+  dijo del driver de Room y del `Executor` de Koin.
+
+  **Y este arreglo trajo un defecto peor, que hay que leer junto a él.** Atar la sesión al ciclo de
+  vida estuvo bien; lo que estuvo mal fue atar **también** el arranque automático, que responde a
+  otra pregunta. El resultado fue una cámara de la que no se podía salir — Ronda 20.
 
 ### Ronda 13 — verificación 🚧
 
@@ -838,9 +889,17 @@ allá.
   mismo no se puede contestar a ciegas: si el número de un módulo de Compose significa algo tal
   cual, o si hay que excluir los `@Composable` para que hable de la lógica en vez de la UI. La lista
   de "paquetes con menos cobertura" que imprime el script lo va a decir en la primera ejecución.
-- [ ] **Paso tres: el cableado de la Ronda 10.** Las seis llamadas a `spokenValue` no las comprueba
-  nadie. Un test de semántica sobre el historial con datos sembrados cerraría eso y de paso subiría
-  el número por donde hay que subirlo — cubriendo comportamiento, no líneas.
+
+  **Lo que bloquea este paso no es trabajo, es un número**, y el número solo lo produce un run de
+  CI: la medición ya corre y se publica en el resumen. Se intentó cerrarlo en la Ronda 17 y se
+  descartó a conciencia — configurar la exclusión de `@Composable` *antes* de mirar el dato habría
+  sido decidir a ciegas, que es exactamente lo que este paso dice que no se haga.
+- [x] **Paso tres: el cableado de la Ronda 10.** `HistorySemanticsTest` compone `HistoryContent` con
+  datos sembrados y afirma sobre lo que **oye** un lector de pantalla: que un EAN-13 se anuncie cifra
+  a cifra, que copiar, compartir y eliminar lleven el valor dentro, que dos filas no se anuncien
+  igual y que una URL no se deletree. Corre en la JVM con `runComposeUiTest`, sin ventana. Dejó de
+  ser opcional en la Ronda 15: desde que esos botones son iconos, la descripción hablada **es lo
+  único que los nombra**.
 
 ### Ronda 14 — rendimiento: sin baseline no hay ronda 🚧
 
@@ -852,6 +911,215 @@ allá.
   (`EngineScoreboard`, que mide latencia por motor **dentro de la app**). Lo que falta es el
   teléfono, y hasta entonces esta ronda existe para que el hueco tenga nombre en vez de parecer que
   nadie lo miró.
+
+### Ronda 15 — botones que caben, y probar un motor de verdad ✅
+
+No es una ronda de la auditoría por pilares: sale de mirar las pantallas en un ancho estrecho y con
+el cuerpo de letra subido, que es como las va a ver mucha gente.
+
+- [x] **Las filas de acciones se salían de la pantalla, y la culpa era de las palabras.** Una fila
+  del historial llevaba cinco botones de texto seguidos —"Abrir enlace · Copiar · Compartir ·
+  Agregar nota · Eliminar"—, y la barra del propio historial otros cuatro con "Borrar" al final. En
+  la pantalla de escaneo el problema ya estaba **reconocido y esquivado**: anotar vivía en su propia
+  fila justo porque un cuarto botón no cabía. Convertidas en icono las acciones que tienen un
+  símbolo que ya no hay que aprender —copiar, compartir, anotar, eliminar, y los tres mandos del
+  comparador: comparar, detener, reiniciar—, cabe todo y anotar vuelve con las demás.
+- [x] **Abrir conserva la palabra, y esa es la línea.** "Abrir enlace", "Llamar", "Escribir",
+  "Enviar SMS" y "Ver en el mapa" son cinco cosas distintas que ningún icono separa; ahí la etiqueta
+  es lo único que dice qué va a pasar al tocar. La regla vive en un tipo, `ResultActionLook`, y no
+  en un `if` repartido por las pantallas
+- [x] **No se pierde nada por el camino (RNF-05).** Cada icono lleva su descripción hablada, y en las
+  acciones sobre un resultado es la de siempre —la que ya incluía el valor—, así que un lector de
+  pantalla sigue diciendo "Copiar 7 7 0 1…" y no "Copiar" cinco veces. Las cadenas que dejaron de
+  dibujarse pero siguen nombrando al botón se quedaron; las que no nombraban nada —`result_copy`,
+  `result_share`, `history_delete`— se borraron de los dos catálogos, que es lo que impide que
+  alguien las traduzca por gusto
+- [x] **"Probar ahora", al lado de "Elegir" en cada ficha de motor.** Elegir guardaba una preferencia
+  y devolvía al usuario a la misma lista de fichas, donde a la vista no cambiaba nada; la pregunta
+  que uno se hace delante del catálogo es "¿qué tal lee **este**?", y esa solo la contesta la cámara
+  abierta. Ahora elige el motor, reinicia la sesión con él y abre el visor a pantalla completa. Solo
+  sale en los motores que declaran `LiveCamera`, que es la regla de siempre: la UI no nombra
+  motores, lee capacidades
+- [x] **La pantalla completa es un `Dialog` y no un destino.** La pantalla de escaneo vive dentro del
+  `Scaffold`, entre la barra de navegación y los insets: cualquier cosa dibujada ahí nace recortada.
+  Un destino más, además, sería un sitio al que se puede volver con el botón atrás desde donde no
+  tiene sentido. Dentro se reutiliza todo —el mismo `ViewfinderArea` y la misma tarjeta de
+  resultado—, y el visor de debajo deja de componer su superficie mientras tanto: **dos vistas de
+  preview sobre el mismo motor se pelean por la sesión**, y ese es un sexto caso con nombre en el
+  `when` del visor, no un `previewEngine = null` que mentiría diciendo "pausada"
+- [x] **Cubierto donde se puede:** tres tests nuevos en `ScannerViewModelTest` sobre probar un motor,
+  cerrar la prueba sin deshacer la elección, y que salir de la pantalla no deje la pantalla completa
+  abierta. Lo que **no** cubre nadie es que se vea bien ni que la cámara se comporte dentro de un
+  diálogo: eso sigue necesitando el teléfono de siempre
+- [x] **Sin entrada en "Qué hay de nuevo", a propósito.** Los iconos se entienden solos y "Probar
+  ahora" vive detrás del modo avanzado, que está apagado por defecto: estrenárselo a todo el mundo
+  sería contarle a la mayoría una función que no va a ver
+
+### Ronda 16 — el defecto que atrapaba al usuario, el arranque y lo legal ✅
+
+- [x] **Cerrar la cámara la hacía aparecer otra vez, y llevaba ahí desde la Fase 2.** El Google Code
+  Scanner encabeza la cadena en Android y abre su propia pantalla a pantalla completa; al cerrarla
+  con el botón atrás emite `ScanError.Cancelled`, que es fatal, y `FallbackScannerEngine` hacía con
+  él lo que hace con cualquier fallo fatal: **pasar al motor siguiente y volver a abrir la cámara**.
+  El fallo de fondo era conceptual: `isFatal` respondía a una pregunta —"¿puede seguir esta
+  sesión?"— y se le estaba pidiendo otra —"¿merece la pena probar otro motor?"—. Ahora son dos, y
+  `allowsFallback` dice que cancelar no es una avería sino el usuario diciendo que no quiere seguir.
+  Es exactamente la clase de defecto que la tabla de "qué cubre a los motores de cámara sin
+  emulador" anuncia: la degradación se testea entera con motores falsos, pero **qué emite el motor
+  de Google al cerrarse solo se ve en un teléfono**
+- [x] **Pantalla de arranque de verdad, con `androidx.core:core-splashscreen`.** El comentario de
+  `themes.xml` llevaba tiempo diciendo que el `windowBackground` cubría el hueco "con un rectángulo
+  de color" y que cerrarlo del todo era "una decisión aparte". Se tomó: la marca del lanzador,
+  centrada, con relevo al tema normal vía `postSplashScreenTheme` y salida animada. De paso cierra
+  el caso que el color solo no podía —sistema en claro con la app forzada a oscuro— sujetándola
+  hasta que la primera composición resuelve el tema
+- [x] **`observePreferences()` pasa a ser `StateFlow`, y el primer fotograma deja de mentir.** La
+  raíz se sembraba con `AppPreferences()` porque `collectAsStateWithLifecycle` exige un valor
+  inicial; como el repositorio lee del almacén al construirse, ese valor era una copia falsa que
+  duraba un fotograma —y era el fotograma claro de quien tiene el tema oscuro. No es filtrar la
+  implementación: estas preferencias **siempre** tienen valor actual, y ahora el tipo lo dice
+- [x] **Tres animaciones, y las que no se hicieron.** Se añaden la salida de la pantalla de arranque,
+  la entrada de la pantalla completa de "Probar ahora" y la llegada de una lectura nueva a la hoja
+  de resultados —que además ya no deja dos tarjetas marcadas como región viva a la vez—. **No** se
+  animó el cambio entre los estados del visor: un `AnimatedContent` mantiene compuesto lo que sale,
+  así que al degradar de motor habría dos superficies de cámara vivas peleándose por la sesión. Y
+  **no** se añadió el latido del contorno de detección: una animación infinita sobre la pantalla de
+  la cámara es un bucle de repintado permanente en el sitio donde la batería más importa
+- [x] **Política de privacidad y términos de uso, escritos y enlazados** desde Ajustes → Acerca de,
+  en los dos idiomas (`docs/legal/`). Las direcciones son cadenas del catálogo y no constantes,
+  porque cada una apunta al documento en el idioma que el usuario tiene puesto. Los documentos son
+  **comprobables**: cada afirmación se corresponde con algo verificable en el código —el manifiesto
+  sin `INTERNET`, `allowBackup="false"`, la lista blanca de esquemas— y el único matiz real, que el
+  escáner del sistema es un componente de Google, está dicho con nombre en lugar de escondido
+- [x] **Ajustes estrena canal de efectos, y el KDoc que decía que no lo necesitaba se corrigió en vez
+  de borrarse.** Era cierto mientras cada cambio se veía en la propia pantalla; abrir un documento
+  fuera de la app es la primera acción de Ajustes cuyo fracaso es invisible
+- [x] **La documentación se puso al día, y de paso salieron tres cosas que ya estaban mal.** El
+  README daba el baseline profile por pendiente cuando lleva versionado desde la Ronda 7; hablaba de
+  "las ocho alternativas" con nueve motores en el catálogo, y lo mismo el SDD en tres sitios; y
+  `ENGINES.md` decía que el grafo de Android "sigue sin cobertura", que dejó de ser cierto al cerrar
+  D18. Añadidos: [ADR-0015](adr/ADR-0015-probar-un-motor-es-un-dialogo.md), §9.12 del SDD (qué se
+  anima y **qué no**), §7.5 (`isFatal` frente a `allowsFallback`), §9.5 (símbolo o palabra), §9.10
+  (probar un motor), §12 (los documentos legales) y §13.6 (la pantalla de arranque)
+
+### Ronda 17 — cerrar lo que se podía cerrar sin un teléfono ✅
+
+Salió del repaso de la documentación de la Ronda 16: una lista de pendientes que no dependían ni de
+iOS ni de la tienda, y que por tanto no tenían excusa.
+
+- [x] **No había `LICENSE`, y los términos de uso decían que el código era público.** Sin archivo de
+  licencia, por defecto son *todos los derechos reservados*: la afirmación que lee el usuario era
+  falsa. Apache-2.0, y no MIT, por una razón concreta — **incluye concesión expresa de patentes** y
+  la retira a quien demande por ellas. En un lector de códigos de barras, con patentes vivas sobre
+  simbologías y sobre técnicas de decodificación, esa cláusula es la que hace falta; el silencio de
+  MIT en ese tema no es neutral. Es además la licencia de todo lo que hay debajo: Kotlin, Compose,
+  AndroidX, ZXing y ML Kit
+- [x] **La sesión de escaneo ya no sobrevive a minimizar** (cierra la Ronda 12, ver allí)
+- [x] **El cableado de accesibilidad tiene test** (cierra el paso tres de la Ronda 13, ver allí)
+- [x] **Se retiró una afirmación falsa que se había escrito una ronda antes.** El §9.12 del SDD decía
+  que ninguna animación respetaba *reducir movimiento*. Era una suposición: en Android ese ajuste es
+  `ANIMATOR_DURATION_SCALE`, y tanto Compose —vía el `MotionDurationScale` que instala el
+  `Recomposer`— como el `ViewPropertyAnimator` de la pantalla de arranque lo leen solos. **Escribir
+  un `expect/actual` para eso habría duplicado la plataforma**, que es peor que no hacer nada. Queda
+  el mecanismo escrito, que es lo único que permite volver a comprobarlo, y lo que sí falta dicho
+  con precisión: Escritorio y Web no tienen equivalente
+- [x] Deriva de KDoc: `ScannerViewModel` decía tener "catorce acciones de usuario" y tiene veintitrés
+
+**Lo que se decidió no hacer, y por qué**: el paso dos de la Ronda 13 —fijar el suelo de cobertura—
+sigue abierto a propósito. Lo bloquea un número que solo produce un run de CI, y adelantarse a él
+habría sido justo el error que ese paso describe.
+
+### Ronda 18 — barrido del parseo semántico ✅
+
+Primer punto de las propuestas de mejora de la Ronda 16, y el que mejor relación tiene entre lo que
+cuesta y lo que cubre.
+
+- [x] **`ValueParsingFuzzTest`: cinco invariantes sobre entradas generadas.** El detalle está en
+  §13.7 del SDD. Lo que lo justifica es una asimetría del producto: los tests de casos comprueban lo
+  que alguien pensó, y aquí **el atacante escribe el valor entero** — no necesita engañar a nadie
+  para que su cadena llegue al parser, le basta con imprimirla
+- [x] **Los invariantes se ejecutaron antes de subirlos.** Aquí no compila nada, así que se portó el
+  parser, `percentEncode`, la fábrica de acciones y la lista blanca a un modelo en Python y se
+  corrieron **1,6 millones de casos** sobre la misma gramática, con cinco semillas. Cero
+  violaciones. No sustituye a CI —el modelo puede diferir del original justo donde importa— pero
+  evita subir un test que se sabía roto, que es lo único que se podía hacer sin compilador
+- [x] **Nada nuevo que arreglar en el parser**, y conviene decirlo así en vez de callarlo: el barrido
+  **no encontró un defecto**. Lo que aporta es que las cinco propiedades dejen de depender de que a
+  alguien se le ocurra el caso — y que el día que alguien toque `parseUrl` o `percentEncode`, se
+  entere
+
+### Ronda 19 — el tamaño del binario deja de ser una opinión ✅
+
+Segundo punto de las propuestas de la Ronda 16, y el que desbloquea una decisión que llevaba
+aplazada desde ADR-0009.
+
+- [x] **`tools/binary_size.py`, con su paso en `Verify`.** De las tres razones por las que ADR-0009
+  aplaza Play Feature Delivery, la tercera —*"no hay ninguna medición del APK con la que decidir qué
+  conviene partir"*— era la única que no dependía de tener cuenta de Play, y la más incómoda: **sin
+  medir, RNF-06 no dice cuándo se incumple**. Ahora reparte el zip en cubos, y el reparto es lo que
+  contesta la pregunta: las nativas van **por ABI**, que es el único trozo del APK atribuible a un
+  motor concreto
+- [x] **El umbral es un delta y no un nivel, y la distinción se escribió al lado.** Dos rondas antes
+  se rechazó fijar un suelo de cobertura sin medir; aquí se fija una tolerancia de crecimiento del
+  2 %. No es incoherencia: un suelo es absoluto e inventarlo antes de medir o rompe CI el primer día
+  o no exige nada; una tolerancia es relativa a una línea base que se graba de la medición real, así
+  que el primer día el delta es cero **por construcción**
+- [x] **También falla cuando un cubo desaparece.** Que deje de empaquetarse una ABI no es "pesa
+  menos": es que la app dejó de instalarse en esos dispositivos, y el total por sí solo lo aplaudiría
+- [x] **Probado antes de subirlo, con APKs sintéticos.** Aquí no se puede construir el binario, así
+  que se armaron zips con la forma real de uno —dex, tres ABI, assets, `resources.arsc`— y se
+  recorrieron los cinco caminos: sin línea base, sin cambios, con crecimiento, con adelgazamiento y
+  con una ABI desaparecida. Además se **extrajo el bloque `run:` del propio workflow** y se ejecutó
+  tal cual, en vez de una aproximación a mano: es lo que destapó que un delta negativo se imprimía
+  como `-921600 B`, porque el formateador nunca había visto un número por debajo de cero
+- [ ] **Falta grabar la primera línea base.** No es trabajo pendiente sino un dato que solo produce
+  CI: el paso imprime el JSON y lo sube como artefacto, y grabarlo es descargar ese archivo y
+  commitearlo en `tools/binary-size.json`. Hasta entonces el paso mide, informa y **no puede fallar**
+
+### Ronda 20 — la cámara de la que no se podía salir ✅
+
+Reportado desde un dispositivo, que es donde aparecen los defectos que ningún CI ve. Y es **una
+regresión de la Ronda 17**: la introduje dos rondas antes, arreglando otra cosa.
+
+- [x] **El síntoma:** con el permiso concedido, la cámara se abre y no hay forma de salir. Ni la X,
+  ni atrás, ni el gesto. Escanear un código correctamente tampoco ayudaba
+- [x] **La causa: dos preguntas distintas atadas al mismo evento.** La Ronda 12 cambió el
+  `DisposableEffect` de la pantalla por un `LifecycleStartEffect`, para que la sesión no siguiera
+  viva con la app minimizada. Con eso, "la app volvió al primer plano" pasó a contar como "el
+  usuario llegó a la pantalla" — y el arranque automático cuelga de lo segundo.
+
+  El Google Code Scanner abre **su propia pantalla, en otro proceso**. Arrancar la sesión, por
+  tanto, **manda WhyScan al fondo**. La secuencia se cierra sobre sí misma: el motor abre su
+  pantalla → WhyScan al fondo → el usuario la cierra → WhyScan al primer plano → eso arranca la
+  sesión → el motor abre su pantalla otra vez. Y de paso, irse al fondo cancelaba el `sessionJob`,
+  así que la lectura que el usuario acababa de hacer moría en una corrutina cancelada
+- [x] **El arreglo: que vuelvan a ser dos preguntas.** `ScreenShown`/`ScreenHidden` son navegación —
+  llegar a la pantalla y salir de ella— y solo ellas arman el arranque automático.
+  `Foregrounded`/`Backgrounded` son ciclo de vida: apagan la cámara al fondo y la devuelven al
+  volver **si estaba corriendo**, sin re-armar nada. Si el usuario la había pausado a mano, no
+  vuelve sola
+- [x] **Y el motor con pantalla propia es un caso con nombre.** Irse al fondo **no** para la sesión
+  cuando el motor activo declara `providesOwnUi`: ahí estar en segundo plano no significa que el
+  usuario se haya ido, significa que el motor está trabajando porque lo mandamos nosotros. Se lee de
+  la capacidad declarada y no de una lista de motores, así que el próximo con pantalla propia lo
+  hereda sin tocar el ViewModel (RNF-07)
+- [x] **Cinco tests en `ScannerLifecycleTest`**, y uno de ellos es el invariante que se violó: volver
+  al primer plano **no arranca una sesión por su cuenta**. Hizo falta que el motor falso pudiera
+  quedarse abierto (`keepsScanning`): uno que termina en cuanto emite deja sin sujeto la pregunta
+  "¿estaba corriendo la sesión cuando la app se fue al fondo?", y toda aserción sobre pararla y
+  reanudarla salía verde sin comprobar nada
+- [ ] **Un caso raro que se deja abierto a propósito, y no es este defecto.** Si el sistema se lleva
+  la pantalla del motor sin devolver resultado —el usuario la saca de recientes, o la mata una falta
+  de memoria—, la sesión se queda esperando un resultado que no llegará. Se podría inferir al volver
+  al primer plano, pero el resultado bueno también llega por ahí y el orden entre los dos no está
+  garantizado: el arreglo se comería lecturas correctas. **Es anterior a todo esto** y sale de una
+  sesión atascada saliendo de la pantalla
+
+**Lo que este defecto dice del proyecto, que es lo que vale para la próxima:** el CI está verde y
+seguiría verde con esto dentro. Lo destapó alguien usando la app. La tabla de "qué cubre a los
+motores de cámara sin emulador" ya nombraba esta forma de agujero —lo que el motor de Google hace
+**fuera del proceso** no lo ve nadie desde aquí— y esta es la segunda vez que muerde por el mismo
+sitio: la primera fue la cadena de fallback reabriendo la cámara al cancelar, en la Ronda 16.
 
 ### Antes de la ficha de Play, esto va primero
 
@@ -880,6 +1148,10 @@ nada de Play, y salió algo que no estaba en ninguna lista:
 - [x] **Generar el baseline profile.** Hecho: el perfil está versionado y `baseline-profile.yml` lo
   regenera y lo commitea solo. Es lo que separa "la app arranca" de "la app arranca rápido la
   primera vez" — con la salvedad de siempre, que **cuánto** más rápido solo lo dice un dispositivo
+- [x] **Navegación: no se podía salir de la cámara.** Reportado desde un teléfono: conceder el
+  permiso abre la cámara —bien—, pero desde ahí ni la X, ni el botón atrás, ni el gesto sacaban de
+  la pantalla, y daba igual que la lectura hubiera funcionado. **Es una regresión de la Ronda 17**
+  y está contada en la Ronda 20
 
 Solo después tiene sentido pelearse con la ficha.
 
@@ -890,8 +1162,11 @@ y no en una ronda: arrastrarlo de ronda en ronda lo haría parecer trabajo que n
 que falta es un teléfono.
 
 - [ ] Objetivos táctiles y `enableEdgeToEdge` **mirados con los ojos** (pendiente desde la Fase 5)
-- [ ] Quitar el `KoinContext` de `App.kt` (D20): cambia por dónde resuelven `koinInject` y
-  `koinViewModel`, y no lo comprueba ningún test sin abrir la app
+- [x] Quitar el `KoinContext` de `App.kt` (D20). **Estaba hecho desde la Ronda 6 y esta casilla se
+  quedó atrás**, que es justo lo que pasa cuando lo mismo se apunta en dos sitios. Lo que parecía
+  imposible de comprobar sin abrir la app resultó no serlo: `koinInject` no es UI, así que
+  `ComposeKoinContextTest` monta una `Composition` con el runtime de Compose y compara la instancia
+  con la del grafo
 - [ ] Verificar el selector de idioma en iOS (D21)
 - [ ] Medir el arranque en frío, que es lo que Play reporta en Vitals desde el primer día
 - [ ] El `actual` de Android de `DatabaseBuilderFactory`, que es lo único de la cadena de Room que
@@ -904,8 +1179,12 @@ que falta es un teléfono.
   una
   ficha existente. **Sin red en el entorno de desarrollo, esto no se pudo verificar aquí**
 - [ ] Capturas, gráfico de cabecera 1024×500 y textos de la ficha, en los dos idiomas
-- [ ] Política de privacidad publicada y formulario de seguridad de datos. Es el trámite más corto
-  de todos: sin `INTERNET`, la respuesta a casi todo es "no se recoge nada"
+- [ ] Política de privacidad **publicada** y formulario de seguridad de datos. El documento ya está
+  escrito y enlazado desde Ajustes (`docs/legal/`, Ronda 16); lo que falta es de tienda: pegar la
+  dirección en Play Console y rellenar el formulario. Sin `INTERNET`, la respuesta a casi todo es
+  "no se recoge nada", con la única salvedad que el propio documento nombra — el escáner del
+  sistema es un componente de Google. Queda una decisión que no es técnica: **qué correo de
+  contacto** va en la ficha; los documentos remiten hoy a las incidencias del repositorio
 - [ ] Firma de release y `bundle` en vez de APK
 
 **Criterio de salida:** alguien que no sabe qué es un motor de escaneo abre la app, lee un código y

@@ -48,6 +48,15 @@ data class ScannerState(
     val noteTargetId: String? = null,
     /** Lo que hay escrito en ese campo ahora mismo. */
     val noteDraft: String = "",
+    /**
+     * El visor está ocupando la pantalla entera para probar un motor concreto (`Probar ahora`).
+     *
+     * Es estado y no un parámetro de la UI porque quien lo enciende es una acción —elegir el motor y
+     * arrancar la sesión ocurren con él— y quien lo apaga puede ser el usuario **o** el propio
+     * ciclo de vida: salir de la pantalla lo cierra, para que volver devuelva el banco de motores
+     * donde estaba y no un visor a pantalla completa sin contexto.
+     */
+    val fullScreenPreview: Boolean = false,
     val error: ScanError? = null,
 ) {
     val usableEngines: List<EngineStatus> get() = catalog.filter { it.isUsable }
@@ -106,6 +115,16 @@ data class ScannerState(
     /** La lectura más reciente, que es la que la hoja de resultados destaca. */
     val latestDetection: Detection? get() = detections.firstOrNull()
 
+    /**
+     * Cómo se llama el motor que está leyendo, tal y como se le enseña a una persona.
+     *
+     * Sale del descriptor y no de una tabla en la UI, que es la misma regla de siempre: la pantalla
+     * no conoce ningún motor. El id —`mlkit-camerax`— no vale aquí: la pantalla completa la abre
+     * quien está probando un motor y quiere leer el nombre que vio en la ficha.
+     */
+    val activeEngineName: String?
+        get() = catalog.firstOrNull { it.id == activeEngineId }?.descriptor?.displayName
+
     /** La nota que ya tiene una lectura, o `null` si no tiene. */
     fun noteOf(detectionId: String): String? = notes[detectionId]
 }
@@ -129,14 +148,58 @@ sealed interface ScannerAction {
      * El ViewModel sobrevive a la navegación, así que sin esto la cámara seguía capturando mientras
      * el usuario mira el historial o los ajustes. Es batería, y sobre todo es una app de escaneo
      * grabando cuando nadie se lo pidió.
+     *
+     * **Es navegación, no ciclo de vida**, y confundir las dos cosas costó un defecto que dejaba al
+     * usuario encerrado: ver [Backgrounded].
      */
     data object ScreenHidden : ScannerAction
+
+    /**
+     * La app se fue a segundo plano. **No es lo mismo que salir de la pantalla**, y tratarlo como si
+     * lo fuera fue exactamente el defecto.
+     *
+     * La cámara se apaga al irse al fondo —batería, y una app de escaneo no graba cuando nadie la
+     * mira— y se reanuda al volver, **si estaba corriendo**. Lo que no se hace es re-armar el
+     * arranque automático: ese es un privilegio de *llegar a la pantalla*, no de *volver al primer
+     * plano*.
+     *
+     * ### El defecto que esto cierra
+     *
+     * El Google Code Scanner abre **su propia pantalla, en otro proceso**, así que arrancar la
+     * sesión manda a WhyScan al fondo. Con el arranque automático atado al primer plano, la
+     * secuencia era circular: el motor abre su pantalla → WhyScan al fondo → el usuario cierra esa
+     * pantalla → WhyScan al primer plano → arranca la sesión → el motor abre su pantalla otra vez.
+     * **El usuario no podía salir**, ni con la X ni con atrás ni con el gesto, y daba igual que la
+     * lectura hubiera funcionado.
+     */
+    data object Backgrounded : ScannerAction
+
+    /** La app volvió al primer plano. Ver [Backgrounded]. */
+    data object Foregrounded : ScannerAction
 
     /** Vaciar los resultados en pantalla. El historial no se toca: eso se borra desde su pantalla. */
     data object ClearDetections : ScannerAction
     data object StartSession : ScannerAction
     data object StopSession : ScannerAction
     data class SelectEngine(val id: ScannerEngineId?) : ScannerAction
+
+    /**
+     * Probar un motor **ahora**: lo elige, reinicia la sesión con él y abre el visor a pantalla
+     * completa.
+     *
+     * Es lo que [SelectEngine] no hace y nunca prometió hacer: guardar la preferencia y devolver al
+     * usuario a una lista de fichas donde, a la vista, no cambia nada. La pregunta que se hace
+     * delante del catálogo es "¿qué tal lee **este**?", y esa solo la contesta la cámara abierta.
+     */
+    data class TryEngine(val id: ScannerEngineId) : ScannerAction
+
+    /**
+     * Cerrar el visor a pantalla completa.
+     *
+     * **No para la sesión**: se vuelve al banco de motores con la cámara viva y el motor probado ya
+     * elegido, que es justo el estado en el que uno quiere seguir mirando las fichas.
+     */
+    data object CloseFullScreen : ScannerAction
     data class ToggleFormat(val format: BarcodeFormat) : ScannerAction
     data class SetContinuous(val enabled: Boolean) : ScannerAction
     data class ManualInputChanged(val value: String) : ScannerAction

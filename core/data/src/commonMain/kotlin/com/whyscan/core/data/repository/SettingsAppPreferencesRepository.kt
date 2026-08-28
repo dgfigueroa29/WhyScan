@@ -6,8 +6,8 @@ import com.whyscan.core.domain.repository.AppLanguage
 import com.whyscan.core.domain.repository.AppPreferences
 import com.whyscan.core.domain.repository.AppPreferencesRepository
 import com.whyscan.core.domain.repository.ThemeMode
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
@@ -29,7 +29,7 @@ class SettingsAppPreferencesRepository(
 
     private val state = MutableStateFlow(readFromDisk())
 
-    override fun observePreferences(): Flow<AppPreferences> = state.asStateFlow()
+    override fun observePreferences(): StateFlow<AppPreferences> = state.asStateFlow()
 
     override suspend fun current(): AppPreferences = state.first()
 

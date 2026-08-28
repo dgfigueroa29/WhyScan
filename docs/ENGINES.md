@@ -113,6 +113,13 @@ declarar en una tabla, y es exactamente lo que la pantalla "Comparar" existe par
 Play Services, fuera de la app. Es su ventaja distintiva y la razón de que encabece la prioridad
 en Android para escaneos puntuales.
 
+**`UI propia del motor` tiene una consecuencia que ninguna otra capacidad tiene: el usuario puede
+cerrar esa pantalla.** Al hacerlo, el motor emite `ScanError.Cancelled`. Ese error es fatal —la
+sesión no puede continuar— pero **no admite degradación**: si la cadena pasara al motor siguiente,
+cerrar la cámara la volvería a abrir, que es exactamente el defecto que se corrigió en la Ronda 16.
+Lo declara `ScanError.allowsFallback` y lo respeta `FallbackScannerEngine` (§7.5 del SDD). Cualquier
+motor futuro con UI propia hereda esa regla sin tocar nada.
+
 ---
 
 ## Prioridad de selección automática (RF-04)
@@ -175,9 +182,10 @@ Excepciones de la política:
 
 Sobre el paso 6 conviene saber lo que costó una app muerta al arrancar: **Koin resuelve por igualdad
 exacta de tipo y no recorre supertipos**, así que hay que declarar cada dependencia con el tipo que
-el motor *consume* y no con el que devuelve la fábrica. Desde esta versión eso lo comprueba
-`KoinGraphTest` para el grafo de escritorio y los módulos comunes (§10 del SDD); el de Android sigue
-sin cobertura, así que ahí el cuidado es manual.
+el motor *consume* y no con el que devuelve la fábrica. Eso lo comprueban `KoinGraphTest` para el
+grafo de escritorio y los módulos comunes y `AndroidKoinGraphTest` —con un `Context` real que da
+Robolectric en la JVM— para el de Android, que es el más grande de los cuatro y el único donde
+ocurrió el crash que abrió D18 (§10 del SDD). Ya no queda ningún grafo sin comprobar.
 
 Ningún paso toca `:feature:scanner` ni `:core:domain`. Si un motor nuevo obliga a modificarlos, es
 señal de que el SPI se quedó corto y hay que extenderlo de forma explícita — no a parchear la UI.

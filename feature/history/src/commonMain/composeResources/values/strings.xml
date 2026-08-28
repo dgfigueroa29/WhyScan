@@ -42,8 +42,10 @@
     <string name="history_note_save">Save</string>
     <string name="history_note_cancel">Cancel</string>
 
-    <!-- Deleting. One row goes straight through; wiping everything asks first. -->
-    <string name="history_delete">Delete</string>
+    <!-- Deleting. One row goes straight through; wiping everything asks first.
+
+         The row button and the wipe button are icons: what they say lives in `a11y_delete_value`
+         and in `history_clear`, which is now its spoken description. See `HistoryRow`. -->
     <string name="history_clear_title">Clear the whole history?</string>
     <plurals name="history_clear_body">
         <item quantity="one">%1$d scan will be deleted, its note included. There is no copy anywhere, so this cannot be undone.</item>
@@ -52,13 +54,14 @@
     <string name="history_clear_confirm">Delete everything</string>
     <string name="history_clear_cancel">Keep it</string>
 
-    <!-- Result actions (RF-13) -->
-    <string name="result_copy">Copy</string>
+    <!-- Result actions (RF-13).
+
+         Copy and share are drawn as icons, and what they say are the `a11y_*` strings below, which
+         carry the value too. Open keeps its wording. -->
     <!-- What gets copied from a Wi-Fi QR: handing someone `WIFI:T:WPA;S:…;;` is no use to them. -->
     <string name="share_wifi">Network: %1$s</string>
     <string name="share_wifi_with_password">Network: %1$s · Password: %2$s</string>
     <string name="share_separator"> · </string>
-    <string name="result_share">Share</string>
     <string name="result_open_link">Open link</string>
     <string name="result_open_email">Write email</string>
     <string name="result_open_phone">Call</string>

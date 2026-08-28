@@ -22,6 +22,12 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(project(":core:domain"))
+
+            // Abrir la política de privacidad y los términos de uso desde "Acerca de". Es la
+            // primera vez que esta pantalla necesita algo del sistema: hasta ahora todo lo que
+            // hacía se quedaba en sus propias preferencias.
+            implementation(project(":core:platform"))
+
             api(project(":core:designsystem"))
 
             implementation(libs.compose.components.resources)
@@ -38,6 +44,17 @@ kotlin {
         commonTest.dependencies {
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.turbine)
+        }
+    }
+}
+
+kover {
+    reports {
+        filters {
+            excludes {
+                packages("com.whyscan.feature.settings.resources")
+                classes("*.ComposableSingletons\$*")
+            }
         }
     }
 }

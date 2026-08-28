@@ -17,6 +17,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.whyscan.core.designsystem.LocalSnackbarHostState
 import com.whyscan.core.designsystem.Spacing
@@ -53,18 +54,30 @@ fun ScannerScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = LocalSnackbarHostState.current
 
-    // `DisposableEffect` y no `LaunchedEffect`: hace falta el `onDispose`.
+    // **Dos efectos y no uno, porque son dos preguntas distintas.** Fundirlas en una costó un
+    // defecto que encerraba al usuario dentro de la cámara; está contado en `ScannerAction`.
     //
-    // Al entrar se refresca el catálogo —la disponibilidad cambia mientras la pantalla no está: el
-    // usuario concede el permiso desde los ajustes, ML Kit termina de descargar su modelo, otra app
-    // suelta la cámara— y la sesión arranca sola.
-    //
-    // Al salir se apaga. El ViewModel sobrevive a la navegación, así que sin esto la cámara seguía
-    // capturando mientras el usuario mira el historial. En una app de escaneo eso no es solo
-    // batería.
+    // Navegación: llegar a la pantalla y salir de ella. Al entrar se refresca el catálogo —la
+    // disponibilidad cambia mientras la pantalla no está: el usuario concede el permiso desde los
+    // ajustes, ML Kit termina de descargar su modelo, otra app suelta la cámara— y la sesión
+    // arranca sola. Al salir se apaga: el ViewModel sobrevive a la navegación, así que sin esto la
+    // cámara seguía capturando mientras el usuario mira el historial.
     DisposableEffect(viewModel) {
         viewModel.onAction(ScannerAction.ScreenShown)
         onDispose { viewModel.onAction(ScannerAction.ScreenHidden) }
+    }
+
+    // Ciclo de vida: primer plano y fondo. Es lo que un `DisposableEffect` no ve —la composición no
+    // se desmonta al minimizar—, y sin ello la sesión seguía viva en segundo plano: lo único que
+    // soltaba la cámara era que cada preview de Android ata su controlador al `LifecycleOwner` por
+    // su cuenta, o sea que la propiedad se cumplía **por debajo**, en cada motor, y no aquí.
+    //
+    // Va **después** del efecto de navegación a propósito: al desmontarse la composición los
+    // `onDispose` corren en orden inverso, así que `Backgrounded` se dispara antes que
+    // `ScreenHidden` y este último puede limpiar lo que aquel dejó apuntado.
+    LifecycleStartEffect(viewModel) {
+        viewModel.onAction(ScannerAction.Foregrounded)
+        onStopOrDispose { viewModel.onAction(ScannerAction.Backgrounded) }
     }
 
     // Sin esto los mensajes del ViewModel se emitían a un SharedFlow que nadie escuchaba, incluido
@@ -107,6 +120,12 @@ fun ScannerContent(
         ScannerLayout(state, onAction, previewEngine, modifier)
     }
 
+    // "Probar ahora" se lanza desde la ficha de motor, que solo existe con el banco abierto, y aun
+    // así el diálogo se monta aquí: la disposición de debajo no debe saber que hay algo encima.
+    if (state.fullScreenPreview) {
+        FullScreenPreview(state, onAction, previewEngine)
+    }
+
     // Aquí y no dentro de una de las dos disposiciones: el botón de anotar sale en las tarjetas de
     // resultado, y esas aparecen en las dos.
     if (state.noteTargetId != null) {
@@ -138,7 +157,13 @@ private fun ScannerLayout(
                 .weight(1f)
                 .padding(Spacing.md),
         ) {
-            ViewfinderArea(state, previewEngine, onAction, advancedMode = false)
+            ViewfinderArea(
+                state = state,
+                previewEngine = previewEngine,
+                onAction = onAction,
+                advancedMode = false,
+                previewMoved = state.fullScreenPreview,
+            )
         }
 
         ResultsSheet(state = state, onAction = onAction, advancedMode = false)
@@ -166,7 +191,13 @@ private fun WorkbenchLayout(
     ) {
         item {
             Box(modifier = Modifier.fillMaxWidth().aspectRatio(VIEWFINDER_ASPECT_RATIO)) {
-                ViewfinderArea(state, previewEngine, onAction, advancedMode = true)
+                ViewfinderArea(
+                    state = state,
+                    previewEngine = previewEngine,
+                    onAction = onAction,
+                    advancedMode = true,
+                    previewMoved = state.fullScreenPreview,
+                )
             }
         }
 
@@ -188,6 +219,7 @@ private fun WorkbenchLayout(
                 selected = status.id == state.selectedEngineId,
                 active = status.id == state.activeEngineId,
                 onSelect = { onAction(ScannerAction.SelectEngine(status.id)) },
+                onTry = { onAction(ScannerAction.TryEngine(status.id)) },
             )
         }
 

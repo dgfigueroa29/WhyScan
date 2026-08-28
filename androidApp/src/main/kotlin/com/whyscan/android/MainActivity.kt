@@ -3,6 +3,7 @@ package com.whyscan.android
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
+import android.view.animation.AccelerateInterpolator
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
@@ -12,6 +13,8 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.core.splashscreen.SplashScreenViewProvider
 import com.whyscan.App
 import com.whyscan.core.permissions.AndroidPermissionController
 import com.whyscan.core.permissions.PermissionRequester
@@ -42,6 +45,12 @@ class MainActivity : ComponentActivity() {
     private val fileSaver: AndroidFileSaver by inject()
 
     private val navigator = Navigator()
+
+    /**
+     * Si la app ya pintó su primera pantalla con el tema resuelto. Ver la pantalla de arranque en
+     * [onCreate].
+     */
+    private var contentReady: Boolean = false
 
     private var pendingRequest: ((Boolean) -> Unit)? = null
 
@@ -83,6 +92,24 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Antes que nada, y antes de `super.onCreate`: es lo que instala la pantalla de arranque y
+        // hace el relevo del tema `Theme.WhyScan.Starting` al normal.
+        installSplashScreen().apply {
+            // Se sujeta hasta que la primera composición ha resuelto el tema.
+            //
+            // Sin esto quedaba un caso que el `windowBackground` no podía cubrir y que el comentario
+            // de `themes.xml` llevaba tiempo señalando: con el sistema en claro y la app forzada a
+            // oscuro, el arranque lo pinta el sistema con **su** configuración, así que se veía un
+            // fotograma claro antes de que Compose pintara el suyo. Ahora la marca se queda delante
+            // hasta que lo de detrás ya es del color que el usuario eligió.
+            //
+            // Lo que se espera es una composición, no una descarga: las preferencias se leen del
+            // almacén al construir el repositorio, así que esto son milisegundos y no hay riesgo de
+            // dejar al usuario mirando una marca fija.
+            setKeepOnScreenCondition { !contentReady }
+            setOnExitAnimationListener(::fadeOutSplash)
+        }
+
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
@@ -141,8 +168,38 @@ class MainActivity : ComponentActivity() {
             val backstack by navigator.backstack.collectAsState()
             BackHandler(enabled = backstack.size > 1) { navigator.goBack() }
 
-            App(navigator = navigator, onDarkThemeResolved = ::applySystemBarStyle)
+            App(
+                navigator = navigator,
+                onDarkThemeResolved = { darkTheme ->
+                    // Que esto se llame significa que la composición ya corrió con las preferencias
+                    // de verdad: es la señal de que detrás de la marca hay una app con su tema.
+                    contentReady = true
+                    applySystemBarStyle(darkTheme)
+                },
+            )
         }
+    }
+
+    /**
+     * La marca no desaparece de golpe: se aleja un poco mientras se desvanece.
+     *
+     * Sin listener, el sistema retira la pantalla de arranque de un fotograma al siguiente, y el
+     * corte se nota justo donde más —es lo primero que se ve de la app—. El gesto es el de la
+     * especificación: **escala hacia dentro de la pantalla y opacidad a cero**, corto, para que
+     * lea como que la marca da paso a la app y no como una animación con voluntad propia.
+     *
+     * `remove()` en el `withEndAction` no es opcional: mientras la vista siga puesta, la ventana
+     * sigue teniendo una capa encima que se come los toques.
+     */
+    private fun fadeOutSplash(splash: SplashScreenViewProvider) {
+        splash.view.animate()
+            .alpha(0f)
+            .scaleX(SPLASH_EXIT_SCALE)
+            .scaleY(SPLASH_EXIT_SCALE)
+            .setDuration(SPLASH_EXIT_MILLIS)
+            .setInterpolator(AccelerateInterpolator())
+            .withEndAction(splash::remove)
+            .start()
     }
 
     /**
@@ -206,5 +263,11 @@ class MainActivity : ComponentActivity() {
         const val MIME_CSV = "text/csv"
         const val MIME_JSON = "application/json"
         const val KEY_BACKSTACK = "backstack"
+
+        /** Lo que tarda la marca en irse. Corto a propósito: nadie abrió la app para ver esto. */
+        const val SPLASH_EXIT_MILLIS = 220L
+
+        /** Se aleja un 8 %: lo justo para que se lea como que da paso, no como que se encoge. */
+        const val SPLASH_EXIT_SCALE = 1.08f
     }
 }

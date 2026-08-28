@@ -16,6 +16,7 @@ val settingsFeatureModule: Module = module {
     viewModel {
         SettingsViewModel(
             preferences = get(),
+            platformActions = get(),
             canChooseLanguage = PlatformSupportsLanguageOverride,
         )
     }

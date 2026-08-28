@@ -39,6 +39,8 @@
     <string name="detection_latency"> · %1$d ms</string>
     <string name="engine_selected">Selected</string>
     <string name="engine_select">Select</string>
+    <!-- Selecting stores a preference; trying opens the camera on that engine so you can watch it read. -->
+    <string name="engine_try_now">Try it now</string>
     <string name="engine_in_use">In use</string>
     <plurals name="engine_formats_count">
         <item quantity="one">%1$d format</item>
@@ -60,13 +62,15 @@
     <string name="formats_title">Formats (%1$d of %2$d)</string>
     <string name="formats_hint">Dropping formats speeds up detection and avoids cross reads. Clear them all and they all come back: a request with no formats is not valid.</string>
 
-    <!-- Result actions (RF-13) -->
-    <string name="result_copy">Copy</string>
+    <!-- Result actions (RF-13).
+
+         Copy and share have no label any more: they are icons, and what they say lives in the
+         `a11y_*` strings below, which carry the value too. Open keeps its wording, because it is
+         five different actions that no single icon tells apart. See `ResultActionLook`. -->
     <!-- What gets copied from a Wi-Fi QR: handing someone `WIFI:T:WPA;S:…;;` is no use to them. -->
     <string name="share_wifi">Network: %1$s</string>
     <string name="share_wifi_with_password">Network: %1$s · Password: %2$s</string>
     <string name="share_separator"> · </string>
-    <string name="result_share">Share</string>
     <string name="result_open_link">Open link</string>
     <string name="result_open_email">Write email</string>
     <string name="result_open_phone">Call</string>
@@ -129,6 +133,13 @@
     <string name="a11y_share_value">Share %1$s</string>
     <string name="a11y_open_value">Open %1$s</string>
     <string name="a11y_zoom">Camera zoom</string>
+    <string name="a11y_try_engine">Try %1$s full screen</string>
+
+    <!-- Trying an engine with the viewfinder taking over the whole screen -->
+    <string name="fullscreen_title">Trying an engine</string>
+    <string name="fullscreen_close">Leave full screen</string>
+    <string name="fullscreen_elsewhere_title">The viewfinder is full screen</string>
+    <string name="fullscreen_elsewhere_body">The camera is still on over there. Come back when you are done trying the engine.</string>
 
     <!-- Camera-first layout: the states that take over the viewfinder -->
     <string name="permission_title">Camera access</string>

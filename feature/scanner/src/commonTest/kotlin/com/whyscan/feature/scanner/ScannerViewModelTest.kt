@@ -24,6 +24,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -66,6 +67,18 @@ class ScannerViewModelTest {
             resultActions = ResultActionRunner(NoOpPlatformActions()),
         )
     }
+
+    /**
+     * Un motor que lee algo antes de terminar.
+     *
+     * Hace falta para las pruebas de la pantalla completa: una sesión que acaba **sin** lecturas la
+     * cierra sola —es el caso de cancelar el Google Code Scanner—, así que un motor mudo no sirve
+     * para comprobar que se abre.
+     */
+    private fun scanningEngine(): FakeEngine = FakeEngine(
+        id = ScannerEngineId.MlKitCameraX,
+        events = listOf(ScanEvent.Detected(listOf(detectionOf(ScannerEngineId.MlKitCameraX)))),
+    )
 
     @Test
     fun `al aparecer la pantalla la sesion arranca sola`() = runTest {
@@ -254,6 +267,69 @@ class ScannerViewModelTest {
         viewModel.onAction(ScannerAction.SelectEngine(null))
 
         assertNull(viewModel.state.value.selectedEngineId)
+    }
+
+    @Test
+    fun `probar un motor lo elige y lleva el visor a pantalla completa`() = runTest {
+        // Es lo que "Elegir" no hace: guardar la preferencia y devolver al usuario a la misma lista
+        // de fichas, donde a la vista no cambia nada.
+        val viewModel = viewModel(scanningEngine())
+
+        viewModel.onAction(ScannerAction.TryEngine(ScannerEngineId.MlKitCameraX))
+
+        assertEquals(ScannerEngineId.MlKitCameraX, viewModel.state.value.selectedEngineId)
+        assertEquals(ScannerEngineId.MlKitCameraX, preferences.current().preferredEngineId)
+        assertTrue(viewModel.state.value.fullScreenPreview)
+    }
+
+    @Test
+    fun `cerrar la pantalla completa no deshace la eleccion del motor`() = runTest {
+        val viewModel = viewModel(scanningEngine())
+        viewModel.onAction(ScannerAction.TryEngine(ScannerEngineId.MlKitCameraX))
+
+        viewModel.onAction(ScannerAction.CloseFullScreen)
+
+        assertFalse(viewModel.state.value.fullScreenPreview)
+        // Se vuelve al banco con el motor probado ya elegido, que es el estado en el que uno quiere
+        // seguir mirando las fichas.
+        assertEquals(ScannerEngineId.MlKitCameraX, viewModel.state.value.selectedEngineId)
+    }
+
+    @Test
+    fun `una sesion que termina sin leer nada cierra la pantalla completa`() = runTest {
+        // El motor de una sola pasada que se cierra sin resultado —cancelar el Google Code
+        // Scanner— dejaba al usuario delante de un visor vacío que exigía otro atrás para salir.
+        val viewModel = viewModel(FakeEngine(ScannerEngineId.MlKitCameraX))
+
+        viewModel.onAction(ScannerAction.TryEngine(ScannerEngineId.MlKitCameraX))
+
+        // El motor falso emite `SessionStarted` y `SessionEnded` sin ninguna lectura por medio.
+        assertEquals(SessionStatus.Finished, viewModel.state.value.sessionStatus)
+        assertFalse(viewModel.state.value.fullScreenPreview)
+    }
+
+    @Test
+    fun `una sesion que si leyo algo deja la pantalla completa abierta`() = runTest {
+        // Aquí sí hay algo que mirar y qué hacer con ello: cerrarla sola se llevaría por delante el
+        // resultado que el usuario acaba de pedir ver.
+        val viewModel = viewModel(scanningEngine())
+
+        viewModel.onAction(ScannerAction.TryEngine(ScannerEngineId.MlKitCameraX))
+
+        assertTrue(viewModel.state.value.fullScreenPreview)
+    }
+
+    @Test
+    fun `al dejar de verse la pantalla tampoco queda la pantalla completa abierta`() = runTest {
+        // El ViewModel sobrevive a la navegación. Sin esto, volver del historial devolvía un visor a
+        // pantalla completa —y sin cámara detrás, porque la sesión sí se paró— tapando el catálogo
+        // que el usuario venía a ver.
+        val viewModel = viewModel(scanningEngine())
+        viewModel.onAction(ScannerAction.TryEngine(ScannerEngineId.MlKitCameraX))
+
+        viewModel.onAction(ScannerAction.ScreenHidden)
+
+        assertFalse(viewModel.state.value.fullScreenPreview)
     }
 
     @Test

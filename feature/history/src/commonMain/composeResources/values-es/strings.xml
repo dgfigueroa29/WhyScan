@@ -41,8 +41,10 @@
     <string name="history_note_save">Guardar</string>
     <string name="history_note_cancel">Cancelar</string>
 
-    <!-- Borrado. Una fila va directo; vaciar todo pregunta antes. -->
-    <string name="history_delete">Eliminar</string>
+    <!-- Borrado. Una fila va directo; vaciar todo pregunta antes.
+
+         El botón de la fila y el de vaciar son iconos: lo que dicen vive en `a11y_delete_value` y
+         en `history_clear`, que ahora es su descripción hablada. Ver `HistoryRow`. -->
     <string name="history_clear_title">¿Borrar todo el historial?</string>
     <plurals name="history_clear_body">
         <item quantity="one">Se va a eliminar %1$d lectura, con su nota. No hay copia en ninguna parte, así que no se puede deshacer.</item>
@@ -51,13 +53,14 @@
     <string name="history_clear_confirm">Borrar todo</string>
     <string name="history_clear_cancel">Conservarlo</string>
 
-    <!-- Acciones sobre el resultado (RF-13) -->
-    <string name="result_copy">Copiar</string>
+    <!-- Acciones sobre el resultado (RF-13).
+
+         Copiar y compartir se dibujan con icono, y lo que dicen son las cadenas `a11y_*` de más
+         abajo, que además llevan el valor dentro. Abrir conserva la palabra. -->
     <!-- Lo que se copia de un QR de WiFi: pegarle a alguien `WIFI:T:WPA;S:…;;` no le sirve. -->
     <string name="share_wifi">Red: %1$s</string>
     <string name="share_wifi_with_password">Red: %1$s · Clave: %2$s</string>
     <string name="share_separator"> · </string>
-    <string name="result_share">Compartir</string>
     <string name="result_open_link">Abrir enlace</string>
     <string name="result_open_email">Escribir</string>
     <string name="result_open_phone">Llamar</string>

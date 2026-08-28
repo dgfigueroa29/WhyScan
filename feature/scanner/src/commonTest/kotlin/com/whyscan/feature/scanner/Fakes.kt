@@ -25,6 +25,7 @@ import com.whyscan.core.scanner.ImageDecodingEngine
 import com.whyscan.core.scanner.ScanEvent
 import com.whyscan.core.scanner.ScannerEngineDescriptor
 import com.whyscan.core.scanner.catalog.ScannerEngineCatalog
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,15 +39,29 @@ class FakeEngine(
     private val events: List<ScanEvent> = emptyList(),
     /** Qué devuelve al decodificar una imagen. `null` = este motor no sabe hacerlo. */
     private val decoded: Result<List<Barcode>>? = null,
+    /**
+     * Si la sesión se queda abierta tras emitir sus eventos, como una cámara de verdad.
+     *
+     * Sin esto no se puede afirmar nada sobre "la sesión **estaba corriendo** cuando la app se fue
+     * al fondo": el motor falso terminaba siempre antes de que el test llegara a preguntar, así que
+     * cualquier aserción sobre pararla y reanudarla salía verde sin comprobar nada.
+     */
+    private val keepsScanning: Boolean = false,
 ) : BarcodeScannerEngine, ImageDecodingEngine {
+
+    /** Cuántas veces se ha pedido una sesión. Es lo que delata un arranque que no debía ocurrir. */
+    var scanInvocations: Int = 0
+        private set
 
     override val descriptor: ScannerEngineDescriptor = ScannerEngineCatalog.byId(id)
 
     override suspend fun availability(): EngineAvailability = availability
 
     override fun scan(request: ScanRequest): Flow<ScanEvent> = flow {
+        scanInvocations++
         emit(ScanEvent.SessionStarted(id))
         events.forEach { emit(it) }
+        if (keepsScanning) awaitCancellation()
         emit(ScanEvent.SessionEnded(id))
     }
 

@@ -44,5 +44,28 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.turbine)
         }
+
+        // El paso tres de la Ronda 13: `spokenValue` tenía tests y sus seis llamadas no. Lo que
+        // afirma `HistorySemanticsTest` es lo que **oye** un lector de pantalla, y para eso hay que
+        // componer de verdad. `runComposeUiTest` corre en la JVM y sin ventana, así que cumple la
+        // regla del proyecto —todo lo que se comprueba se ejecuta en cada PR— igual que hace
+        // `AppCompositionTest` en `:composeApp`.
+        val jvmTest by getting {
+            dependencies {
+                implementation(libs.compose.ui.test)
+                implementation(compose.desktop.currentOs)
+            }
+        }
+    }
+}
+
+kover {
+    reports {
+        filters {
+            excludes {
+                packages("com.whyscan.feature.history.resources")
+                classes("*.ComposableSingletons\$*")
+            }
+        }
     }
 }

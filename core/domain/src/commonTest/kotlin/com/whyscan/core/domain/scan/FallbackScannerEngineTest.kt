@@ -63,6 +63,27 @@ class FallbackScannerEngineTest {
     }
 
     @Test
+    fun `cancelar termina la cadena en vez de reabrir la camara con el motor siguiente`() = runTest {
+        // El defecto que esto cierra atrapaba al usuario dentro de la app: el Google Code Scanner
+        // abre su propia pantalla a pantalla completa y, al cerrarla con el botón atrás, emitía
+        // `Cancelled` —fatal—, la cadena degradaba al motor siguiente y **la cámara volvía a
+        // aparecer**. Cerrarla la hacía volver.
+        val primary = FakeScannerEngine(
+            id = ScannerEngineId.GmsCodeScanner,
+            events = listOf(ScanEvent.Failed(ScanError.Cancelled)),
+        )
+        val fallback = FakeScannerEngine(ScannerEngineId.MlKitCameraX)
+
+        val events = FallbackScannerEngine(listOf(primary, fallback)).scan(request).toList()
+
+        assertEquals(0, fallback.scanInvocations)
+        assertTrue(events.none { it is ScanEvent.EngineSwitched })
+        assertEquals(ScanEvent.SessionEnded(ScannerEngineId.GmsCodeScanner), events.last())
+        // Y no se le cuenta al usuario como un error: cancelar es lo que pidió, no una avería.
+        assertTrue(events.none { it is ScanEvent.Failed })
+    }
+
+    @Test
     fun `un error no fatal se propaga sin degradar de motor`() = runTest {
         val transient = ScanError.DecodeFailed("frame borroso")
         val primary = FakeScannerEngine(

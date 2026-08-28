@@ -47,7 +47,7 @@ import kotlinx.coroutines.flow.update
  * [ScanSessions]: guardar una lectura es un hecho del motor y anotarla es una acción del usuario,
  * que es exactamente la línea por la que están separados esos dos colaboradores.
  *
- * `TooManyFunctions` sobrevive, y es un dato honesto: esta pantalla tiene catorce acciones de
+ * `TooManyFunctions` sobrevive, y es un dato honesto: esta pantalla tiene veintitrés acciones de
  * usuario y cada una necesita su función. Partirla por partir movería el recuento a otro archivo
  * sin que nadie entienda mejor la pantalla. La supresión se pone aquí, a la vista, y no subiendo el
  * umbral global —que dejaría la regla midiendo siempre lo que hubiera.
@@ -76,6 +76,15 @@ class ScannerViewModel(
      */
     private var autoStartPending: Boolean = false
 
+    /**
+     * La sesión estaba corriendo cuando la app se fue al fondo, así que hay que devolverla al volver.
+     *
+     * Es distinto de [autoStartPending] y esa distinción **es** el arreglo del defecto de
+     * navegación: uno responde a "el usuario llegó a esta pantalla" y el otro a "la app volvió al
+     * primer plano". Ver `ScannerAction.Backgrounded`.
+     */
+    private var resumeOnForeground: Boolean = false
+
     init {
         observeCatalogChanges()
         observePreferenceChanges()
@@ -83,7 +92,7 @@ class ScannerViewModel(
     }
 
     /**
-     * `CyclomaticComplexMethod` cuenta catorce ramas y tiene razón en el número, no en lo que
+     * `CyclomaticComplexMethod` cuenta veintitrés ramas y tiene razón en el número, no en lo que
      * significa: es una tabla de despacho sobre un `sealed interface`, donde cada rama es una línea
      * y el compilador exige que estén todas. Partirla en dos `when` la haría peor de leer y bajaría
      * la métrica, que es justo la clase de arreglo que no sirve para nada.
@@ -96,11 +105,15 @@ class ScannerViewModel(
         when (action) {
             ScannerAction.Refresh -> refresh()
             ScannerAction.ScreenShown -> screenShown()
-            ScannerAction.ScreenHidden -> stopSession()
+            ScannerAction.ScreenHidden -> screenHidden()
+            ScannerAction.Backgrounded -> backgrounded()
+            ScannerAction.Foregrounded -> foregrounded()
             ScannerAction.ClearDetections -> _state.update { it.copy(detections = emptyList()) }
             ScannerAction.StartSession -> startSession()
             ScannerAction.StopSession -> stopSession()
             is ScannerAction.SelectEngine -> selectEngine(action.id)
+            is ScannerAction.TryEngine -> tryEngine(action.id)
+            ScannerAction.CloseFullScreen -> _state.update { it.copy(fullScreenPreview = false) }
             is ScannerAction.ToggleFormat -> toggleFormat(action.format)
             is ScannerAction.SetContinuous -> setContinuous(action.enabled)
             is ScannerAction.ManualInputChanged -> _state.update { it.copy(manualInput = action.value) }
@@ -181,6 +194,66 @@ class ScannerViewModel(
         startIfPending()
         refresh()
     }
+
+    /**
+     * La pantalla dejó de verse: se apaga la cámara y se cierra la pantalla completa.
+     *
+     * Lo segundo no es limpieza por gusto. El ViewModel sobrevive a la navegación, así que sin esto
+     * quien saliera al historial con el visor a pantalla completa abierto volvería a encontrárselo
+     * —sin cámara detrás, porque la sesión sí se paró— tapando el banco de motores que venía a ver.
+     */
+    private fun screenHidden() {
+        // Salir de la pantalla no es irse al fondo: aquí no queda nada que reanudar después. Y el
+        // orden importa — al desmontarse la composición se dispara antes `Backgrounded`, que sí deja
+        // la marca puesta.
+        resumeOnForeground = false
+        _state.update { it.copy(fullScreenPreview = false) }
+        stopSession()
+    }
+
+    /**
+     * La app se fue al fondo.
+     *
+     * **Salvo que el motor activo abra su propia pantalla.** Ahí, estar en segundo plano no
+     * significa que el usuario se haya ido: significa que el motor está trabajando, en otro proceso,
+     * porque lo hemos arrancado nosotros. Parar la sesión cancelaría el escaneo que el usuario está
+     * haciendo **ahora mismo**, y su resultado se perdería en una corrutina ya cancelada.
+     *
+     * Del resto de motores sí se apaga la cámara, y se apunta que estaba corriendo para devolverla
+     * al volver. Si el usuario la había pausado a mano, no se apunta nada: reanudar algo que él
+     * apagó es contestarle que no.
+     */
+    private fun backgrounded() {
+        if (activeEngineProvidesOwnUi) return
+
+        val running = _state.value.sessionStatus == SessionStatus.Scanning ||
+            _state.value.sessionStatus == SessionStatus.Starting
+        if (!running) return
+
+        resumeOnForeground = true
+        stopSession()
+    }
+
+    /** La app volvió al primer plano: se devuelve la cámara **solo** si la habíamos quitado nosotros. */
+    private fun foregrounded() {
+        if (!resumeOnForeground) return
+
+        resumeOnForeground = false
+        startSession()
+    }
+
+    /**
+     * El motor que está corriendo abre su propia pantalla fuera de la app.
+     *
+     * Se lee de la capacidad declarada y no de una lista de motores: hoy es el Google Code Scanner,
+     * y el día que haya otro hereda el comportamiento sin tocar esta clase (RNF-07).
+     */
+    private val activeEngineProvidesOwnUi: Boolean
+        get() = _state.value.let { state ->
+            state.catalog
+                .firstOrNull { it.id == state.activeEngineId }
+                ?.descriptor?.capabilities?.providesOwnUi == true
+        }
 
     private fun observePreferenceChanges() {
         launchSafely {
@@ -264,6 +337,23 @@ class ScannerViewModel(
         }
     }
 
+    /**
+     * Probar un motor en el acto: se elige, se reinicia la sesión con él y el visor se va a pantalla
+     * completa.
+     *
+     * La sesión se reinicia **siempre**, y ahí está la diferencia con [selectEngine], que solo lo
+     * hace si ya estaba escaneando. Aquí no hay ambigüedad posible: el usuario acaba de pedir ver a
+     * este motor trabajando, así que dejarlo en pausa sería contestar que no a lo que pulsó.
+     */
+    private fun tryEngine(id: ScannerEngineId) {
+        launchSafely {
+            settings.preferEngine(id)
+            _state.update { it.copy(fullScreenPreview = true) }
+            stopSession()
+            startSession()
+        }
+    }
+
     private fun toggleFormat(format: BarcodeFormat) {
         launchSafely {
             val current = _state.value.formats
@@ -336,7 +426,16 @@ class ScannerViewModel(
             }
 
             is ScanEvent.SessionEnded -> _state.update {
-                it.copy(sessionStatus = SessionStatus.Finished, activeEngineId = null)
+                it.copy(
+                    sessionStatus = SessionStatus.Finished,
+                    activeEngineId = null,
+                    // La pantalla completa existe para ver leer a un motor. Si la sesión terminó
+                    // **sin nada que enseñar** —el usuario cerró la pantalla del Google Code
+                    // Scanner, o se agotó el plazo— no queda nada que mirar, y dejarla abierta le
+                    // pide un segundo atrás para salir de donde ya quiso salir. Con lecturas se
+                    // queda: ahí sí hay algo que leer y qué hacer con ello.
+                    fullScreenPreview = it.fullScreenPreview && it.detections.isNotEmpty(),
+                )
             }
 
             is ScanEvent.FrameAnalyzed -> Unit

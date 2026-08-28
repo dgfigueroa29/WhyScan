@@ -90,6 +90,11 @@ androidxActivityCompose = "1.13.0"
 # en su primera ejecución, que es exactamente para lo que existe (deuda D24).
 #noinspection GradleDependency
 androidxCoreKtx = "1.18.0"
+# La pantalla de arranque del sistema (API 31+) con su compatibilidad hacia atrás hasta la 24, que
+# es el mínimo de esta app. Lleva en 1.0.1 desde 2022 y no es abandono: la biblioteca es un puente
+# hacia una API de plataforma que ya no cambia.
+#noinspection GradleDependency
+androidxCoreSplashscreen = "1.0.1"
 # La que pide Koin 4.2.2; subirla más alto haría que Gradle resolviera por encima de lo que espera.
 #noinspection NewerVersionAvailable
 lifecycle = "2.9.6"
@@ -188,6 +193,7 @@ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidxActivityCompose" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCoreKtx" }
+androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "androidxCoreSplashscreen" }
 
 lifecycle-viewmodel = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel", version.ref = "lifecycle" }
 lifecycle-viewmodel-compose = { module = "org.jetbrains.androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }

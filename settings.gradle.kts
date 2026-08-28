@@ -1,3 +1,5 @@
+@file:Suppress("UnstableApiUsage")
+
 pluginManagement {
     // Build incluido con los convention plugins (ver build-logic/).
     includeBuild("build-logic")

@@ -48,11 +48,17 @@
         android:theme="@style/Theme.WhyScan"
         android:usesCleartextTraffic="false">
 
+        <!--
+            El tema de la Activity es el de arranque y no el normal: es lo que hace que la pantalla
+            de arranque del sistema exista. `installSplashScreen()` hace el relevo al
+            `postSplashScreenTheme` —`Theme.WhyScan`— en cuanto la ventana está lista. Ver
+            `themes.xml`.
+        -->
         <activity
             android:name=".MainActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
             android:exported="true"
-            android:theme="@style/Theme.WhyScan">
+            android:theme="@style/Theme.WhyScan.Starting">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
