@@ -1,0 +1,37 @@
+# Ownership of every path in this repository.
+#
+# A single maintainer today, so the value of this file is not routing — it is that GitHub requests a
+# review on every pull request, including ones opened by automation. The explicit blocks below are
+# the paths where an unreviewed change is most expensive, kept separate so that intent survives if
+# this ever becomes a team.
+
+*                       @dgfigueroa29
+
+# The contract for agents and the harness that enforces it. A change here changes how every future
+# change gets made.
+/AGENTS.md              @dgfigueroa29
+/CLAUDE.md              @dgfigueroa29
+/.claude/               @dgfigueroa29
+
+# Decisions already taken. These are never rewritten — a superseding ADR is the only way to change
+# one, and that is a decision in itself.
+/docs/adr/              @dgfigueroa29
+
+# Source of truth. `docs/ENGINES.md` is compared against `ScannerEngineCatalog` by a test.
+/docs/                  @dgfigueroa29
+/openspec/              @dgfigueroa29
+
+# The privacy guarantee lives here: no INTERNET permission, allowBackup false, dataExtractionRules
+# present. `tools/checks.py` enforces it, and this line makes sure a human sees it too.
+/androidApp/src/main/AndroidManifest.xml   @dgfigueroa29
+/docs/legal/            @dgfigueroa29
+
+# What is verified, and how. A weakened check is worse than a missing one, because it reads as
+# coverage.
+/.github/workflows/     @dgfigueroa29
+/tools/                 @dgfigueroa29
+/config/detekt/         @dgfigueroa29
+
+# The SPI. Every engine depends on it, and a change here is a change to nine modules.
+/core/scanner-api/      @dgfigueroa29
+/core/scanner-testing/  @dgfigueroa29

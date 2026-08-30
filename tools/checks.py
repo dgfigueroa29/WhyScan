@@ -345,13 +345,193 @@ def declared(path: str) -> tuple[list[str], dict[str, set[str]]]:
     return strings, plurals
 
 
+def check_adr() -> int:
+    """Cabeceras de los ADR y paridad con su índice.
+
+    Los ADR son el registro de por qué este proyecto es como es, y su valor depende de dos cosas
+    aburridas que nadie comprueba a ojo: que cada uno lleve estado y fecha, y que el índice de
+    `docs/adr/README.md` no se separe de los archivos. Lo segundo se rompe siempre igual — se añade
+    un ADR y se olvida la fila—, y el resultado es un índice que parece completo y no lo está, que
+    es peor que no tenerlo.
+
+    No comprueba el contenido: si un ADR merece existir o si su tabla de alternativas dice algo útil
+    no lo decide un script.
+    """
+    directory = os.path.join(REPO, "docs", "adr")
+    index_path = os.path.join(directory, "README.md")
+    if not os.path.isdir(directory):
+        return 0
+    if not os.path.exists(index_path):
+        report(index_path, "falta el índice de los ADR")
+        return 0
+
+    index = open(index_path, encoding="utf-8").read()
+    linked = set(re.findall(r"\((ADR-\d{4}[^)]*\.md)\)", index))
+
+    files = sorted(f for f in os.listdir(directory) if re.match(r"ADR-\d{4}.*\.md$", f))
+    for name in files:
+        path = os.path.join(directory, name)
+        text = open(path, encoding="utf-8").read()
+
+        title = re.match(r"# ADR-(\d{4}) — .+", text)
+        if not title:
+            report(path, "la primera línea debe ser '# ADR-NNNN — <la decisión>'")
+        elif title.group(1) != name[4:8]:
+            report(path, f"el título dice ADR-{title.group(1)} y el archivo ADR-{name[4:8]}")
+
+        if not re.search(r"^- \*\*Estado:\*\* .+", text, re.M):
+            report(path, "falta la línea '- **Estado:**'")
+        if not re.search(r"^- \*\*Fecha:\*\* \d{4}-\d{2}-\d{2}", text, re.M):
+            report(path, "falta la línea '- **Fecha:** AAAA-MM-DD'")
+
+        for section in ("## Contexto", "## Decisión", "## Consecuencias"):
+            if section not in text:
+                report(path, f"falta la sección '{section}'")
+
+        if name not in linked:
+            report(index_path, f"{name} no está en el índice")
+
+    for name in sorted(linked):
+        if not os.path.exists(os.path.join(directory, name)):
+            report(index_path, f"el índice enlaza {name}, que no existe")
+
+    return len(files)
+
+
+def check_agent_contract() -> None:
+    """`AGENTS.md` y `CLAUDE.md` existen y se enlazan entre sí.
+
+    Son dos archivos que dicen lo mismo en dos idiomas, y eso garantiza que algún día se separen
+    (ADR-0016). Comparar el contenido no se puede; lo que sí se puede es cerrar el caso real: que
+    alguien mueva o renombre uno y el otro se quede apuntando al vacío, con un agente leyendo la
+    mitad de las reglas sin saber que le falta la otra.
+    """
+    agents = os.path.join(REPO, "AGENTS.md")
+    claude = os.path.join(REPO, "CLAUDE.md")
+
+    for path in (agents, claude):
+        if not os.path.exists(path):
+            report(path, "no existe: es el contrato que leen los agentes (ADR-0016)")
+            return
+
+    if "CLAUDE.md" not in open(agents, encoding="utf-8").read():
+        report(agents, "no enlaza CLAUDE.md, que es su espejo en castellano")
+    if "AGENTS.md" not in open(claude, encoding="utf-8").read():
+        report(claude, "no enlaza AGENTS.md, que es el contrato normativo")
+
+
+DELTA_HEADINGS = ("## ADDED Requirements", "## MODIFIED Requirements", "## REMOVED Requirements")
+
+
+def check_requirements(path: str, text: str) -> None:
+    """Todo `### Requirement:` lleva al menos un `#### Scenario:`.
+
+    Es la única regla de OpenSpec que se puede comprobar sin entender el dominio, y es justo la que
+    separa un requisito de un deseo: sin escenario no hay forma de decir si se cumple. Un directorio
+    de especificaciones lleno de frases que nadie puede contrastar es decoración cara.
+    """
+    current, has_scenario = None, False
+    for line in text.split("\n") + ["### Requirement: fin"]:
+        if line.startswith("### Requirement:"):
+            if current and not has_scenario:
+                report(path, f"'{current}' no tiene ningún '#### Scenario:'")
+            current, has_scenario = line[len("### Requirement:"):].strip(), False
+        elif line.startswith("#### Scenario:"):
+            has_scenario = True
+
+
+def check_openspec() -> int:
+    """La forma de los cambios en curso y de las especificaciones vigentes.
+
+    La CLI de OpenSpec valida esto mismo, y aquí no se puede usar: el entorno de desarrollo no tiene
+    red (ADR-0017). Lo que se comprueba es la estructura, no el criterio — que un cambio esté bien
+    planteado lo dice una persona.
+    """
+    root = os.path.join(REPO, "openspec")
+    if not os.path.isdir(root):
+        return 0
+
+    changes = os.path.join(root, "changes")
+    if os.path.isdir(changes):
+        for name in sorted(os.listdir(changes)):
+            change = os.path.join(changes, name)
+            if name == "archive" or not os.path.isdir(change):
+                continue
+
+            for required in ("proposal.md", "tasks.md"):
+                if not os.path.exists(os.path.join(change, required)):
+                    report(change, f"al cambio le falta {required}")
+
+            deltas = sorted(walk(os.path.join(change, "specs"), "spec.md"))
+            if not deltas:
+                report(change, "sin delta en specs/<capacidad>/spec.md: no dice qué cambia")
+
+            for delta in deltas:
+                text = open(delta, encoding="utf-8").read()
+                headings = re.findall(r"^## .*Requirements\s*$", text, re.M)
+                if not headings:
+                    report(delta, "sin '## ADDED|MODIFIED|REMOVED Requirements'")
+                for heading in headings:
+                    if heading.strip() not in DELTA_HEADINGS:
+                        report(delta, f"cabecera de delta no válida: '{heading.strip()}'")
+                check_requirements(delta, text)
+
+    specs = os.path.join(root, "specs")
+    total = 0
+    for spec in sorted(walk(specs, "spec.md")) if os.path.isdir(specs) else []:
+        text = open(spec, encoding="utf-8").read()
+        total += len(re.findall(r"^### Requirement:", text, re.M))
+
+        for section in ("## Purpose", "## Requirements"):
+            if section not in text:
+                report(spec, f"falta la sección '{section}'")
+        for heading in DELTA_HEADINGS:
+            if heading in text:
+                # Una especificación vigente describe lo que el sistema hace hoy. Si conserva la
+                # cabecera del delta es que `/spec-apply` se quedó a medias, y lo que queda es una
+                # fuente de verdad que miente sobre su propio estado.
+                report(spec, f"conserva '{heading}': el delta no llegó a integrarse")
+        check_requirements(spec, text)
+
+    return total
+
+
+def check_markdown_links() -> None:
+    """Enlaces relativos entre archivos del repositorio que no llevan a ninguna parte.
+
+    La documentación de este proyecto es fuente de verdad y está cosida con enlaces: el README
+    apunta a los ADR, los ADR a las secciones del SDD, el contrato de los agentes a todo lo demás.
+    Un renombrado rompe unos cuantos en silencio, y un enlace roto en la guía de entrada es lo
+    primero que ve quien llega.
+
+    Solo mira enlaces a archivos. Las anclas dentro de un documento y las URL externas quedan fuera:
+    comprobarlas exige interpretar el Markdown la primera y tener red la segunda.
+    """
+    for path in walk(REPO, ".md"):
+        text = open(path, encoding="utf-8").read()
+        for target in set(re.findall(r"\]\(([^)\s]+)\)", text)):
+            if target.startswith(("http://", "https://", "#", "mailto:")):
+                continue
+            relative = target.split("#")[0]
+            if not relative:
+                continue
+            resolved = os.path.normpath(os.path.join(os.path.dirname(path), relative))
+            if not os.path.exists(resolved):
+                report(path, f"enlace roto: {target}")
+
+
 def main() -> int:
     check_kotlin_sources()
     check_privacy_guarantee()
     check_xml_is_well_formed()
     keys = check_compose_resources()
+    adrs = check_adr()
+    check_agent_contract()
+    requirements = check_openspec()
+    check_markdown_links()
 
     print(f"{keys} claves de recursos con paridad inglés/español")
+    print(f"{adrs} ADR indexados, {requirements} requisitos vigentes en openspec/specs")
 
     if problems:
         print(f"\n{len(problems)} hallazgos:\n")

@@ -1121,6 +1121,55 @@ motores de cámara sin emulador" ya nombraba esta forma de agujero —lo que el 
 **fuera del proceso** no lo ve nadie desde aquí— y esta es la segunda vez que muerde por el mismo
 sitio: la primera fue la cadena de fallback reabriendo la cámara al cancelar, en la Ronda 16.
 
+### Ronda 21 — la estructura para trabajar con agentes, escrita y comprobada ✅
+
+Casi todo este repositorio lo ha escrito un agente, y hasta ahora las reglas de cómo hacerlo vivían
+en un solo archivo con nombre de producto (`CLAUDE.md`), en castellano, y sin nada que las
+comprobara. Esta ronda no cambia ni una línea de la app: cambia **cómo se hace el próximo cambio**.
+
+- [x] **`AGENTS.md` es el contrato canónico**, en inglés, con las reglas completas: las
+  inquebrantables, el mapa del repositorio, la matriz de qué se puede verificar aquí y qué no, el
+  ciclo de trabajo, la tabla de dónde va cada cosa, el checklist de "terminado" y los frenos de
+  mano. `CLAUDE.md` se queda como espejo en castellano y **no normativo**
+  ([ADR-0016](adr/ADR-0016-agents-md-como-contrato-canonico.md)). El coste está dicho en el propio
+  ADR: dos archivos que pueden separarse y ninguna comprobación que lea lo que dicen
+- [x] **El harness deja de ser improvisado.** `.claude/` con permisos y hooks versionados, siete
+  comandos (`/preflight`, `/pr-ready`, `/adr-new`, `/spec-propose`, `/spec-apply`, `/docs-sync`,
+  `/engine-add`), tres subagentes con contexto propio y tres skills. La pieza que más vale es el
+  hook: `tools/checks.py` corre **después de cada edición** de `.kt`, `.kts` o `.xml`, que en un
+  entorno donde no compila nada es el único bucle de realimentación por debajo del minuto. Es la
+  misma lección de la deuda D23 un nivel más arriba — lo que vive fuera del control de versiones se
+  pierde entre sesiones
+- [x] **OpenSpec para los cambios de comportamiento**
+  ([ADR-0017](adr/ADR-0017-openspec-para-cambios-de-comportamiento.md)). Faltaba la cuarta pregunta:
+  el SDD dice **cómo**, los ADR **por qué**, el ROADMAP **cuándo**, y nada decía **qué**, en
+  requisitos comprobables. Cuatro capacidades escritas —el SPI, la selección, el historial y las
+  garantías de privacidad, 23 requisitos con sus escenarios— y un cambio en curso: cubrir el
+  `actual` de Android de `DatabaseBuilderFactory`, que sigue siendo lo único de la cadena de Room
+  que no ejecuta ningún test. Lo que más cambia del proceso es que la pregunta de verificación —qué
+  lo demuestra y ¿eso corre en cada PR?— se hace **antes** de implementar
+- [x] **`docs/ai/`**: el modelo de trabajo con IA de punta a punta — el ciclo, el harness, cómo se
+  planifica, una biblioteca de prompts con el motivo de cada uno, y la procedencia. Esa última
+  incluye lo que el agente **no** hizo: los dos defectos más caros de este proyecto los encontró una
+  persona poniendo la app en un teléfono
+- [x] **Índice de ADR y plantilla**, con las diecisiete decisiones en una tabla. Los ADR se
+  escribían bien y no se encontraban
+- [x] **Lo que faltaba de un repositorio público**: contribuir en los dos idiomas, código de
+  conducta, política de seguridad —donde un defecto de privacidad **es** un defecto de seguridad—,
+  plantillas de issue y de PR, `CODEOWNERS`, y una guía de entrada en castellano e inglés
+- [x] **Y, sobre todo, comprobado.** `tools/checks.py` valida ahora las cabeceras de los ADR y su
+  paridad con el índice, que `AGENTS.md` y `CLAUDE.md` se enlacen, la forma de cada cambio de
+  OpenSpec —incluido que todo `### Requirement:` tenga al menos un `#### Scenario:`— y los enlaces
+  relativos entre documentos. Corre en cada PR, en el mismo paso de siempre. **Sin esto la ronda
+  entera sería decoración**: una estructura que solo existe mientras alguien se acuerda de seguirla
+  dura hasta el primer día con prisa
+
+**Lo que esta ronda dice del proyecto:** el criterio que gobierna el código —lo que se puede
+comprobar con un script no depende de que alguien se acuerde— se aplica ahora también a la
+documentación y al proceso. Y una regla nueva que sale de aquí: **si algo se puede comprobar
+mecánicamente, va a `tools/checks.py` y no a un archivo de instrucciones**. Una regla escrita depende
+de que se lea; una comprobada, no.
+
 ### Antes de la ficha de Play, esto va primero
 
 Lo de abajo es trámite de tienda. Lo de esta lista no. Se hizo el repaso a propósito antes de tocar

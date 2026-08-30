@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(python3 tools/checks.py)",
+      "Bash(python3 tools/coverage.py:*)",
+      "Bash(python3 tools/binary_size.py:*)",
+      "Bash(python3 tools/check_resolved_versions.py:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(git blame:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(wc:*)",
+      "Read(//home/user/WhyScan/**)",
+      "Edit(//home/user/WhyScan/**)",
+      "Write(//home/user/WhyScan/**)"
+    ],
+    "deny": [
+      "Read(./local.properties)",
+      "Read(./**/*.jks)",
+      "Read(./**/*.keystore)",
+      "Read(./**/google-services.json)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git push origin main:*)"
+    ],
+    "ask": [
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$CLAUDE_PROJECT_DIR/.claude/hooks/preflight.sh",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}

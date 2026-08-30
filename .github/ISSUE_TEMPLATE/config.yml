@@ -1,0 +1,17 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security or privacy report / Reporte de seguridad o privacidad
+    url: https://github.com/dgfigueroa29/WhyScan/security/advisories/new
+    about: >-
+      Anything that could let scanned data leave the device. Private channel — do not open a public
+      issue. · Cualquier cosa que permita que lo escaneado salga del dispositivo. Canal privado.
+  - name: How this project works / Cómo funciona este proyecto
+    url: https://github.com/dgfigueroa29/WhyScan/blob/main/CONTRIBUTING.md
+    about: >-
+      Conventions, setup and what gets a pull request accepted. · Convenciones, puesta en marcha y
+      qué hace que se acepte un pull request.
+  - name: Roadmap and known gaps / Roadmap y huecos conocidos
+    url: https://github.com/dgfigueroa29/WhyScan/blob/main/docs/ROADMAP.md
+    about: >-
+      Check here first — pending work is listed, including what is blocked on hardware. · Míralo
+      antes: lo pendiente está listado, incluido lo que está bloqueado por falta de dispositivo.

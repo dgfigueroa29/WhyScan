@@ -1,0 +1,99 @@
+name: Bug report / Reporte de defecto
+description: Something does not work as documented. · Algo no funciona como está documentado.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Please check `docs/ROADMAP.md` first — some gaps are known and listed,
+        including everything blocked on not having a device.
+
+        Gracias por reportar. Mira antes `docs/ROADMAP.md`: hay huecos conocidos y listados, incluido
+        todo lo que está bloqueado por no tener un dispositivo.
+
+        **Do not report a security or privacy issue here.** Use the private channel in `SECURITY.md`.
+
+  - type: textarea
+    id: what-happens
+    attributes:
+      label: What happens / Qué pasa
+      description: What you observed, and what you expected instead.
+      placeholder: |
+        Observed: after granting the camera permission, the back gesture does not leave the screen.
+        Expected: the back gesture returns to the previous destination.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce / Pasos para reproducirlo
+      description: Numbered, from a fresh install if that matters.
+      placeholder: |
+        1. Fresh install, open the app
+        2. Grant the camera permission
+        3. Press back
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform / Plataforma
+      options:
+        - Android
+        - Desktop (JVM)
+        - Web (Wasm)
+        - iOS
+        - Not sure / No lo sé
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Version and device / Versión y dispositivo
+      description: App version or commit, OS version, device or browser.
+      placeholder: "v0.9 (commit 0a8f93d) · Android 14 · Pixel 6a"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: engine
+    attributes:
+      label: Scanning engine, if known / Motor de escaneo, si lo sabes
+      description: Settings → Advanced shows which engine is in use.
+      options:
+        - "Not applicable / No aplica"
+        - "Don't know / No lo sé"
+        - GMS_CODE_SCANNER — Google Code Scanner
+        - MLKIT_CAMERAX — ML Kit + CameraX
+        - ZXING_CPP — ZXing-cpp
+        - MLKIT_OCR — ML Kit Text Recognition
+        - ZXING_JAVA — ZXing (Java)
+        - BROWSER_DETECTOR — BarcodeDetector API
+        - VISION_IOS — Vision / AVFoundation
+        - VISION_OCR — Vision Text Recognition
+        - MANUAL_INPUT — Manual entry
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or stack trace / Logs o traza
+      description: Paste as text, not a screenshot, so it can be searched.
+      render: text
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Before you post / Antes de publicar
+      options:
+        - label: >-
+            My report contains no scanned values, screenshots of real codes, or anything personal.
+            A QR can carry a Wi-Fi password. · Mi reporte no lleva valores escaneados, capturas de
+            códigos reales ni nada personal. Un QR puede llevar una contraseña de wifi.
+          required: true

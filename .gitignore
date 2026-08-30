@@ -43,6 +43,12 @@ proguard/
 # Android Studio captures folder
 captures/
 
+# Harness de agentes
+# `.claude/settings.json` **sí** se versiona: es la configuración compartida —permisos y hooks— y
+# vivir fuera del control de versiones es justo lo que hizo que la red de comprobaciones se perdiera
+# entre sesiones (deuda D23). Lo que se ignora son las preferencias de cada máquina.
+.claude/settings.local.json
+
 # IDE
 # Se ignora .idea/ entero: la configuración generada por el IDE queda obsoleta en cuanto cambia el
 # build (la del proyecto Android original apuntaba a Kotlin 1.8 y a módulos que ya no existen), y

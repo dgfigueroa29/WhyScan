@@ -408,6 +408,33 @@ Los ocho pasos están en [`docs/ENGINES.md`](docs/ENGINES.md#cómo-añadir-un-mo
 
 ---
 
+## Cómo se trabaja aquí, y cómo se trabaja con agentes
+
+Casi todo este repositorio lo ha escrito un agente de IA dirigido por el dueño del proyecto. No es
+una nota al pie: es la razón de que el repositorio tenga la forma que tiene, y está documentado
+entero — incluido lo que el agente **no** pudo hacer.
+
+| Necesitas | Está en |
+|---|---|
+| Empezar, con el repositorio recién clonado | [`docs/guides/primeros-pasos.md`](docs/guides/primeros-pasos.md) · [English](docs/guides/getting-started.md) |
+| El contrato que sigue un agente, completo | [`AGENTS.md`](AGENTS.md) — normativo, en inglés. Su espejo en castellano es [`CLAUDE.md`](CLAUDE.md) |
+| Comandos, subagentes, skills y hooks | [`.claude/README.md`](.claude/README.md) |
+| Proponer un cambio de comportamiento antes de escribirlo | [`openspec/README.md`](openspec/README.md) |
+| Cómo se usa la IA aquí, de punta a punta | [`docs/ai/README.md`](docs/ai/README.md) |
+| Las decisiones tomadas, con su coste | [`docs/adr/README.md`](docs/adr/README.md) |
+| Contribuir | [`CONTRIBUTING.es.md`](CONTRIBUTING.es.md) · [English](CONTRIBUTING.md) |
+
+La idea que sostiene el resto está en una línea: **un agente produce buen software cuando el entorno
+hace barato ver el trabajo malo.** Aquí no compila nada en local, así que cada red de seguridad hubo
+que construirla a mano — `python3 tools/checks.py` en segundos, tests que comparan la documentación
+contra el código, y una regla escrita de que decir que algo se probó cuando no se pudo probar es el
+peor fallo posible. Eso último también vale para las personas.
+
+Los idiomas están repartidos por función: el código y `docs/` en castellano, las superficies que
+leen los agentes en inglés, y las guías para personas en los dos ([ADR-0016](docs/adr/ADR-0016-agents-md-como-contrato-canonico.md)).
+
+---
+
 ## Licencia
 
 [Apache-2.0](LICENSE).
