@@ -112,5 +112,9 @@ so. The change history is public: it lives in the same repository as the code.
 
 ## Contact
 
-WhyScan is an open-source project. For any privacy question, open an issue in the repository:
-<https://github.com/dgfigueroa29/WhyScan/issues>.
+For any privacy question, or to exercise the rights in the previous section, write to
+**<david@faro.net.ar>**.
+
+WhyScan is also an open-source project: if yours is a defect rather than personal data, a public
+issue at <https://github.com/dgfigueroa29/WhyScan/issues> gets there sooner and helps more people.
+What does **not** belong in a public issue is anything that identifies you.

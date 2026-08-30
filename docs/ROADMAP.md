@@ -46,7 +46,8 @@ arrastrarlos dentro de otras listas los hace parecer trabajo que nadie hace.
 | Qué | Dónde | Quién decide |
 |---|---|---|
 | **Grupo Maven y paquete de `:core:foundation`** — no puede llevar `whyscan` | [ADR-0018](adr/ADR-0018-federar-la-base-y-no-la-marca.md) y los *Blockers* de `openspec/changes/federate-design-system/proposal.md` | El dueño del proyecto. Toda la federación está detrás de esto, y poner un nombre provisional para renombrar después es justo la parte cara |
-| **Correo de contacto de la ficha de Play** | "Pendiente para publicar", más abajo | El dueño del proyecto. Hoy los documentos legales remiten a las incidencias del repositorio |
+| **~~Correo de contacto de la ficha de Play~~** | resuelto el 30-08-2026 | <david@faro.net.ar>, ya escrito en los cuatro documentos legales, `SECURITY.md`, el código de conducta y las plantillas de issue |
+| **El nombre de la app y su `applicationId`** — ¿`com.whyscan.app` o `com.faro.whyscan`? | `androidApp/build.gradle.kts` | El dueño del proyecto, y **antes de la primera subida a Play**. Hoy es cambiar una línea; después de publicar es imposible: el `applicationId` es la URL de la ficha y la clave con la que el sistema reconoce una actualización. Es la única decisión de esta tabla con fecha de caducidad |
 | **Cerrar la cadena con la entrada manual (G4)** | `openspec/changes/close-the-chain-with-manual-entry/` | El dueño del proyecto: arreglar el código o retirar la garantía de los cinco documentos que la prometen. La propuesta recomienda lo primero |
 
 ### Bloqueado por un número que solo produce CI
@@ -1394,8 +1395,9 @@ que falta es un teléfono.
   escrito y enlazado desde Ajustes (`docs/legal/`, Ronda 16); lo que falta es de tienda: pegar la
   dirección en Play Console y rellenar el formulario. Sin `INTERNET`, la respuesta a casi todo es
   "no se recoge nada", con la única salvedad que el propio documento nombra — el escáner del
-  sistema es un componente de Google. Queda una decisión que no es técnica: **qué correo de
-  contacto** va en la ficha; los documentos remiten hoy a las incidencias del repositorio
+  sistema es un componente de Google. El **correo de contacto ya está decidido**:
+  <david@faro.net.ar>, y figura en los cuatro documentos legales, en `SECURITY.md`, en el código de
+  conducta y en las plantillas de issue
 - [ ] Firma de release y `bundle` en vez de APK
 
 **Criterio de salida:** alguien que no sabe qué es un motor de escaneo abre la app, lee un código y

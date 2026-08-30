@@ -114,5 +114,9 @@ arriba lo dice. El historial de cambios es público: vive en el mismo repositori
 
 ## Contacto
 
-WhyScan es un proyecto de código abierto. Para cualquier pregunta sobre privacidad, abrí una
-incidencia en el repositorio: <https://github.com/dgfigueroa29/WhyScan/issues>.
+Para cualquier pregunta sobre privacidad, o para ejercer los derechos de la sección anterior,
+escribí a **<david@faro.net.ar>**.
+
+WhyScan es además un proyecto de código abierto: si lo tuyo es un defecto y no un dato personal,
+una incidencia pública en <https://github.com/dgfigueroa29/WhyScan/issues> llega antes y le sirve a
+más gente. Lo que **no** va en una incidencia pública es nada que te identifique.

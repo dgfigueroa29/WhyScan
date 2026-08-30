@@ -113,6 +113,11 @@ revisarse.
 R8), Escritorio y Web— y es la autoridad. `iOS (manual)` y `Baseline profile (manual)` van aparte y
 a mano a propósito: no son criterio de aceptación.
 
+## Dónde preguntar
+
+Qué va en cada sitio, y qué no debe ir nunca en un issue público:
+[`SUPPORT.md`](SUPPORT.md).
+
 ## Reportar un problema de seguridad o privacidad
 
 Está en [`SECURITY.md`](SECURITY.md). Un defecto de privacidad —cualquier cosa que permita que lo
@@ -121,4 +126,5 @@ escaneado salga del dispositivo— se trata como un problema de seguridad, porqu
 ## Licencia
 
 Al contribuir aceptas que tu contribución quede bajo la [licencia Apache 2.0](LICENSE), la misma que
-el resto del proyecto.
+el resto del proyecto. Las atribuciones de terceros están en [`NOTICE`](NOTICE); si tu cambio añade
+una dependencia, añade su fila allí.

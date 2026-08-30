@@ -816,6 +816,10 @@ def check_markdown_links() -> None:
         for target in set(re.findall(r"\]\(([^)\s]+)\)", text)):
             if target.startswith(("http://", "https://", "#", "mailto:")):
                 continue
+            # Un enlace con `?` no es una ruta: es una URL relativa de GitHub —el atajo
+            # `../../issues/new?template=…`— y comprobarla contra el disco da un falso positivo.
+            if "?" in target:
+                continue
             relative = target.split("#")[0]
             if not relative:
                 continue

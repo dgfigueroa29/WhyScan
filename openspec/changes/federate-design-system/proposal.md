@@ -58,9 +58,21 @@ consumer.
 
 ## Blockers
 
-**The Maven group and the foundation package name are not decided, and this change cannot start
-without them.** They must not contain `whyscan`. This is a naming decision for the project owner,
-not a technical one, and inventing a company name here would be worse than waiting.
+**Mostly resolved on 2026-08-30: the organisation is `faro`.**
+
+What remains is the exact coordinate, and it is not cosmetic: Maven Central verifies domain
+ownership against the `groupId`, so `faro.net.ar` justifies **`ar.net.faro`** and not `com.faro`.
+If publication stays on a company-internal repository, either works.
+
+- `ar.net.faro.foundation` — correct in both worlds, and free to choose now.
+- `com.faro.foundation` — shorter, fine internally, and a problem the day someone wants Maven
+  Central.
+
+Pick one before task 2; renaming after the first published artefact is the expensive part.
+
+**This does not touch the application.** `com.whyscan.app` stays the `applicationId` and
+`com.whyscan.*` stay its packages — see the clarification in ADR-0018. The decision here is where
+the **new** shared module is born.
 
 ## Verification
 

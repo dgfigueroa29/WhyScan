@@ -25,8 +25,12 @@ entire promise is that what you scan stays with you.
 
 ## How to report
 
-Use GitHub's private vulnerability reporting: **Security → Report a vulnerability** on this
-repository. That channel is private and reaches the maintainer directly.
+Two private channels, either is fine:
+
+- **Email: <david@faro.net.ar>**
+- GitHub's private vulnerability reporting: **Security → Report a vulnerability** on this repository
+
+Both reach the maintainer directly.
 
 Please do not open a public issue for a vulnerability, and do not report it in a pull request — a
 pull request is public from the moment it opens.
@@ -88,8 +92,12 @@ cuya promesa entera es que lo que escaneas se queda contigo.
 
 ## Cómo reportar
 
-Usa el reporte privado de GitHub: **Security → Report a vulnerability** en este repositorio. Ese
-canal es privado y llega directo al mantenedor.
+Dos canales privados, vale cualquiera:
+
+- **Correo: <david@faro.net.ar>**
+- El reporte privado de GitHub: **Security → Report a vulnerability** en este repositorio
+
+Los dos llegan directo al mantenedor.
 
 No abras un issue público para una vulnerabilidad, ni la reportes en un pull request: un pull
 request es público desde el segundo en que se abre.

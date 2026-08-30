@@ -23,8 +23,16 @@ compatibilidad binaria, así que romper a un consumidor no se ve en ninguna revi
 publicación Maven, ni versionado, ni documentación generada. Un módulo así no se consume: se copia,
 y a los seis meses hay cuatro versiones divergentes que ya nadie une.
 
-**El tercero es que el paquete es `com.whyscan`.** Código compartido bajo el espacio de nombres de un
-producto es una promesa que se rompe el día que WhyScan cambie de nombre o se archive.
+**El tercero es el espacio de nombres del módulo compartido.** Código que otras apps van a consumir
+no puede vivir bajo el nombre de un producto: es una promesa que se rompe el día que ese producto
+cambie de nombre o se archive.
+
+> **Aclaración añadida el 30-08-2026, porque esta sección se leyó al revés.** Esto habla **solo del
+> módulo nuevo `:core:foundation`**, que hoy no existe. **La app no se toca**: `com.whyscan.app`
+> sigue siendo el `applicationId`, `com.whyscan.*` siguen siendo sus paquetes, y este ADR nunca
+> propuso cambiarlos. Renombrar los paquetes de un producto que ya funciona no tendría ningún
+> beneficio, y cambiar el `applicationId` después de publicar es directamente imposible. La decisión
+> es dónde nace lo **nuevo**, no dónde vive lo que ya está.
 
 Y hay una restricción que atraviesa todo lo anterior: **aquí no compila nada**. Esta decisión se
 puede tomar y escribir; la configuración de Gradle que la implementa no se puede verificar en este
@@ -57,6 +65,12 @@ empresa. El esmeralda, no.
 `project(":core:foundation")` y las demás apps consumen el artefacto publicado. El grupo Maven **no**
 lleva `whyscan` en el nombre — el nombre concreto lo decide el dueño del proyecto, y hasta que lo
 haga esto está bloqueado, no supuesto.
+
+> **Resuelto el 30-08-2026: la organización es `faro`.** Queda por fijar la forma exacta de la
+> coordenada, y no es cosmético: Maven Central **verifica la propiedad del dominio** contra el
+> `groupId`, así que `faro.net.ar` justifica `ar.net.faro` y no `com.faro`. Si la publicación se
+> queda en un repositorio interno de la empresa, cualquiera de las dos vale. Elegir la estricta
+> ahora no cuesta nada; cambiarla después de publicar el primer artefacto, sí.
 
 **3. Publicar exige cinco cosas, y sin las cinco no se publica.** Son la diferencia entre una
 biblioteca y una carpeta que otros copian:

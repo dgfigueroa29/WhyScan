@@ -110,6 +110,10 @@ request closed rather than reviewed.
 Desktop and Web — and it is the authority. `iOS (manual)` and `Baseline profile (manual)` are
 separate and manual on purpose; they are not acceptance criteria.
 
+## Getting help
+
+Where to ask, and what must never go in a public issue: [`SUPPORT.md`](SUPPORT.md).
+
 ## Reporting a security or privacy issue
 
 See [`SECURITY.md`](SECURITY.md). A privacy defect — anything that could let scanned data leave the
@@ -118,4 +122,5 @@ device — is treated as a security issue, because that is what it is.
 ## Licence
 
 By contributing you agree that your contribution is licensed under the
-[Apache License 2.0](LICENSE), the same as the rest of the project.
+[Apache License 2.0](LICENSE), the same as the rest of the project. Third-party attributions are
+in [`NOTICE`](NOTICE); if your change adds a dependency, add its row there.

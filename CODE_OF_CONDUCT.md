@@ -51,9 +51,8 @@ officially representing the community in public spaces.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the
-maintainer through GitHub — by opening a private security advisory on this repository, which is the
-private channel available here, or by contacting **@dgfigueroa29** directly. All complaints will be
-reviewed and investigated promptly and fairly.
+maintainer at **<david@faro.net.ar>**, or through GitHub by opening a private security advisory on
+this repository. All complaints will be reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the reporter of any
 incident.
@@ -143,9 +142,9 @@ comunidad en público.
 ## Cómo reportar
 
 Los casos de abuso, acoso o conducta inaceptable se pueden reportar al mantenedor a través de
-GitHub: abriendo un aviso de seguridad privado en este repositorio —que es el canal privado
-disponible aquí— o contactando con **@dgfigueroa29**. Toda queja se revisa e investiga con rapidez y
-equidad, respetando la privacidad y la seguridad de quien reporta.
+**<david@faro.net.ar>**, o por GitHub abriendo un aviso de seguridad privado en este repositorio.
+Toda queja se revisa e investiga con rapidez y equidad, respetando la privacidad y la seguridad de
+quien reporta.
 
 ## Consecuencias
 

@@ -105,5 +105,7 @@ parte de estos términos.
 
 ## 11. Contacto
 
-WhyScan es un proyecto de código abierto. Para cualquier pregunta sobre estos términos, abrí una
-incidencia en el repositorio: <https://github.com/dgfigueroa29/WhyScan/issues>.
+Para cualquier pregunta sobre estos términos, escribí a **<david@faro.net.ar>**.
+
+Si lo tuyo es un defecto de la app y no una cuestión legal, una incidencia pública en
+<https://github.com/dgfigueroa29/WhyScan/issues> llega antes.

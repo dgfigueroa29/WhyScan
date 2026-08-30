@@ -5,6 +5,11 @@ contact_links:
     about: >-
       Anything that could let scanned data leave the device. Private channel — do not open a public
       issue. · Cualquier cosa que permita que lo escaneado salga del dispositivo. Canal privado.
+  - name: Privacy question, or anything personal / Consulta de privacidad, o algo personal
+    url: mailto:david@faro.net.ar
+    about: >-
+      Exercising your rights over your data, or anything you should not post in public. · Ejercer
+      tus derechos sobre tus datos, o cualquier cosa que no deba ir en público.
   - name: How this project works / Cómo funciona este proyecto
     url: https://github.com/dgfigueroa29/WhyScan/blob/main/CONTRIBUTING.md
     about: >-

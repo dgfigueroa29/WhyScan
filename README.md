@@ -423,6 +423,8 @@ entero — incluido lo que el agente **no** pudo hacer.
 | Cómo se usa la IA aquí, de punta a punta | [`docs/ai/README.md`](docs/ai/README.md) |
 | Las decisiones tomadas, con su coste | [`docs/adr/README.md`](docs/adr/README.md) |
 | Contribuir | [`CONTRIBUTING.es.md`](CONTRIBUTING.es.md) · [English](CONTRIBUTING.md) |
+| Dónde preguntar, y qué no va nunca en un issue público | [`SUPPORT.md`](SUPPORT.md) |
+| Reportar algo de seguridad o privacidad, en privado | [`SECURITY.md`](SECURITY.md) · <david@faro.net.ar> |
 
 La idea que sostiene el resto está en una línea: **un agente produce buen software cuando el entorno
 hace barato ver el trabajo malo.** Aquí no compila nada en local, así que cada red de seguridad hubo
