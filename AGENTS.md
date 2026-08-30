@@ -96,9 +96,10 @@ core/database/        Room database, migrations, driver wiring
 core/designsystem/    Material 3 theme, typography, shapes, colour roles
 core/permissions/     Camera permission handling per platform
 core/platform/        Small platform abstractions (sharing, opening, file access)
-core/scanner-ui/      Viewfinder and detection UI shared by features
+core/scanner-ui/      The CameraPreviewEngine capability: the engine's own video surface (ADR-0007)
 core/scanner-testing/ BarcodeScannerEngineContractTest — the suite every engine must pass
-engines/<name>/       One module per scanning alternative (9 engines, see docs/ENGINES.md)
+engines/<name>/       One module per alternative — 8 modules for 9 engines: the two OCR
+                      engines share engines/ocr/ (see docs/ENGINES.md)
 feature/scanner/      Scan screen + engine bench + comparator
 feature/history/      Scan history, notes, export
 feature/settings/     Preferences, theme, language, about
@@ -159,7 +160,7 @@ are the ones that keep this repository coherent.
 | The current, implemented truth about a capability | `openspec/specs/<capability>/spec.md` |
 | Design detail: structure, types, contracts, quality strategy | `docs/SDD.md`, in the numbered section that already covers it |
 | Progress, pending work, accepted debt | `docs/ROADMAP.md` |
-| A new engine, or a change to an engine's capabilities | `docs/ENGINES.md` **and** `ScannerEngineCatalog` — a test compares them |
+| A new engine, or a change to an engine's capabilities | `docs/ENGINES.md` **and** `ScannerEngineCatalog` — `check_engine_catalog()` compares them |
 | A rule agents must follow | This file. Then mirror the summary in `CLAUDE.md` |
 | Something a human contributor needs | `CONTRIBUTING.md` / `CONTRIBUTING.es.md` |
 
@@ -184,7 +185,8 @@ Each of these exists because it broke once. They are cheaper to read than to red
   who does not speak Spanish.
 - **Engine descriptors are contracts, not documentation.** The selector and the entire UI branch on
   declared capabilities. `BarcodeScannerEngineContractTest` verifies declared behaviour against
-  actual behaviour, and inheriting it is not optional for a new engine.
+  actual behaviour. Inheriting it is mandatory for every engine that can be instantiated without a
+  device; camera engines deliberately do not, because constructing them needs an emulator (D6).
 - **Repeated detections are suppressed in the domain, not in engines** — a two-second window on
   `(format, value)`. The comparator deliberately does **not** carry that decorator: its whole point
   is that every engine reports the same code.

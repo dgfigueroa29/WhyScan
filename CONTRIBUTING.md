@@ -11,7 +11,7 @@ is more specific than this file.
 ## Before you write code
 
 **Open an issue first** for anything that changes behaviour. Not as bureaucracy: the design is
-written down in `docs/SDD.md` and seventeen ADRs, and a change that contradicts a recorded decision
+written down in `docs/SDD.md` and eighteen ADRs, and a change that contradicts a recorded decision
 needs a new decision, not a patch. Finding that out after you have written the code is nobody's idea
 of a good afternoon.
 
@@ -36,7 +36,7 @@ Settings and in the published privacy policy, and part of it is enforced by a ch
 request that weakens it will not be merged.
 
 **`docs/` is source of truth, not a summary.** `docs/ENGINES.md` and `ScannerEngineCatalog` cannot
-diverge — a test compares them.
+diverge — a check in `tools/checks.py` compares them on every pull request.
 
 ## Setting up
 
@@ -91,7 +91,8 @@ people up:
 
 - **Declare an honest `ScannerEngineDescriptor`.** The selector and the whole UI branch on declared
   capabilities, and `BarcodeScannerEngineContractTest` checks the declaration against real behaviour.
-  Inheriting that suite is not optional.
+  Inheriting it is mandatory for any engine that can be instantiated without a device; camera engines
+  deliberately do not, because building them needs an emulator (debt D6).
 - **Koin resolves by exact type equality and does not walk supertypes.** Declare each dependency with
   the type its consumer asks for, not the one the factory returns. This killed the app on its first
   real device boot with CI green throughout.

@@ -1,61 +1,87 @@
-# Cover the Android database builder with a test that runs on every pull request
+# Cover what can be covered of the Android database builder, and name what cannot
 
-- **Status:** Proposed
+- **Status:** Proposed — **rewritten on 2026-08-30 after an audit found the first version
+  unimplementable**
 - **Capability:** `scan-history`
 - **Roadmap:** "Pendiente para publicar" — *El `actual` de Android de `DatabaseBuilderFactory`, que
   es lo único de la cadena de Room que no ejecuta ningún test*
 
+## Correction, stated first because it is the point
+
+The first version of this proposal planned a Robolectric test that would call
+`create().buildBundled()`, insert a row and read it back. **That cannot work, and the repository
+already said so.**
+
+`AndroidKoinGraphTest`'s own KDoc explains it: `sqlite-bundled` ships native binaries compiled for
+Android ABIs, and under Robolectric the process is a desktop JVM that cannot load them. That is
+precisely why the Android graph test excludes `ScanHistoryRepository`, `ScanHistory` and
+`ScanSessions`. The same KDoc ends by naming this exact gap: *"Lo único que no comprueba nadie es el
+`actual` de Android de `DatabaseBuilderFactory`, que son cuatro líneas y **sigue necesitando un
+dispositivo**."*
+
+The first version also credited `AndroidKoinGraphTest` with proving the factory "can be
+constructed". It does not — that test never resolves the history chain.
+
+Writing a proposal that contradicts a KDoc in the module it targets is the failure the review step
+exists to catch. It was caught before anyone wrote code, which is the process working; it should have
+been caught while writing, which is the process being used properly.
+
 ## Why
 
-`DatabaseBuilderFactory` is an `expect` class with three `actual` implementations. Two of them are
-exercised today; the Android one is not.
+`DatabaseBuilderFactory` is an `expect` class with three `actual`s. The JVM one is exercised by
+`MigrationTest`, which opens a real v1 database and asserts the rows survive. The iOS one is
+uncovered and the platform is deprioritized. The Android one — the platform that ships — is
+uncovered.
 
-| Platform | What runs it |
-|---|---|
-| JVM / Desktop | `MigrationTest` opens a real v1 database and asserts the rows survive |
-| iOS | Nothing — the platform is deprioritized and has no device |
-| **Android** | **Nothing.** `AndroidKoinGraphTest` resolves the graph, which proves the factory can be *constructed*, not that the database it builds opens |
+Its four lines carry two decisions that can break silently:
 
-Android is the platform that ships, and it is the one whose failure mode here is silent. This exact
-shape of defect has already cost this project twice:
+- **`applicationContext`, not the context it is handed.** The database outlives any Activity. If
+  someone "simplifies" this away, nothing fails until a leak or a crash on a real device.
+- **The path comes from `getDatabasePath(ScanDatabase.FILE_NAME)`.** A change here relocates every
+  user's history, silently, and the old file is simply never read again.
 
-- **Debt D19.** `buildBundled()` was called `build()`, and in Kotlin a member always beats an
-  extension, so the bundled driver was never configured. Desktop and iOS crashed on the first
-  screen; **Android kept working** by silently falling back to the framework's SQLite — the very
-  driver the code exists to avoid. The guarantee that all platforms run the same SQLite version had
-  been false since the day it was written, and the compiler had been warning about it in every
-  build.
-- **Debt D18.** The first real device boot found a Koin registration defect that CI could not see.
-
-Both were found by a test that ran on the JVM. This proposal closes the last piece of the same chain
-the same way.
+Neither needs the driver to load. Both are reachable under Robolectric.
 
 ## What changes
 
-A Robolectric test in `:core:database` that exercises the Android `actual`:
+A Robolectric test in `:core:database` covering the part that does not need native libraries:
 
-1. `create().buildBundled()` returns a database that **opens and answers a query**, so a regression
-   that loses the bundled driver fails here rather than on a user's phone.
-2. The database file resolves under the application's own database directory.
-3. The factory holds the *application* context, not the `Context` it was handed — the database
-   outlives any Activity, and the current implementation calls `applicationContext` precisely for
-   that reason. Nothing checks that it keeps doing so.
+1. `create()` returns a builder configured against the **application** context, even when the
+   factory is constructed with a `ContextWrapper` around it.
+2. The database path resolves under the application's own database directory and uses
+   `ScanDatabase.FILE_NAME`.
+
+**It stops there.** It does not call `buildBundled()`, does not open the database and does not query
+it — `BundledSQLiteDriver` is exactly the native dependency Robolectric cannot load.
 
 ## What does not change
 
-- No production code, unless the test finds a defect — in which case that fix is its own change.
-- No new dependency beyond Robolectric, already used by `:composeApp` for `AndroidKoinGraphTest`.
-- Nothing about iOS. Its `actual` stays uncovered, and that is recorded as blocked on hardware,
-  not fixed here.
+- No production code.
+- No claim that the Android persistence chain is verified. It is not, and the ROADMAP must keep
+  saying so.
+- Nothing about iOS.
 
 ## Verification
 
 | Claim | Proof | Runs on every PR |
 |---|---|---|
-| The Android builder produces an openable database | New Robolectric test in `:core:database` | Yes — `./gradlew :core:database:testDebugUnitTest`, JVM, no emulator |
-| The bundled driver is configured | The same test, by querying through the built instance | Yes |
-| The application context is used | The same test, passing a wrapper context | Yes |
-| The database behaves identically on a real device | **Nothing.** Requires hardware | No — and this proposal does not claim otherwise |
+| The builder uses the application context | New Robolectric test in `:core:database` | Yes — JVM, no emulator |
+| The database file resolves under the app's database directory | The same test | Yes |
+| The bundled driver is configured and works on Android | **Nothing.** `BundledSQLiteDriver` cannot load under Robolectric | No — needs a device |
+| The Android database opens and answers a query | **Nothing** | No — needs a device |
 
-`Verify` must be extended to run the new task, or the test joins the set of things that exist and
-never execute — which is the failure this change is about.
+The bottom two rows are why this change **does not close** the ROADMAP item. It narrows it: from
+"nothing tests the Android `actual`" to "two of its decisions are tested; that the driver works on
+Android still needs a phone". The ROADMAP entry must be rewritten to say that, not ticked.
+
+Whether even the narrowed test compiles and runs is **not verifiable in this environment** — nothing
+compiles here. `Verify` decides.
+
+## The alternative worth considering
+
+Do nothing, and move the item to the device-blocked list as it stands. That is a defensible call: the
+two decisions are four lines of straightforward code, and a test for them buys less than a test that
+actually opened the database would have.
+
+The argument for doing it anyway is that `applicationContext` is exactly the kind of line a future
+refactor removes as redundant, and this is the cheapest thing that would notice.

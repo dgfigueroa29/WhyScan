@@ -1,7 +1,8 @@
 # Catálogo de motores de escaneo
 
 Fuente de verdad del catálogo. El registro en código (`ScannerEngineCatalog`) debe coincidir con
-esta tabla — hay un test que verifica que los IDs y las fases no divergen.
+esta tabla — `check_engine_catalog()` en `tools/checks.py` verifica que los identificadores, las
+fases y las plataformas no divergen, y corre antes que Gradle en cada PR.
 
 ---
 
@@ -46,7 +47,7 @@ Leyenda: ✅ soportado · ⚠️ parcial o dependiente de versión · ❌ no sop
 | Code 39       |  ✅  |   ✅    |   ✅    |     ✅     |     ✅      |    ✅    | ⚠️  |   ✅    |
 | Code 93       |  ✅  |   ✅    |   ✅    |     ✅     |     ✅      |   ⚠️    | ⚠️  |   ✅    |
 | Code 128      |  ✅  |   ✅    |   ✅    |     ✅     |     ✅      |    ✅    | ⚠️  |   ✅    |
-| Codabar       |  ✅  |   ✅    |   ⚠️   |     ✅     |     ✅      |   ⚠️    |  ❌  |   ✅    |
+| Codabar       |  ✅  |   ✅    |   ⚠️   |     ✅     |     ✅      |   ⚠️    | ⚠️⁸ |   ✅    |
 | ITF           |  ✅  |   ✅    |   ✅    |     ✅     |     ✅      |   ⚠️    | ⚠️  |   ✅    |
 | DataBar / RSS |  ❌  |   ❌    |   ❌    |     ✅     |     ✅      |    ❌    |  ❌  |   ✅    |
 | MaxiCode      |  ❌  |   ❌    |   ❌    |     ✅     |     ✅      |    ❌    |  ❌  |   ✅    |
@@ -80,6 +81,18 @@ para producir.
 que espera el overlay. Se declara `reportsCornerPoints = false` y no se reportan: construir un
 rectángulo a partir de dos puntos sería dibujar una suposición.
 
+⁸ **La columna OCR dice lo que el motor *declara*, no lo que puede llegar a producir**, y la
+distinción importa aquí más que en ninguna otra. Los dos motores de OCR declaran
+`BarcodeFormat.oneDimensional` entero —de ahí que Codabar pase de ❌ a ⚠️, porque estaba declarado y
+la tabla decía que no—, pero `OcrCodeInterpreter` solo sabe emitir cuatro simbologías: infiere por
+longitud y dígito de control, así que produce EAN-8, UPC-A, EAN-13 e ITF y **nunca** Code 39, Code 93,
+Code 128, UPC-E ni Codabar. Un número de ocho dígitos válido sale como EAN-8, no como UPC-E.
+
+Se deja declarado el conjunto ancho a propósito: el selector usa lo declarado para decidir si el
+motor entra en la cadena, y estrecharlo dejaría al OCR fuera de peticiones que sí sabe atender por la
+vía del dígito de control. Lo que había que arreglar era la tabla, que prometía una correspondencia
+uno a uno que nunca existió.
+
 Las marcas ⚠️ del OCR reflejan que el motor no decodifica la simbología: **lee el número impreso
 bajo el código** y el dominio infiere el formato validando su checksum. Solo funciona con
 simbologías cuyo valor va impreso en texto (típicamente 1D de producto).
@@ -98,7 +111,7 @@ declarar en una tabla, y es exactamente lo que la pantalla "Comparar" existe par
 | Cámara en vivo                   |  ✅  |   ✅    |   ✅    |     ✅     |     ❌      |    ✅    |  ✅  |   ❌    |
 | Imagen estática                  |  ❌  |   ✅    |   ⏳²   |     ✅     |     ✅      |    ✅    |  ✅  |   ❌    |
 | Múltiples códigos a la vez       |  ❌  |   ✅    |   ✅    |     ✅     |     ✅      |    ✅    |  ✅  |   ❌    |
-| Escaneo continuo                 |  ❌  |   ✅    |   ✅    |     ✅     |     ❌      |    ✅    |  ✅  |   ❌    |
+| Escaneo continuo                 |  ❌  |   ✅    |   ✅    |     ✅     |     ❌      |    ✅    |  ✅  |   ✅    |
 | UI propia del motor              |  ✅  |   ❌    |   ❌    |     ❌     |     ❌      |    ❌    |  ❌  |   ❌    |
 | Linterna                         |  ❌  |   ✅    |   ✅    |     ✅     |     ❌      |   ❌³    |  ✅  |   ❌    |
 | Zoom                             |  ❌  |   ✅    |   ✅    |     ✅     |     ❌      |   ❌³    |  ✅  |   ❌    |
@@ -156,7 +169,9 @@ Excepciones de la política:
 - Si el `ScanRequest` pide **escaneo continuo** o **múltiples códigos**, `GMS_CODE_SCANNER` queda
   descartado por capacidades y `MLKIT_CAMERAX` encabeza la cadena en Android.
 - Si el `ScanRequest` pide **imagen estática**, solo entran motores con `ScanSource.StaticImage`.
-- `MANUAL_INPUT` cierra siempre la cadena: garantiza que nunca hay un estado "no se puede escanear".
+- `MANUAL_INPUT` **debería** cerrar siempre la cadena, y hoy no lo hace: declara solo
+  `ScanSource.ManualInput`, así que el selector lo descarta ante cualquier petición de cámara y la
+  cadena se queda vacía. Ver el cambio `close-the-chain-with-manual-entry`.
 - **En escritorio, una petición de cámara en vivo cae directamente a `MANUAL_INPUT`**: `ZXING_JAVA`
   no declara esa fuente, así que el selector lo descarta antes de elegirlo. El decodificador está
   ahí, pero no hay captura de webcam que lo alimente.
@@ -179,6 +194,9 @@ Excepciones de la política:
 6. Registrarlo en el `platformModule()` del target correspondiente en `:composeApp`.
 7. Heredar `BarcodeScannerEngineContractTest` aportando la factory del motor.
 8. Añadir el módulo a `settings.gradle.kts`.
+9. Actualizar `docs/ROADMAP.md`, y la cadena por defecto de este documento si el motor entra en
+   alguna. Un cambio de comportamiento que no llega al ROADMAP está a medias, y el paso faltaba
+   aquí mientras el resto de las guías ya hablaban de nueve.
 
 Sobre el paso 6 conviene saber lo que costó una app muerta al arrancar: **Koin resuelve por igualdad
 exacta de tipo y no recorre supertipos**, así que hay que declarar cada dependencia con el tipo que
@@ -190,5 +208,10 @@ ocurrió el crash que abrió D18 (§10 del SDD). Ya no queda ningún grafo sin c
 Ningún paso toca `:feature:scanner` ni `:core:domain`. Si un motor nuevo obliga a modificarlos, es
 señal de que el SPI se quedó corto y hay que extenderlo de forma explícita — no a parchear la UI.
 
-El paso 7 no es opcional: la suite de contrato es lo que impide que un motor declare capacidades que
+El paso 7 obliga a **todo motor que se pueda instanciar sin dispositivo** —hoy la entrada manual y
+ZXing en Java— y a los decoradores del dominio. Los de cámara **no la heredan, y es una decisión y no
+un olvido**: construirlos exige un emulador, y un test que nunca se ejecuta es peor que no tenerlo
+(D6). A ellos los cubre lo que declaran y los decoradores que los envuelven.
+
+La suite es lo que impide que un motor declare capacidades que
 luego no cumple, y las capacidades declaradas son de lo que dependen el selector y la UI entera.

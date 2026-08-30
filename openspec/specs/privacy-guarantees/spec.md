@@ -16,14 +16,22 @@ Design: `docs/SDD.md` §12, `docs/legal/privacidad.md`, `docs/legal/privacy.md`,
 The Android manifest SHALL NOT declare the `INTERNET` permission. The application SHALL NOT contain
 an HTTP client, analytics, crash reporting or telemetry of any kind.
 
-`tools/checks.py` SHALL fail if the manifest declares `INTERNET`, and it SHALL run in CI before any
-Gradle task.
+`tools/checks.py` SHALL fail if the **source** manifest declares `INTERNET`, and it SHALL run in CI
+before any Gradle task.
+
+#### Scenario: The permission is added to the application's own manifest
+
+- **WHEN** `android.permission.INTERNET` is added to `androidApp/src/main/AndroidManifest.xml`
+- **THEN** `check_privacy_guarantee()` fails
+- **AND** the pull request is rejected before the build runs
 
 #### Scenario: A dependency introduces the permission by manifest merge
 
-- **WHEN** a dependency contributes `android.permission.INTERNET` through manifest merging
-- **THEN** the check over the merged application manifest fails
-- **AND** the pull request is rejected before the build runs
+- **WHEN** a library contributes `android.permission.INTERNET` through manifest merging
+- **THEN** nothing currently detects it: the check reads the source manifest, and it runs before
+  Gradle has produced a merged one
+- **AND** this is the largest uncovered gap in the privacy guarantee, closed only by a check over
+  the merged manifest after `assembleDebug`
 
 ### Requirement: The system does not back up application data
 
@@ -49,14 +57,22 @@ transfer is configured separately.
 No scanned value SHALL be transmitted, uploaded, or written anywhere outside application-private
 storage, except where the user explicitly acts.
 
-The two explicit actions are: sharing a reading through the system share sheet, and exporting the
-history to a file the user chooses.
+There are three explicit actions: sharing a reading through the system share sheet, **opening a
+scanned value in another application**, and exporting the history to a file the user chooses.
 
 #### Scenario: The user shares a reading
 
 - **WHEN** the user taps share on a reading
 - **THEN** the value is handed to the system share sheet
 - **AND** the destination is chosen by the user, not by the application
+
+#### Scenario: The user opens a scanned value
+
+- **WHEN** the user taps open on a reading whose value is a link
+- **THEN** the raw scanned value is handed to the platform, which passes it to a browser or another
+  application
+- **AND** this is the action that carries scanned content furthest from the application, so it is
+  named here rather than treated as navigation
 
 ### Requirement: The one third-party component is named
 

@@ -42,7 +42,9 @@ engine reported.
 #### Scenario: Annotating an entry that no longer exists
 
 - **WHEN** the user submits a note for an entry deleted or pruned while the field was open
-- **THEN** the operation reports that the entry is gone rather than recreating it
+- **THEN** the operation is a no-op: no row is created and none is modified
+- **AND** the interface still reports the note as saved, which is a known and deliberate
+  simplification rather than a verified behaviour
 
 ### Requirement: Search covers value and note
 
@@ -58,8 +60,8 @@ The history search SHALL match against both the stored value and the note.
 When the history exceeds its maximum size, the system SHALL remove the oldest entries **that have no
 note**, and SHALL keep every annotated entry regardless of age.
 
-This rule SHALL hold identically in all three implementations: the two stores in `:core:data` and the
-`WHERE note IS NULL` clause in Room.
+This rule SHALL hold identically in both implementations: `trimmedKeepingNotes` in the `Settings`
+store of `:core:data`, used on Web, and the `WHERE note IS NULL` clause in Room.
 
 #### Scenario: A long continuous session with one annotated reading
 
@@ -98,8 +100,13 @@ those two days and a date otherwise.
 The history SHALL be exportable as CSV, JSON and plain text, and the resulting file SHALL be
 saveable on all four platforms.
 
-CSV column names and JSON keys SHALL be stable `snake_case` identifiers in English, independent of
-the application's display language. New columns SHALL be appended last.
+Field names SHALL be stable English identifiers, independent of the application's display language,
+and new CSV columns SHALL be appended last.
+
+The two formats do not share a convention: **CSV headers are `snake_case`** (`detected_at`,
+`latency_ms`, `value_type`) and **JSON keys are `camelCase`** (`detectedAt`, `latencyMs`,
+`valueType`), because the JSON keys come from the serialised property names. Both are pinned by
+`HistoryExporterTest`; unifying them would change a published file format and needs its own change.
 
 #### Scenario: The application language changes
 

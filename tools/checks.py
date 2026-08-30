@@ -496,6 +496,101 @@ def check_openspec() -> int:
     return total
 
 
+# Los identificadores de `ScannerEngineId` en el estilo de cada sitio. El código usa `PascalCase`
+# —`GmsCodeScanner`— y `docs/ENGINES.md` usa `SCREAMING_SNAKE_CASE` —`GMS_CODE_SCANNER`—, así que
+# hay que traducir para compararlos. No se deriva de uno a otro con una regla porque `ZXingCpp` y
+# `MlKitOcr` no la cumplirían: `ZXING_CPP` y `MLKIT_OCR` no salen de partir por mayúsculas.
+ENGINE_IDS = {
+    "GmsCodeScanner": "GMS_CODE_SCANNER",
+    "MlKitCameraX": "MLKIT_CAMERAX",
+    "VisionIos": "VISION_IOS",
+    "ZXingCpp": "ZXING_CPP",
+    "ZXingJava": "ZXING_JAVA",
+    "BrowserDetector": "BROWSER_DETECTOR",
+    "MlKitOcr": "MLKIT_OCR",
+    "VisionOcr": "VISION_OCR",
+    "ManualInput": "MANUAL_INPUT",
+}
+
+PLATFORMS = {"Android": "Android", "Ios": "iOS", "Desktop": "Desktop", "Web": "Web"}
+
+
+def check_engine_catalog() -> int:
+    """La tabla maestra de `docs/ENGINES.md` contra `ScannerEngineCatalog`.
+
+    ## Esta comprobación existía en la documentación antes que en ninguna parte
+
+    Catorce archivos —`AGENTS.md` entre ellos, como regla de cabecera— decían que "un test verifica
+    que `ENGINES.md` y el catálogo no divergen". **No lo verificaba nadie.**
+    `ScannerEngineCatalogTest` comprueba invariantes internos del catálogo —que cubre todos los
+    identificadores, que no hay duplicados, que la fase es válida— y no abre el documento; no puede,
+    porque un test de `commonTest` en KMP no tiene sistema de archivos.
+
+    Que la garantía más citada del repositorio fuera imaginaria lo destapó una auditoría, y la
+    respuesta correcta no era borrar la frase de catorce sitios: era hacerla cierta donde sí se
+    puede, que es aquí. Este archivo ya lee Markdown y XML y ya corre el primero en `Verify`.
+
+    Compara identificador, fase y plataformas. El nombre visible y la dependencia se quedan fuera a
+    propósito: son texto de producto, cambian de redacción sin cambiar de significado, y exigir que
+    coincidan carácter a carácter convierte la comprobación en un estorbo.
+    """
+    doc = os.path.join(REPO, "docs", "ENGINES.md")
+    code = os.path.join(REPO, "core", "scanner-api", "src", "commonMain", "kotlin", "com",
+                        "whyscan", "core", "scanner", "catalog", "ScannerEngineCatalog.kt")
+    if not (os.path.exists(doc) and os.path.exists(code)):
+        report(doc, "falta ENGINES.md o ScannerEngineCatalog.kt: no se pueden contrastar")
+        return 0
+
+    declared: dict[str, tuple[int, set[str]]] = {}
+    for entry in re.findall(r"ScannerEngineDescriptor\((.*?)\n    \)", open(code, encoding="utf-8")
+                            .read(), re.S):
+        name = re.search(r"id = ScannerEngineId\.(\w+)", entry)
+        phase = re.search(r"plannedPhase = (\d+)", entry)
+        platforms = re.search(r"platforms = (.+)", entry)
+        if not (name and phase and platforms):
+            continue
+        readable = ENGINE_IDS.get(name.group(1))
+        if readable is None:
+            report(code, f"ScannerEngineId.{name.group(1)} no está en ENGINE_IDS de checks.py")
+            continue
+        # La entrada manual declara `ScannerPlatform.entries.toSet()` en vez de enumerar: está en
+        # todas y escribirlas una a una se quedaría corto el día que aparezca una quinta.
+        if "entries" in platforms.group(1):
+            targets = set(PLATFORMS.values())
+        else:
+            targets = {PLATFORMS.get(p, p)
+                       for p in re.findall(r"ScannerPlatform\.(\w+)", platforms.group(1))}
+        declared[readable] = (int(phase.group(1)), targets)
+
+    documented: dict[str, tuple[int, set[str]]] = {}
+    for row in re.findall(r"^\| `(\w+)` *\|([^|]*)\|([^|]*)\|[^|]*\|([^|]*)\|",
+                          open(doc, encoding="utf-8").read(), re.M):
+        identifier, _, platforms, phase = row
+        number = re.search(r"\d+", phase)
+        if not number:
+            continue
+        listed = {p.strip() for p in platforms.split(",") if p.strip()}
+        documented[identifier] = (
+            int(number.group()),
+            set(PLATFORMS.values()) if listed == {"Todas"} else listed,
+        )
+
+    for identifier in sorted(set(declared) - set(documented)):
+        report(doc, f"{identifier} está en el catálogo y no en la tabla maestra")
+    for identifier in sorted(set(documented) - set(declared)):
+        report(doc, f"la tabla maestra lista {identifier}, que no está en el catálogo")
+
+    for identifier in sorted(set(declared) & set(documented)):
+        (phase, platforms), (doc_phase, doc_platforms) = declared[identifier], documented[identifier]
+        if phase != doc_phase:
+            report(doc, f"{identifier}: la tabla dice fase {doc_phase} y el catálogo {phase}")
+        if platforms != doc_platforms:
+            report(doc, f"{identifier}: la tabla dice {sorted(doc_platforms)} y el catálogo"
+                        f" {sorted(platforms)}")
+
+    return len(declared)
+
+
 # Los tres archivos de `:core:designsystem` que hoy no dependen de la marca y se podrían compartir
 # con otra app tal cual (ADR-0018). No es una lista de deseos: es lo que la comprobación de abajo
 # mantiene cierto. Radius, Typography y Theme quedan fuera **porque sus valores son de WhyScan**,
@@ -611,11 +706,13 @@ def main() -> int:
     check_agent_contract()
     requirements = check_openspec()
     roles = check_design_system()
+    engines = check_engine_catalog()
     check_markdown_links()
 
     print(f"{keys} claves de recursos con paridad inglés/español")
     print(f"{adrs} ADR indexados, {requirements} requisitos vigentes en openspec/specs")
     print(f"{roles} roles de color con paridad claro/oscuro")
+    print(f"{engines} motores con la tabla maestra y el catálogo de acuerdo")
 
     if problems:
         print(f"\n{len(problems)} hallazgos:\n")

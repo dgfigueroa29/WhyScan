@@ -86,6 +86,15 @@ and does that proof run on every pull request?**
   in which case it belongs in the ROADMAP's device-blocked list, not in an in-flight change.
 - "Verified by reading" — acceptable for structural claims only, and it must say so.
 
+**Then ask the second half: can that proof physically run here?** Naming a JVM test is not the same
+as a JVM test being possible. The change `cover-android-database-builder` was first written
+proposing a Robolectric test that opened the Android database — and `sqlite-bundled` ships native
+binaries that Robolectric cannot load, which the KDoc of `AndroidKoinGraphTest` states plainly, in
+the same module. The proposal answered the verification question and was still wrong.
+
+Before naming a test, read the KDoc of the test you are imitating. The constraint that makes yours
+impossible is usually written down next to the one that already hit it.
+
 `proposal.md` must contain that answer. A change whose requirements nothing can check is a wish.
 
 ## Lifecycle

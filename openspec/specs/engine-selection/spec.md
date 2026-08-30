@@ -23,24 +23,39 @@ It SHALL discard engines that do not report `EngineAvailability.Available`, and 
 - **THEN** the next engine in the chain takes over
 - **AND** the session continues without the user restarting it
 
-### Requirement: Manual entry closes every chain
+### Requirement: Manual entry is reachable on every platform, and closes the chain once chosen
 
-`MANUAL_INPUT` SHALL be the last entry of every selection chain, on every platform.
+`MANUAL_INPUT` SHALL be available on all four platforms, SHALL declare `ScanSource.ManualInput`, and
+SHALL therefore be selected for any request whose source is manual input.
 
-The system SHALL NOT present a state in which scanning is impossible.
+When the user selects the manual engine, the domain SHALL set the request source to
+`ScanSource.ManualInput` so that the selector does not discard it — `sourceFor()` in `ScanSessions`.
 
-#### Scenario: A desktop live-camera request
+> **Known gap, stated rather than glossed.** Because `MANUAL_INPUT` declares only
+> `ScanSource.ManualInput`, `ScannerCapabilities.satisfies()` rejects it for any live-camera
+> request. It therefore does **not** close a camera chain automatically, and the goal G4 — "there is
+> never a state in which scanning is impossible" — is not currently met. See the change
+> `close-the-chain-with-manual-entry`.
+
+#### Scenario: The user selects manual entry
+
+- **WHEN** the user chooses `MANUAL_INPUT` in the engine bench
+- **THEN** `sourceFor()` sets the request source to `ScanSource.ManualInput`
+- **AND** the selector returns a chain containing it, and the text field is rendered
+
+#### Scenario: A desktop live-camera request — today's behaviour
 
 - **WHEN** a live camera scan is requested on Desktop, where `ZXING_JAVA` declares only static-image
   input and there is no webcam capture
-- **THEN** the chain resolves directly to `MANUAL_INPUT`
-- **AND** the user is offered typed entry rather than an error
+- **THEN** the chain is **empty** and the session emits `ScanError.EngineUnavailable`
+- **AND** `SelectScannerEngineUseCaseTest` asserts exactly that empty chain
+- **AND** the user sees an error rather than the typed-entry fallback the goal promises
 
-#### Scenario: Web beyond the browser detector
+#### Scenario: Web beyond the browser detector — today's behaviour
 
-- **WHEN** the browser does not expose `BarcodeDetector`
-- **THEN** the chain resolves to `MANUAL_INPUT`, since `zxing-cpp` publishes no wasmJs artefact
-  (ADR-0008)
+- **WHEN** the browser does not expose `BarcodeDetector` and the request is for a live camera
+- **THEN** the chain is empty, since `zxing-cpp` publishes no wasmJs artefact (ADR-0008) and manual
+  entry does not satisfy a camera source
 
 ### Requirement: The request constrains the chain
 

@@ -40,7 +40,7 @@ core/domain                    Use cases, engine selection, engine decorators
     ↓
 core/scanner-api               THE SPI — BarcodeScannerEngine + segregated capabilities
     ↑
-engines/<nine of them>         One module per alternative; depend only on scanner-api + model
+engines/<eight modules>        One per alternative; the two OCR engines share engines/ocr/
 ```
 
 Dependencies point inward. An engine never depends on a feature or on the domain; a feature never
@@ -51,7 +51,9 @@ equality without walking supertypes** — the trap that killed the app on its on
 
 These are already true and a proposal must not break them:
 
-- `MANUAL_INPUT` closes every selection chain, so there is never a "cannot scan" state.
+- `MANUAL_INPUT` is available on all four platforms and is selected once the user chooses it.
+  It does **not** currently close a camera chain automatically — an empty chain emits
+  `EngineUnavailable` — and closing that gap is the change `close-the-chain-with-manual-entry`.
 - Declared capabilities are contracts: the selector and the UI branch on them, and
   `BarcodeScannerEngineContractTest` checks declaration against behaviour.
 - Repeated detections are suppressed **in the domain**, over a two-second `(format, value)` window —

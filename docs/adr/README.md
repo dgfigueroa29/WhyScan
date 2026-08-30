@@ -54,7 +54,7 @@ Se parte de [`TEMPLATE.md`](TEMPLATE.md). Nombre de archivo
 `ADR-NNNN-titulo-en-minusculas-con-guiones.md`, con el número siguiente sin usar — **los números no
 se reciclan**, ni siquiera los de un ADR abandonado.
 
-Lo que separa un ADR útil de uno decorativo, mirando los quince que ya hay:
+Lo que separa un ADR útil de uno decorativo, mirando los dieciocho que ya hay:
 
 - **El título dice la decisión, no el tema.** "Probar un motor abre un diálogo a pantalla completa,
   no un destino nuevo" se entiende sin abrir el archivo.

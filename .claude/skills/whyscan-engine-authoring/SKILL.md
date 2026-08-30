@@ -35,7 +35,10 @@ Capabilities that not every engine has live in **segregated interfaces**, so nob
 
 ### The four session guarantees
 
-`BarcodeScannerEngineContractTest` verifies all four for every engine. Know them before writing
+`BarcodeScannerEngineContractTest` verifies guarantees 1, 2 and 4 for every engine it covers.
+Guarantee 3 — that cancelling releases the camera — it cannot: the suite only asserts that
+cancelling raises nothing, and observing the release needs hardware. Treat it as a review
+obligation. Know all four before writing
 `scan()`:
 
 1. The first emitted event is `ScanEvent.SessionStarted`.
@@ -64,9 +67,11 @@ engines at once and there is no single delegate to inherit capabilities from.
 3. Implement `BarcodeScannerEngine` plus the optional capabilities that genuinely apply.
 4. Declare an honest `ScannerEngineDescriptor`.
 5. Add the ID to `ScannerEngineId`, the row to `docs/ENGINES.md`, the entry to
-   `ScannerEngineCatalog` — a test compares the last two.
+   `ScannerEngineCatalog` — `check_engine_catalog()` compares the last two.
 6. Register it in the target's `platformModule()` in `:composeApp`.
-7. Inherit `BarcodeScannerEngineContractTest`, supplying the factory. **Not optional.**
+7. Inherit `BarcodeScannerEngineContractTest`, supplying the factory. **Mandatory for any engine
+   that can be instantiated without a device** — today `MANUAL_INPUT` and `ZXING_JAVA`, plus every
+   domain decorator. Camera engines do not inherit it, by decision (D6).
 8. Add the module to `settings.gradle.kts`.
 9. Update `docs/ROADMAP.md`, and the default chain in `docs/ENGINES.md` if it belongs in one.
 

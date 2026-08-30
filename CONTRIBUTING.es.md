@@ -11,7 +11,7 @@ más concreto que este archivo.
 ## Antes de escribir código
 
 **Abre un issue primero** para cualquier cosa que cambie comportamiento. No es burocracia: el diseño
-está escrito en `docs/SDD.md` y en diecisiete ADR, y un cambio que contradice una decisión ya
+está escrito en `docs/SDD.md` y en dieciocho ADR, y un cambio que contradice una decisión ya
 registrada necesita una decisión nueva, no un parche. Enterarse de eso *después* de escribir el
 código no le hace gracia a nadie.
 
@@ -36,7 +36,7 @@ el README, en Ajustes y en la política de privacidad publicada, y una parte la 
 CI. Un pull request que la debilite no se acepta.
 
 **`docs/` es fuente de verdad, no un resumen.** `docs/ENGINES.md` y `ScannerEngineCatalog` no pueden
-divergir: hay un test que los compara.
+divergir: hay una comprobación en `tools/checks.py` que los compara en cada PR.
 
 ## Puesta en marcha
 
@@ -94,7 +94,8 @@ que se tropieza todo el mundo:
 
 - **Declarar un `ScannerEngineDescriptor` honesto.** El selector y la interfaz entera dependen de las
   capacidades declaradas, y `BarcodeScannerEngineContractTest` contrasta lo declarado con el
-  comportamiento real. Heredar esa suite no es opcional.
+  comportamiento real. Heredarla es obligatorio para todo motor que se pueda instanciar sin
+  dispositivo; los de cámara no lo hacen a propósito, porque construirlos exige un emulador (D6).
 - **Koin resuelve por igualdad exacta de tipo y no recorre supertipos.** Hay que declarar cada
   dependencia con el tipo que la *consume*, no con el que devuelve la fábrica. Esto mató la app en su
   primer arranque en un teléfono real, con el CI en verde todo el tiempo.

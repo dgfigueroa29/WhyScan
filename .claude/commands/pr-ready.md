@@ -23,7 +23,7 @@ Start from `git status --short` and `git diff main...HEAD`.
 5. **`docs/ROADMAP.md`.** A behaviour change that never reaches the ROADMAP is half done. Look for
    the round or checkbox this belongs to.
 6. **`docs/SDD.md`** if the design moved, **`docs/ENGINES.md`** if the catalog did. `ENGINES.md` and
-   `ScannerEngineCatalog` cannot diverge — a test compares them, so a mismatch fails `Verify`.
+   `ScannerEngineCatalog` cannot diverge — `check_engine_catalog()` compares them, so a mismatch fails `Verify`.
 7. **ADR.** Was a decision made between real alternatives, with consequences? Then it needs one.
    Was an existing ADR edited? That is a hard stop — supersede, never rewrite.
 8. **OpenSpec.** If the work started from `openspec/changes/<id>/`, is every task ticked, and is the

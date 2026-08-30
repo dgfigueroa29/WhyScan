@@ -30,12 +30,14 @@ Load the `whyscan-engine-authoring` skill for the SPI details, and read `docs/EN
 4. Declare an **honest** `ScannerEngineDescriptor`. Declared capabilities are what the selector and
    the whole UI branch on, and the contract suite checks them against real behaviour.
 5. Add the ID to `ScannerEngineId`, the row to `docs/ENGINES.md`, and the entry to
-   `ScannerEngineCatalog` — a test compares the last two.
+   `ScannerEngineCatalog` — `check_engine_catalog()` compares the last two.
 6. Register it in the target's `platformModule()` in `:composeApp`. **Koin resolves by exact type
    equality and does not walk supertypes**: declare each dependency with the type its consumer asks
    for, not the type the factory returns. This is what killed the app on its first real device boot
    with CI green throughout (debt D18).
-7. Inherit `BarcodeScannerEngineContractTest`, supplying the engine factory. Not optional.
+7. Inherit `BarcodeScannerEngineContractTest`, supplying the engine factory — mandatory if the
+   engine can be instantiated without a device. A camera engine cannot, and deliberately does not
+   inherit it (D6); say so in the pull request rather than leaving it unexplained.
 8. Add the module to `settings.gradle.kts`.
 9. Update `docs/ROADMAP.md`, and `docs/ENGINES.md` §"Prioridad de selección automática" if the
    engine belongs in a default chain.

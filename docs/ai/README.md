@@ -34,7 +34,7 @@ catalog before it has moved on to the next file.
 
 ### 2. Truth is checked, not asserted
 
-`docs/ENGINES.md` and `ScannerEngineCatalog` cannot diverge, because a test compares them. The
+`docs/ENGINES.md` and `ScannerEngineCatalog` cannot diverge, because `check_engine_catalog()` compares identifier, phase and platforms between them. The
 privacy guarantee is checked in the manifest, not trusted in the code. Coverage floors are measured,
 not promised. The ADR index is verified against the files.
 

@@ -10,9 +10,12 @@ import com.whyscan.core.scanner.ScannerEngineDescriptor
 /**
  * Fichas de **todas** las alternativas de escaneo del producto, estén implementadas o no.
  *
- * Es el reflejo en código de `docs/ENGINES.md`; un test verifica que ambos no divergen.
+ * Es el reflejo en código de `docs/ENGINES.md`. Quien verifica que no divergen es
+ * `check_engine_catalog()` en `tools/checks.py`, y **no un test**: comparar contra un archivo
+ * Markdown exige leer del disco, y un `commonTest` de KMP no tiene sistema de archivos. Durante dos
+ * años esta línea prometió un test que no existía.
  *
- * Que el catálogo esté completo desde la Fase 1 es deliberado: la UI muestra las ocho
+ * Que el catálogo esté completo desde la Fase 1 es deliberado: la UI muestra las nueve
  * alternativas con sus capacidades reales y en qué fase llega cada una, y el registro no cambia de
  * forma cuando un motor se implementa — solo cambia lo que responde `availability()`.
  */

@@ -65,12 +65,12 @@ Después, en este orden:
 
 1. **[`docs/ENGINES.md`](../ENGINES.md)** — los nueve motores, qué sabe hacer cada uno y la cadena de
    selección por plataforma. Es corto, y hace que el resto se entienda.
-2. **[`docs/adr/README.md`](../adr/README.md)** — diecisiete decisiones con su coste. Empieza por el
+2. **[`docs/adr/README.md`](../adr/README.md)** — dieciocho decisiones con su coste. Empieza por el
    [ADR-0002](../adr/ADR-0002-scanner-engine-spi.md) (el SPI) y el
    [ADR-0003](../adr/ADR-0003-koin-como-di.md) (la inyección de dependencias, y el defecto que mató a
    la app en su primer arranque en un teléfono real).
-3. **[`docs/SDD.md`](../SDD.md)** — el documento de diseño. Doscientas mil palabras: se lee la
-   sección que hace falta, no entero. §7 es el SPI, §10 la DI, §11 la persistencia y §13 la
+3. **[`docs/SDD.md`](../SDD.md)** — el documento de diseño. Unas veinticinco mil palabras: se lee
+   la sección que hace falta, no entero. §7 es el SPI, §10 la DI, §11 la persistencia y §13 la
    estrategia de calidad.
 4. **[`docs/ROADMAP.md`](../ROADMAP.md)** — qué está hecho, qué queda y qué está bloqueado por no
    tener un dispositivo. También guarda los defectos, en la ronda en la que aparecieron.
@@ -83,7 +83,7 @@ da una falsa sensación de red. En su lugar: el grafo de Koin se prueba en la JV
 Compose. La regla es que todo lo que se comprueba se pueda ejecutar en cada pull request.
 
 **La documentación es fuente de verdad, no un resumen.** `docs/ENGINES.md` y `ScannerEngineCatalog`
-no pueden divergir, porque hay un test que los compara. Los suelos de cobertura se miden, no se
+no pueden divergir, porque hay una comprobación en `tools/checks.py` que los compara. Los suelos de cobertura se miden, no se
 prometen.
 
 **Casi todo esto lo escribió un agente de IA**, dirigido por el dueño del proyecto. Está documentado

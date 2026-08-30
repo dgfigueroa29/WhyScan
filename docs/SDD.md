@@ -443,8 +443,11 @@ interface CameraControlEngine {
 - **Capacidades opcionales como interfaces separadas.** El GMS Code Scanner abre su propia UI y
   **no** permite controlar la linterna ni decodificar imágenes. Si `setTorch` estuviera en el
   contrato base, ese motor tendría que lanzar `UnsupportedOperationException` — un contrato que
-  miente. Con interfaces segregadas, la UI hace `engine as? CameraControlEngine` y muestra el
-  control solo si existe.
+  miente. Con interfaces segregadas, la UI hace
+  `engine.capability<CameraControlEngine>()` y muestra el control solo si existe. **No un
+  `as?` directo**: sobre una cadena decorada devuelve `null` aunque el motor de dentro sí lo
+  implemente, y ahí se pierde la linterna sin que falle nada (ver §13.2). El ADR-0007 conserva el
+  cast en su texto a propósito: registra la decisión tal como se tomó.
 - **`availability()` es `suspend`.** Determinar disponibilidad puede requerir I/O: consultar si
   los módulos de ML Kit ya se descargaron, si Google Play Services está actualizado, o si el
   navegador expone `BarcodeDetector`.
@@ -519,8 +522,8 @@ ScannerEngineRegistry            ← conoce todos los motores enlazados en el bi
    │
    ├─ expect fun platformEngines(): List<BarcodeScannerEngine>
    │     androidMain → [GmsCodeScanner, MlKitCameraX, ZXingCpp, MlKitOcr, Manual]
-   │     iosMain     → [VisionScanner, ZXingCpp, MlKitOcr, Manual]
-   │     jvmMain     → [ZXingCpp, Manual]
+   │     iosMain     → [VisionScanner, ZXingCpp, VisionOcr, Manual]
+   │     jvmMain     → [ZXingJava, Manual]
    │     wasmJsMain  → [BrowserDetector, Manual]
    │
    ▼
@@ -686,15 +689,22 @@ Detalle operativo completo en `docs/ENGINES.md`. Resumen:
 | **GMS Code Scanner**              | Android               | Cámara (UI propia)           | Cero permisos, cero UI que mantener, modelo descargado por Play Services                        | UI no personalizable, sin linterna, sin modo continuo, requiere Play Services |
 | **ML Kit + CameraX**              | Android               | Cámara (UI propia de la app) | Control total del preview, overlay, linterna, zoom, modo continuo                               | Añade peso; modelo *unbundled* requiere descarga                              |
 | **Vision / AVFoundation**         | iOS                   | Cámara                       | Nativo del sistema, sin dependencias externas, muy rápido                                       | Solo iOS; el set de simbologías varía por versión de iOS                      |
-| **ZXing-cpp**                     | Android, iOS, Desktop | Cámara e imagen              | 100 % offline, mismo decodificador en todas las plataformas → **baseline de comparación justa** | Menos tolerante a códigos dañados o mal iluminados que ML Kit                 |
-| **BarcodeDetector API**           | Web (Wasm/JS)         | Cámara e imagen              | Cero peso, provisto por el navegador                                                            | Soporte desigual entre navegadores; requiere fallback a ZXing-cpp/Wasm        |
-| **ML Kit Text Recognition (OCR)** | Android, iOS          | Cámara e imagen              | Recupera códigos ilegibles leyendo el número impreso debajo                                     | No es un decodificador: requiere validar checksum del formato inferido        |
+| **ZXing-cpp**                     | Android, iOS          | Cámara e imagen              | 100 % offline, mismo decodificador en las dos → **baseline de comparación justa**               | No publica artefacto para JVM ni wasmJs (ADR-0008)                            |
+| **ZXing (Java)**                  | Desktop               | Imagen                       | Único decodificador de escritorio, verificado decodificando imágenes generadas en el test       | Sin captura de webcam: una sesión en vivo cae a la entrada manual             |
+| **BarcodeDetector API**           | Web (Wasm/JS)         | Cámara e imagen              | Cero peso, provisto por el navegador                                                            | Soporte desigual entre navegadores; detrás solo queda la entrada manual       |
+| **ML Kit Text Recognition (OCR)** | Android               | Cámara e imagen              | Recupera códigos ilegibles leyendo el número impreso debajo                                     | No es un decodificador: requiere validar checksum del formato inferido        |
+| **Vision Text Recognition (OCR)** | iOS                   | Cámara e imagen              | Lo mismo con `VNRecognizeTextRequest`; comparte `OcrCodeInterpreter` con el de ML Kit           | Motor distinto del de Android a propósito (D13): el reconocedor no es el mismo |
 | **Entrada manual**                | Todas                 | Teclado                      | Siempre disponible; red de seguridad final del fallback                                         | Requiere intervención del usuario                                             |
 
-La presencia de **ZXing-cpp en las cuatro plataformas** no es redundante: es el control
-experimental. Al ser el mismo decodificador en todas partes, cualquier diferencia de resultado
-entre plataformas se atribuye a la captura de cámara, no al algoritmo — que es exactamente la
-medición que hace útil a WhyScan.
+La presencia de **ZXing-cpp en Android y en iOS** no es redundante: es el control experimental. Al
+ser el mismo decodificador en las dos, cualquier diferencia de resultado entre esas plataformas se
+atribuye a la captura de cámara y no al algoritmo — que es exactamente la medición que hace útil a
+WhyScan. En Escritorio y en Web **no lo hay**, y por eso esa comparación no se extiende a las cuatro:
+zxing-cpp no publica artefacto para JVM ni para wasmJs (ADR-0008).
+
+> Esta tabla se corrigió en la auditoría del 30-08-2026: listaba siete filas para nueve motores,
+> daba Desktop a ZXing-cpp, iOS a ML Kit y prometía un fallback a ZXing-cpp/Wasm que se retiró en la
+> Fase 4. `docs/ENGINES.md` es la fuente y estaba bien; esto era un resumen que dejó de resumir.
 
 ---
 
@@ -1532,10 +1542,20 @@ quien la implementa es el motor de dentro. De ahí salió `DecoratingScannerEngi
   resueltos: los umbrales **no** se subieron hasta que cupiera lo que había —eso deja la regla
   midiendo siempre lo que sea que haya—, sino que las cuatro excepciones legítimas llevan
   `@Suppress` en su sitio con el motivo al lado del código.
-- **Reglas de arquitectura** verificadas en CI: `:core:domain` no puede depender de Compose ni de
-  Android; `:engines:*` no puede depender de `:feature:*`.
-- **SonarCloud** para deuda técnica y duplicación; sin regresión permitida en PR.
-- Compilación con `allWarningsAsErrors` en módulos `:core:*`.
+- **Reglas de arquitectura**: `:core:domain` no puede depender de Compose ni de Android;
+  `:engines:*` no puede depender de `:feature:*`. **No las verifica nada**: son convención escrita
+  —en `AGENTS.md` y en `CONTRIBUTING`— y se revisan a mano. Automatizarlas es un cambio, no una
+  edición de este documento.
+- **`allWarningsAsErrors` no está activado**, y esa es la deuda D19: o se limpian todos los avisos o
+  se acepta el ruido de forma explícita. Ver la fila D19 del ROADMAP, que es donde vive la decisión.
+
+> **Corregido tras la auditoría del 30-08-2026.** Estas tres líneas prometían gates de CI que no
+> existen. La tercera —**SonarCloud** para deuda y duplicación, sin regresión permitida en PR— se
+> ha borrado directamente: no hay ninguna integración con Sonar en el repositorio, `grep` sobre los
+> `.kts`, los `.yml` y el catálogo no devuelve nada, y no hay decisión registrada de añadirla.
+> Prometer un control de calidad que no existe es peor que no tenerlo, porque quien lee esto da por
+> cubierto lo que nadie cubre. Si alguno de los tres se quiere de verdad, es una propuesta de
+> cambio.
 
 ### 13.4 Qué encontró el primer CI
 
@@ -1836,7 +1856,7 @@ que preservar (§2.1). El historial de git conserva el estado previo.
 | R6      | Web target sin acceso a cámara en contexto no-HTTPS                                             | Bajo    | Documentado; el motor reporta `Unsupported` con la razón                                                                                                                                                                                                                                                                                 |
 | R7      | Sobre-modularización ralentiza el build                                                         | Medio   | Convention plugins en `build-logic` (Fase 2) y medición con `--scan`                                                                                                                                                                                                                                                                     |
 | ~~R11~~ | ~~Room 2.7.2 y AGP 8.9.2 no se pudieron contrastar con Kotlin 2.3.20 y KSP 2.3.10~~             | —       | **Se materializó y está cerrado.** El primer CI falló exactamente ahí: KSP 2.3.10 exige AGP ≥ 8.10.0 y el proyecto estaba en 8.9.2. Se subió a **8.10.0**, el mínimo que el propio mensaje de KSP nombra. Room 2.7.2 pasó sin tocar nada. Salió tal como estaba previsto —"es lo primero que dirá el CI"— y costó una línea del catálogo |
-| R8      | Deriva entre el catálogo documentado y el código                                                | Bajo    | `docs/ENGINES.md` es la fuente; un test verifica que el registro y la tabla coinciden en IDs                                                                                                                                                                                                                                             |
+| R8      | Deriva entre el catálogo documentado y el código                                                | Bajo    | `docs/ENGINES.md` es la fuente; `check_engine_catalog()` verifica identificadores, fases y plataformas en cada PR                                                                                                                                                                                                                                             |
 | ~~R9~~  | ~~No existe un binding KMP publicado de zxing-cpp~~                                             | —       | **Cerrado por ADR-0008.** El inventario era incompleto: `io.github.zxing-cpp:kotlin-native:3.1.1` publica los tres targets de iOS con el cinterop hecho, y `:android:3.1.1` cubre Android. Se consumen los artefactos, sin cinterop propio. Deriva en R10 y en la deuda D13                                                              |
 | ~~R10~~ | ~~Los klibs de `kotlin-native` están compilados con Kotlin 2.2.0 y el proyecto está en 2.1.21~~ | —       | **Cerrado**: toolchain en Kotlin 2.3.20, CMP 1.11.1, KSP 2.3.10, Gradle 8.14.5                                                                                                                                                                                                                                                           |
 

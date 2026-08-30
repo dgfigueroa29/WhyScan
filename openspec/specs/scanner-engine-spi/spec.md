@@ -36,15 +36,23 @@ Every implementation SHALL guarantee, for the `Flow` returned by `scan()`:
 4. Every format reported in `ScanEvent.Detected` is contained in
    `descriptor.capabilities.supportedFormats`.
 
-`BarcodeScannerEngineContractTest` SHALL verify all four for every engine, and every engine module
-SHALL inherit it.
+`BarcodeScannerEngineContractTest` SHALL be inherited by every engine that can be instantiated
+without a device — today `MANUAL_INPUT` and `ZXING_JAVA` — and by the domain decorators and the
+full chain.
+
+Camera engines SHALL NOT inherit it: constructing them requires an emulator, and a test that never
+runs is worse than no test (debt D6). Their guarantees are covered by their declared capabilities
+and by the decorators that wrap them.
+
+Guarantee 3 SHALL be reviewed by reading. The suite asserts that cancelling the session raises
+nothing; that the camera is actually released cannot be observed without hardware.
 
 #### Scenario: The consumer cancels the session
 
 - **WHEN** the coroutine collecting `scan()` is cancelled
 - **THEN** the flow terminates without emitting further events, per coroutine semantics
-- **AND** the camera is released through `awaitClose` or `finally`
 - **AND** no `SessionEnded` event is required, because the consumer ended it
+- **AND** the release of the camera is a review obligation, not an assertion
 
 #### Scenario: An engine reports an undeclared format
 
@@ -58,8 +66,12 @@ Each engine SHALL declare a `ScannerCapabilities` value describing supported for
 multiple codes, continuous scanning, own UI, torch, zoom, corner points, confidence, camera
 permission, network need and runtime model download.
 
-The user interface and the selection policy SHALL be derived from these values alone. Neither SHALL
-contain a branch on a specific `ScannerEngineId`.
+The user interface and the selection policy SHALL derive every optional behaviour — torch, zoom,
+image decoding, own preview surface — from these values, never from an engine's identity.
+
+The single exception is `MANUAL_INPUT`, which the interface names in order to render its text field
+and which the domain names in order to set the request source. Any other branch on a specific
+`ScannerEngineId` SHALL be treated as a defect.
 
 #### Scenario: The engine bench renders a new engine
 
@@ -93,10 +105,25 @@ rather than with a direct cast.
 `ScannerEngineCatalog` SHALL contain one entry per engine, and `docs/ENGINES.md` SHALL contain one
 master-table row per engine, agreeing on identifier and phase.
 
-A test SHALL compare them.
+`check_engine_catalog()` in `tools/checks.py` SHALL compare identifier, phase and platforms between
+the two, and SHALL run before any Gradle task in CI.
+
+Display names and dependency strings SHALL NOT be compared: they are product prose that changes
+wording without changing meaning.
 
 #### Scenario: An engine is added to code but not to the documentation
 
 - **WHEN** an entry is added to `ScannerEngineCatalog` with no matching row in `docs/ENGINES.md`
-- **THEN** `ScannerEngineCatalogTest` fails
-- **AND** `Verify` rejects the pull request
+- **THEN** `check_engine_catalog()` reports it
+- **AND** `Verify` rejects the pull request in its first step
+
+#### Scenario: A platform or phase drifts
+
+- **WHEN** the master table lists a platform the descriptor does not declare
+- **THEN** the check names both sides of the disagreement
+
+#### Scenario: The check itself is the guarantee
+
+- **WHEN** a document claims this parity is enforced
+- **THEN** the claim refers to `tools/checks.py`, not to a Kotlin test
+- **AND** it cannot be a Kotlin test, because a KMP `commonTest` has no filesystem

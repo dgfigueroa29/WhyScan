@@ -66,12 +66,12 @@ Then read, in this order:
 
 1. **[`docs/ENGINES.md`](../ENGINES.md)** — the nine engines, what each can do, and the default
    selection chain per platform. Short, and it makes the rest make sense.
-2. **[`docs/adr/README.md`](../adr/README.md)** — seventeen decisions with their costs. Start with
+2. **[`docs/adr/README.md`](../adr/README.md)** — eighteen decisions with their costs. Start with
    [ADR-0002](../adr/ADR-0002-scanner-engine-spi.md) (the SPI) and
    [ADR-0003](../adr/ADR-0003-koin-como-di.md) (dependency injection, and the defect that killed the
    app on its first real device boot).
-3. **[`docs/SDD.md`](../SDD.md)** — the design document. Two hundred thousand words; read the section
-   you need, not the whole thing. §7 is the SPI, §10 dependency injection, §11 persistence, §13 the
+3. **[`docs/SDD.md`](../SDD.md)** — the design document. About twenty-five thousand words; read the
+   section you need, not the whole thing. §7 is the SPI, §10 dependency injection, §11 persistence, §13 the
    quality strategy.
 4. **[`docs/ROADMAP.md`](../ROADMAP.md)** — what is done, what is pending, and what is blocked on not
    having a device. It also records the defects, in the round where they were found.
@@ -84,7 +84,7 @@ entire `App()` is composed in a test with no window, and `koinInject` is verifie
 runtime alone. The rule is that anything checked must be executable on every pull request.
 
 **The documentation is source of truth, not a summary.** `docs/ENGINES.md` and `ScannerEngineCatalog`
-cannot diverge, because a test compares them. Coverage floors are measured, not promised.
+cannot diverge, because a check in `tools/checks.py` compares them. Coverage floors are measured, not promised.
 
 **Most of this was written by an AI agent**, under the project owner's direction. That is documented
 in [`docs/ai/`](../ai/README.md), including what the agent could not do — the two most valuable

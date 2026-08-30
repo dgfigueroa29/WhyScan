@@ -1,39 +1,54 @@
 # Design
 
-One question here has a real trade-off; the rest follows from the answer.
+## What the first version of this change got wrong
 
-## Where does the test live?
+It planned a Robolectric test that would build the Android database through `buildBundled()`, insert
+a row and read it back — and it argued, correctly in the abstract, that only a real read-back would
+catch a lost driver, because debt D19 passed every structural assertion.
 
-**Chosen: `:core:database`, in an Android unit-test source set, with Robolectric.**
+The argument was right. The test is impossible. `sqlite-bundled` ships native binaries for Android
+ABIs; Robolectric runs on a desktop JVM and cannot load them. `AndroidKoinGraphTest`'s KDoc says so
+explicitly, in the same module, and it is the reason that test excludes the whole history chain.
 
-| Option | Why not |
-|---|---|
-| `:composeApp`, beside `AndroidKoinGraphTest` | The graph test already lives there because the graph *is* assembled there. The database builder is not: putting its test in `:composeApp` means a change to `:core:database` is validated by a test in another module, and whoever edits the factory does not see it |
-| An instrumented test in `androidTest` | Hard stop. No emulator in CI, so it would never run (debt D6). A test that never runs is worse than no test, because it reads as coverage |
-| A common test with a fake `Context` | Faking `Context` is faking exactly the thing under test. The value of this test is that `applicationContext` and `getDatabasePath` behave as Android behaves |
+Two lessons, and the second is the reusable one:
 
-Robolectric is already a dependency of this repository and already runs on the JVM in the `checks`
-job, so this adds a source set, not a capability.
+1. **Read the KDoc of the test you are about to imitate.** The constraint was written down, in
+   Spanish, forty lines above where anyone would have looked.
+2. **"What proves it, and does that proof run on every PR?" is not enough on its own.** The first
+   version answered it — a JVM test — and was still wrong, because the answer assumed a JVM test
+   *could exist* for that assertion. The question needs a second half: **can the proof physically
+   run here?**
 
-## What is actually asserted
+That second half belongs in `openspec/AGENTS.md`, and the audit that found this is the reason it is
+there now.
 
-The assertion has to be **a query that returns data**, not a non-null builder.
+## Where the test lives
 
-This is the lesson of debt D19 stated as a test design rule. When `buildBundled()` was shadowed by
-Room's own `build()`, every structural assertion still passed: the builder existed, the database
-object was created, the schema was right. On Android it even worked — by falling back to the
-framework's SQLite, which is the driver this code exists to avoid. Only *using* the database through
-the configured driver distinguishes the two.
+**`:core:database`, in an Android unit-test source set, with Robolectric.**
 
-So: insert, read back, assert. If the bundled driver is ever lost again, this fails.
+Putting it in `:composeApp` beside `AndroidKoinGraphTest` would mean a change to
+`:core:database` is validated by a test in another module, where whoever edits the factory will not
+see it. An instrumented test in `androidTest` is a hard stop: no emulator in CI, so it would never
+run (debt D6).
+
+## What it asserts, and why that is worth anything
+
+Two decisions, neither of which needs the driver:
+
+- **`applicationContext`.** The database outlives any Activity. This is exactly the line a future
+  refactor deletes as redundant, and nothing else would notice.
+- **The path.** Relocating the file silently orphans every user's history — no error, no migration,
+  the old file is just never read again.
+
+It deliberately asserts nothing about the driver. The honest consequence is that this change
+**narrows** the roadmap item instead of closing it, and the roadmap must say so. A test that looks
+like it covers the Android database and does not is worse than the gap it appears to fill.
 
 ## What this deliberately does not do
 
-- **It does not test Room.** Migrations are already covered by `MigrationTest`, which opens a real
-  v1 database. Duplicating that on Android would add runtime and no information.
-- **It does not touch iOS.** The iOS `actual` stays uncovered. Saying so is the honest outcome:
-  the platform is deprioritized and has no device, and inventing a Kotlin/Native test that only
-  proves compilation would restate what the `iOS (manual)` workflow already proves.
-- **It does not assert on SQLite's version string.** The guarantee is "the same SQLite everywhere",
-  and pinning a version string in a test makes the next dependency bump fail for no user-visible
-  reason. The driver being the bundled one is what matters, and the query proves that.
+- **It does not test Room.** Migrations are covered by `MigrationTest` on the JVM.
+- **It does not touch iOS.** That `actual` stays uncovered; the platform is deprioritized and has no
+  device.
+- **It does not pin a SQLite version string.** The guarantee is "the same SQLite everywhere", and a
+  version string in a test makes the next dependency bump fail for no user-visible reason — and
+  here it could not be asserted anyway.

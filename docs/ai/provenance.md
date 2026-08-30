@@ -61,7 +61,7 @@ constraints that make the rest work, and they came from the owner.
 
 Stated fairly, in both directions:
 
-- **Wrote the documentation as it went**, at a level of detail few humans sustain. Seventeen ADRs and
+- **Wrote the documentation as it went**, at a level of detail few humans sustain. Eighteen ADRs and
   a design document that stays current exist because the agent needed them as working memory. The
   side effect is a repository a stranger can understand.
 - **Built the checks after each CI rejection.** `tools/checks.py` grew one rule at a time, each after
