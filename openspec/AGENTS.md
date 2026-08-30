@@ -63,6 +63,11 @@ Rules, all enforced by `tools/checks.py`:
 
 - Only `## ADDED Requirements`, `## MODIFIED Requirements`, `## REMOVED Requirements`.
 - Every `### Requirement:` has at least one `#### Scenario:`.
+- **A change with no delta must say so.** Build tooling that changes nothing a user can observe —
+  a compiler report, a CI step, a publishing plugin — has no requirement to write, and inventing a
+  capability for it would put unobservable things into `specs/`. Declare `**Capability:** none` in
+  the proposal header, with the reason, and the check exempts it. Declaring both a `none` capability
+  and a delta is a contradiction and fails.
 - A `MODIFIED` or `REMOVED` heading must match an existing requirement heading in `specs/`
   **character for character**. A near-miss silently creates a duplicate when the change is applied.
 

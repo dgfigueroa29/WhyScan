@@ -206,7 +206,7 @@ def check_labels_resolve(path: str, text: str) -> None:
                f"la etiqueta '{label}' de un return@ no corresponde a ninguna lambda del archivo")
 
 
-def check_privacy_guarantee() -> None:
+def check_privacy_guarantee(manifest: str | None = None) -> None:
     """La app promete que lo escaneado no sale del dispositivo. Esto comprueba que sea verdad.
 
     Es la comprobación más barata del archivo y la que cubre el fallo más caro. La garantía está
@@ -220,8 +220,19 @@ def check_privacy_guarantee() -> None:
 
     Nada avisaba, porque no es un error de compilación ni de lint: es una promesa de producto que
     depende de tres líneas de XML. Por eso vive aquí y no en la cabeza de nadie.
+
+    ## Lo que esta función **no** cubre, y por qué hay otra
+
+    Mira el manifiesto **fuente**, que es lo único que existe antes de Gradle. Una dependencia que
+    aporte `INTERNET` al fusionar manifiestos pasa por aquí sin que nadie se entere, y ese es
+    precisamente el caso que la auditoría del 30-08-2026 marcó como el hueco más grande de toda la
+    garantía: es el mismo error de forma que `allowBackup`, mirar solo lo que hace el código propio.
+
+    El manifiesto fusionado solo existe después de `assembleDebug`, así que no puede comprobarse
+    aquí sin romper lo que hace útil a este archivo —segundos, sin red y sin Gradle—. Lo hace
+    `tools/merged_manifest.py`, en el job de Android de `Verify`, reutilizando esta misma función.
     """
-    manifest = os.path.join(REPO, "androidApp", "src", "main", "AndroidManifest.xml")
+    manifest = manifest or os.path.join(REPO, "androidApp", "src", "main", "AndroidManifest.xml")
     if not os.path.exists(manifest):
         report(manifest, "no existe: ¿se movió el módulo de Android?")
         return
@@ -462,9 +473,21 @@ def check_openspec() -> int:
                 if not os.path.exists(os.path.join(change, required)):
                     report(change, f"al cambio le falta {required}")
 
+            # Un cambio de herramienta de build no tiene delta que escribir, y obligarle a
+            # inventarse una capacidad sería peor que la regla: metería en `specs/` requisitos
+            # sobre cosas que el usuario no puede observar. Para eximirse hay que **decirlo** en
+            # la cabecera de la propuesta, que es justo la afirmación que se quiere revisar.
+            proposal = os.path.join(change, "proposal.md")
+            exempt = (os.path.exists(proposal)
+                      and "**Capability:** none" in open(proposal, encoding="utf-8").read())
+
             deltas = sorted(walk(os.path.join(change, "specs"), "spec.md"))
-            if not deltas:
-                report(change, "sin delta en specs/<capacidad>/spec.md: no dice qué cambia")
+            if not deltas and not exempt:
+                report(change, "sin delta en specs/<capacidad>/spec.md: no dice qué cambia."
+                               " Si de verdad no cambia comportamiento observable, la propuesta"
+                               " tiene que declarar '**Capability:** none' y decir por qué")
+            if deltas and exempt:
+                report(change, "declara '**Capability:** none' y trae delta: una de las dos sobra")
 
             for delta in deltas:
                 text = open(delta, encoding="utf-8").read()
@@ -673,6 +696,110 @@ def check_design_system() -> int:
     return roles
 
 
+# Nombres que terminan en `Test` y **no** son una clase de test: son *source sets* de KMP o tareas
+# de Gradle. Sin esta lista, `jvmTest` o `commonTest` se leerían como tests inexistentes.
+TEST_SOURCE_SETS = {
+    "commonTest", "jvmTest", "desktopTest", "androidTest", "androidUnitTest",
+    "iosTest", "wasmJsTest", "testDebugUnitTest", "unitTest",
+}
+
+# Los archivos que describen **la verdad de hoy**. Las propuestas de `openspec/changes/` quedan
+# fuera a propósito: nombran tests que todavía no existen, que es exactamente su trabajo.
+HARNESS_TRUTH = ("AGENTS.md", "CLAUDE.md", "CONTRIBUTING.md", "CONTRIBUTING.es.md")
+HARNESS_DIRS = (".claude", os.path.join("docs", "ai"), os.path.join("openspec", "specs"))
+
+
+def frontmatter(text: str) -> dict[str, str]:
+    """Los campos del bloque YAML de cabecera. No es un parser: son pares `clave: valor`."""
+    match = re.match(r"---\n(.*?)\n---\n", text, re.S)
+    if not match:
+        return {}
+    return {
+        key.strip(): value.strip()
+        for key, _, value in (line.partition(":") for line in match.group(1).split("\n"))
+        if key.strip() and not key.startswith(" ")
+    }
+
+
+def check_harness() -> int:
+    """Que el harness no afirme cosas que no existen.
+
+    ## Por qué existe
+
+    La auditoría del 30-08-2026 encontró que catorce archivos —`AGENTS.md` incluido— prometían "un
+    test que verifica que `ENGINES.md` y el catálogo no divergen", y **ese test no existía**. Nadie
+    lo notó en dos años porque nada comprobaba las afirmaciones del propio contrato.
+
+    Esto no mide si el harness *sirve* —eso necesita evaluaciones de verdad, y está anotado como el
+    hueco abierto nº1 en `docs/ai/state-of-the-art.md`—. Mide algo más modesto y que se puede hacer
+    hoy: **que no mienta**. Un agente que sigue instrucciones que citan un test inexistente hace
+    trabajo inútil con total confianza, que es la peor combinación.
+
+    Comprueba tres cosas:
+
+    - Que cada agente, skill y comando lleve su cabecera, y que el nombre de una skill coincida con
+      su carpeta — si no coinciden, la skill no carga y no lo dice nadie.
+    - Que cada `XxxTest` citado en un archivo que describe la verdad de hoy exista de verdad.
+    - Que cada `check_xxx()` citado exista en `tools/`.
+
+    Las propuestas de `openspec/changes/` quedan fuera: nombran lo que todavía no existe, y esa es
+    su función.
+    """
+    root = os.path.join(REPO, ".claude")
+    if not os.path.isdir(root):
+        return 0
+
+    pieces = 0
+
+    for kind, directory, required in (
+        ("agente", os.path.join(root, "agents"), ("name", "description")),
+        ("comando", os.path.join(root, "commands"), ("description",)),
+    ):
+        for path in sorted(walk(directory, ".md")) if os.path.isdir(directory) else []:
+            pieces += 1
+            fields = frontmatter(open(path, encoding="utf-8").read())
+            for key in required:
+                if not fields.get(key):
+                    report(path, f"al {kind} le falta '{key}' en la cabecera YAML")
+
+    skills = os.path.join(root, "skills")
+    for path in sorted(walk(skills, "SKILL.md")) if os.path.isdir(skills) else []:
+        pieces += 1
+        fields = frontmatter(open(path, encoding="utf-8").read())
+        for key in ("name", "description"):
+            if not fields.get(key):
+                report(path, f"a la skill le falta '{key}' en la cabecera YAML")
+        folder = os.path.basename(os.path.dirname(path))
+        if fields.get("name") and fields["name"] != folder:
+            # Si no coinciden, la skill no carga — y el fallo es silencioso.
+            report(path, f"se llama '{fields['name']}' y vive en '{folder}': no cargará")
+
+    existing_tests = {
+        os.path.basename(path)[: -len(".kt")]
+        for path in walk(REPO, "Test.kt")
+    }
+    functions = set()
+    for path in walk(os.path.join(REPO, "tools"), ".py"):
+        functions |= set(re.findall(r"^def (\w+)", open(path, encoding="utf-8").read(), re.M))
+
+    targets = [os.path.join(REPO, name) for name in HARNESS_TRUTH]
+    for directory in HARNESS_DIRS:
+        targets += sorted(walk(os.path.join(REPO, directory), ".md"))
+
+    for path in targets:
+        if not os.path.exists(path):
+            continue
+        text = open(path, encoding="utf-8").read()
+        for name in sorted(set(re.findall(r"`(\w+Test)`", text))):
+            if name not in existing_tests and name not in TEST_SOURCE_SETS:
+                report(path, f"cita el test '{name}', que no existe")
+        for name in sorted(set(re.findall(r"`(check_\w+)\(\)`", text))):
+            if name not in functions:
+                report(path, f"cita '{name}()' de tools/, que no existe")
+
+    return pieces
+
+
 def check_markdown_links() -> None:
     """Enlaces relativos entre archivos del repositorio que no llevan a ninguna parte.
 
@@ -707,12 +834,14 @@ def main() -> int:
     requirements = check_openspec()
     roles = check_design_system()
     engines = check_engine_catalog()
+    pieces = check_harness()
     check_markdown_links()
 
     print(f"{keys} claves de recursos con paridad inglés/español")
     print(f"{adrs} ADR indexados, {requirements} requisitos vigentes en openspec/specs")
     print(f"{roles} roles de color con paridad claro/oscuro")
     print(f"{engines} motores con la tabla maestra y el catálogo de acuerdo")
+    print(f"{pieces} piezas del harness con cabecera válida y sin citar nada inexistente")
 
     if problems:
         print(f"\n{len(problems)} hallazgos:\n")

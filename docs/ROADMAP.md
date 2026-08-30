@@ -34,12 +34,9 @@ teniendo el trabajo hecho: el cableado de accesibilidad de la Ronda 10 y el `Koi
 | Qué                                                                 | Dónde                        | Nota                                                                       |
 |---------------------------------------------------------------------|------------------------------|------------------------------------------------------------------------------|
 | **Tests de captura** (Roborazzi u otro)                             | propuestas de la Ronda 16    | Lo más caro y lo que más cierra: "que se vea bien" lleva desde la Fase 1 escrito como incubrible, y **no lo es** — Robolectric ya se usa aquí. Antes de comprometerse, un *spike* de una pantalla: los tests de captura son célebres por volverse ruido |
-| **Métricas del compilador de Compose**                              | propuestas de la Ronda 16    | `reportsDestination`: parámetros inestables y composables no saltables. Sin dispositivo, es lo único que dice algo real sobre recomposiciones |
+| **Métricas del compilador de Compose**                              | `openspec/changes/compose-compiler-reports/` | Escrito como propuesta y **no empujado a ciegas**: toca `build-logic`, y si el accesor `composeCompiler` no se genera no cae solo Android, caen los cuatro jobs |
 | **`IosPlatformActions.openUrl` sin la guarda de esquemas**          | [Ronda 9](#ronda-9--seguridad-y-privacidad-) | Una línea. Cae dentro de "lo mínimo para que iOS siga compilando", no de trabajar en iOS |
-| **Evaluaciones del harness**                                        | [`docs/ai/state-of-the-art.md`](ai/state-of-the-art.md) §1 | El hueco más grande: la tesis de `docs/ai/` no tiene ni un dato detrás. Tres o cuatro fixtures por skill |
 | **Revisión automática en cada PR**                                  | [`docs/ai/state-of-the-art.md`](ai/state-of-the-art.md) §2 | Hoy el harness solo sirve a quien ejecuta un agente en local. Es lo primero que lo haría útil para otra persona |
-| **`INTERNET` que entre por fusión de manifiestos**                  | [Ronda 23](#ronda-23--la-auditoría-y-lo-que-encontró-de-la-propia-documentación-) | El hueco más grande de la garantía de privacidad: `check_privacy_guarantee()` lee el manifiesto **fuente**, y una dependencia que aporte el permiso al fusionar pasa sin que nadie se entere. Se cierra con un paso sobre el manifiesto fusionado, después de `assembleDebug` |
-| **Cerrar la cadena con la entrada manual (G4)**                     | `openspec/changes/close-the-chain-with-manual-entry/` | Necesita **decisión** antes que trabajo: arreglar el código o retirar la garantía de los cinco documentos que la prometen |
 
 ### Bloqueado por una decisión que no es técnica
 
@@ -50,6 +47,7 @@ arrastrarlos dentro de otras listas los hace parecer trabajo que nadie hace.
 |---|---|---|
 | **Grupo Maven y paquete de `:core:foundation`** — no puede llevar `whyscan` | [ADR-0018](adr/ADR-0018-federar-la-base-y-no-la-marca.md) y los *Blockers* de `openspec/changes/federate-design-system/proposal.md` | El dueño del proyecto. Toda la federación está detrás de esto, y poner un nombre provisional para renombrar después es justo la parte cara |
 | **Correo de contacto de la ficha de Play** | "Pendiente para publicar", más abajo | El dueño del proyecto. Hoy los documentos legales remiten a las incidencias del repositorio |
+| **Cerrar la cadena con la entrada manual (G4)** | `openspec/changes/close-the-chain-with-manual-entry/` | El dueño del proyecto: arreglar el código o retirar la garantía de los cinco documentos que la prometen. La propuesta recomienda lo primero |
 
 ### Bloqueado por un número que solo produce CI
 
@@ -1287,6 +1285,52 @@ convierte esa estructura en algo utilizable, y tiene que ser rutina y no un acto
 `docs/ai/state-of-the-art.md` §3. La otra mitad de la lección es más simple: **la comprobación
 mecánica gana a la frase escrita siempre**. Catorce archivos afirmaban una garantía durante dos años
 y no costaba nada comprobarla.
+
+### Ronda 24 — tapar el agujero de privacidad, y que el harness deje de poder mentir ✅
+
+Todo lo que la Ronda 23 dejó accionable y no dependía de una decisión ajena.
+
+- [x] **El manifiesto fusionado, que era el hueco más grande de la garantía de privacidad.**
+  `check_privacy_guarantee()` mira el manifiesto **fuente**, que es lo único que existe antes de
+  Gradle. Una dependencia que declare `INTERNET` en el suyo entra en el APK al fusionar, el
+  manifiesto de este repositorio sigue limpio, y la promesa que la app le hace al usuario en Ajustes
+  pasa a ser falsa **sin que cambie ni una línea de aquí**. Es el mismo error de forma que
+  `allowBackup` y que D18: auditar lo que hace el código propio y no lo que el sistema hace con él.
+  Lo cierra `tools/merged_manifest.py` en el job de Android, después de `assembleDebug`
+- [x] **Y se niega a pasar si no encuentra el archivo.** La ruta la elige AGP y cambia entre
+  versiones; una comprobación que no encuentra su objetivo y sale con cero da por revisado lo que
+  nadie revisó. Ya pasó aquí con detekt, que analizaba **cero archivos** y salía en verde
+- [x] **Los permisos que no rompen la garantía se imprimen, no fallan.** La app necesita `CAMERA` y
+  las dependencias de Google traen los suyos: convertir cualquier permiso nuevo en error rompería el
+  build por motivos legítimos, y una comprobación que molesta acaba desactivada. Van al resumen del
+  run, que es donde una revisión los ve sin excavar
+- [x] **`check_harness()`: que el harness no pueda mentir.** Cada agente, skill y comando con su
+  cabecera; el `name` de una skill coincidiendo con su carpeta —si no, no carga y no lo dice nadie—;
+  y **cada `XxxTest` y cada `check_xxx()` citado en un archivo que describe la verdad de hoy tiene
+  que existir**. Es exactamente lo que habría cazado en 2024 la garantía imaginaria de la Ronda 23.
+  Las propuestas de `openspec/changes/` quedan fuera a propósito: nombrar lo que todavía no existe
+  es su trabajo
+- [x] **Y esto no son evaluaciones, y hay que decirlo.** No mide si el harness *sirve* — mide que no
+  mienta, que es una precondición y no lo mismo. Medirlo de verdad exige ejecutar un modelo en CI,
+  y eso es una clave de API y un presupuesto, no una tarea. Sigue abierto como hueco nº1 en
+  `docs/ai/state-of-the-art.md`
+- [x] **La regla de OpenSpec tenía un agujero, y lo encontró la propia comprobación.** Exigía delta
+  a *todo* cambio, y uno de herramienta de build no tiene comportamiento observable que
+  especificar. Obligarle a inventarse una capacidad habría metido en `specs/` requisitos que el
+  usuario no puede observar. Ahora se exime declarando `**Capability:** none` **y diciendo por qué**
+  — y declarar las dos cosas a la vez falla, para que la exención no sea una puerta abierta
+- [x] **Métricas del compilador de Compose: escritas como propuesta y no empujadas.** Van en
+  `build-logic`, y si el accesor `composeCompiler` no se genera para un script precompilado no cae
+  solo Android: cae la compilación de `build-logic` y con ella los cuatro jobs. Probablemente
+  funcione — `libs.gradlePlugin.composeCompiler` está en el classpath como `implementation`— y
+  "probablemente" no es un criterio para empujar configuración de build que aquí no se puede
+  ejecutar
+
+**Lo que esta ronda dice del proyecto:** las tres cosas que se cerraron son la misma idea aplicada
+tres veces. La garantía de privacidad se comprobaba donde era cómodo y no donde podía romperse; el
+harness afirmaba cosas que nadie contrastaba; y la regla de OpenSpec pedía algo que en un caso no
+tenía sentido. **Lo que se puede comprobar con un script, se comprueba; lo que no se puede
+verificar, no se empuja.** La segunda mitad es la que costó esta semana aprender.
 
 ### Antes de la ficha de Play, esto va primero
 

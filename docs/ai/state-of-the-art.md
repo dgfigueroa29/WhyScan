@@ -29,9 +29,14 @@ Three things here are rarer than the file layout, and they are what actually mak
 
 **The structure is enforced by a script that runs in CI.** `tools/checks.py` validates ADR headers
 and index parity, the `AGENTS.md` ↔ `CLAUDE.md` cross-link, the shape of every OpenSpec change —
-including that every requirement carries a scenario — the light/dark parity of every colour role,
-and every relative link between documents. Most repositories with an `AGENTS.md` have a document.
-This one has a document plus something that fails the build when the document stops being true.
+including that every requirement carries a scenario — the engine catalog against its documentation,
+the light/dark parity of every colour role, the harness's own claims, and every relative link
+between documents. Most repositories with an `AGENTS.md` have a document. This one has a document
+plus something that fails the build when the document stops being true.
+
+The rule that produced all of it: **if a claim can be checked mechanically, checking it beats
+writing it down.** Every one of those checks exists because the written version turned out to be
+false at least once.
 
 **Unverified claims are treated as the worst available failure.** Three levels of certainty —
 executed here, established by reading, decided by CI — are required in every pull request, taught by
@@ -54,7 +59,22 @@ fixture to see whether they produce the same result twice.
 
 This is the largest gap, and it is the one that separates "we wrote a harness" from "we know the
 harness helps". Tooling for skill evaluation exists; a first suite would be three or four fixtures
-per skill.
+per skill. It needs a decision this repository has not taken — running a model in CI means an API
+key and a budget — so it is not something the harness can close by itself.
+
+**What has been closed is something smaller, and it must not be confused with the above.**
+`check_harness()` verifies the harness does not *lie*: every agent, skill and command has a valid
+header; a skill's `name` matches its directory, or it silently fails to load; and every test class
+and every `tools/` function named in a file describing current truth actually exists. That is the
+check that would have caught, in 2024, the claim in fourteen files that a test compared
+`ENGINES.md` against the catalog when no such test existed.
+
+It caught its own author on the first run: this paragraph originally used invented names as
+examples, in backticks, and the check reported them as citations of things that do not exist. It was
+right — a placeholder that looks like an identifier reads as one.
+
+Not lying is a precondition for being useful. It is not the same as being useful, and this page will
+keep saying so until something measures the difference.
 
 ### 2. The harness only helps someone running an agent locally
 

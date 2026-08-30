@@ -25,13 +25,28 @@ before any Gradle task.
 - **THEN** `check_privacy_guarantee()` fails
 - **AND** the pull request is rejected before the build runs
 
+The **merged** manifest SHALL be checked as well, after `assembleDebug`, by
+`tools/merged_manifest.py` in the `android` job.
+
 #### Scenario: A dependency introduces the permission by manifest merge
 
-- **WHEN** a library contributes `android.permission.INTERNET` through manifest merging
-- **THEN** nothing currently detects it: the check reads the source manifest, and it runs before
-  Gradle has produced a merged one
-- **AND** this is the largest uncovered gap in the privacy guarantee, closed only by a check over
-  the merged manifest after `assembleDebug`
+- **WHEN** a library contributes `android.permission.INTERNET` through its own manifest
+- **THEN** the merged-manifest check fails and the pull request is rejected
+- **AND** the source manifest stays clean, which is exactly why checking only the source was not
+  enough
+
+#### Scenario: The merged manifest cannot be found
+
+- **WHEN** the build tool changes where it writes the merged manifest and the glob matches nothing
+- **THEN** the check fails rather than passing
+- **AND** the failure says to fix the pattern, because a check that silently inspects nothing is
+  worse than no check — detekt analysed zero files and passed green for exactly this reason
+
+#### Scenario: A dependency adds a permission that is not INTERNET
+
+- **WHEN** a library contributes a permission that does not break the guarantee
+- **THEN** the check prints every permission reaching the APK to the run summary and does not fail
+- **AND** the new permission is visible in review, rather than turning a legitimate change red
 
 ### Requirement: The system does not back up application data
 
