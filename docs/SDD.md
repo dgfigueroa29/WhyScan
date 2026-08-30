@@ -499,11 +499,12 @@ sealed interface ScanEvent {
     /** Todo evento sabe de qué motor viene; `null` solo si no lo produjo ninguno en concreto. */
     val engineId: ScannerEngineId?
 
-    data object SessionStarted : ScanEvent
+    data class SessionStarted(override val engineId: ScannerEngineId) : ScanEvent
     data class Detected(val detections: List<Detection>) : ScanEvent
     data class FrameAnalyzed(val analyzedAtMillis: Long) : ScanEvent  // telemetría/FPS
     data class Failed(val error: ScanError) : ScanEvent
-    data object SessionEnded : ScanEvent
+    data class EngineSwitched(...) : ScanEvent                        // cayó a un fallback
+    data class SessionEnded(override val engineId: ScannerEngineId) : ScanEvent
 }
 ```
 
@@ -867,8 +868,11 @@ de componentes de Android), por lo que no es una opción aquí. Ver `docs/adr/AD
 appModule              (composeApp)   → wiring raíz, arranca Koin
 ├── platformModule     (expect/actual) → motores de la plataforma, permisos, dispatchers
 ├── dataModule         (core:data)    → Registry, repositorios
-├── domainModule       (core:domain)  → UseCases y sus agrupadores (ScanSettings, ScanSessions)
-└── scannerModule      (feature:scanner) → ViewModels
+├── domainModule       (core:data)    → UseCases y sus agrupadores (ScanSettings, ScanSessions).
+│                                       Vive junto a `dataModule` y no en `:core:domain`
+├── scannerModule      (feature:scanner)  → ViewModel del escáner
+├── historyModule      (feature:history)  → ViewModel del historial
+└── settingsModule     (feature:settings) → ViewModel de ajustes
 ```
 
 Convenciones: constructor injection siempre; ningún `Context` en ViewModels. Los tests de ViewModel
@@ -967,6 +971,20 @@ guarden lo mismo—. `SaveDetectionUseCase` se queda fuera y no es una inconsist
 escáner al leer un código, que es otro camino y no quiere arrastrar el borrado ni las notas.
 
 La historia original, que es de donde salió el criterio: `ScannerViewModel` llegó a tener doce
+colaboradores por seguirla al pie de la letra, y cuatro de ellos eran la misma idea: tres casos de
+uso de una línea sobre `ScanPreferencesRepository` más el propio repositorio, inyectado aparte
+porque dos operaciones no tenían caso de uso. La corrección (deuda D16) fue en dos direcciones:
+
+- **Borrar** los que solo delegaban —los tres de preferencias y `ObserveEngineCatalogUseCase`—.
+  Un caso de uso que no añade una regla añade un nombre, y el nombre ya lo daba el repositorio. La
+  única regla que había, que un conjunto de formatos vacío significa *todos*, se conservó en
+  `ScanSettings`.
+- **Agrupar** los que sí tienen lógica y se usan siempre juntos: `ScanSessions` reúne arrancar,
+  decodificar y guardar, y se lleva consigo la traducción de preferencias a `ScanRequest`.
+
+El criterio que queda para el futuro: un caso de uso existe si guarda una regla, no si existe una
+operación. Y agrupar colaboradores es un cambio de dominio, no de UI — por eso ambos viven en
+`:core:domain` y no en la feature.
 
 ### D20: componer sin UI (`ComposeKoinContextTest`)
 
@@ -986,20 +1004,6 @@ Leyendo koin-compose se llega a la misma conclusión: `LocalKoinScopeContext` de
 defecto `KoinPlatform.getKoin().scopeRegistry.rootScope`, exactamente el scope que `KoinContext`
 proveía a mano. Pero leyendo la librería también estaba bien el `build()` de Room que no se llamaba
 nunca (§11), así que aquí no se da nada por bueno leyendo: se compone y se mira qué sale.
-colaboradores por seguirla al pie de la letra, y cuatro de ellos eran la misma idea: tres casos de
-uso de una línea sobre `ScanPreferencesRepository` más el propio repositorio, inyectado aparte
-porque dos operaciones no tenían caso de uso. La corrección (deuda D16) fue en dos direcciones:
-
-- **Borrar** los que solo delegaban —los tres de preferencias y `ObserveEngineCatalogUseCase`—.
-  Un caso de uso que no añade una regla añade un nombre, y el nombre ya lo daba el repositorio. La
-  única regla que había, que un conjunto de formatos vacío significa *todos*, se conservó en
-  `ScanSettings`.
-- **Agrupar** los que sí tienen lógica y se usan siempre juntos: `ScanSessions` reúne arrancar,
-  decodificar y guardar, y se lleva consigo la traducción de preferencias a `ScanRequest`.
-
-El criterio que queda para el futuro: un caso de uso existe si guarda una regla, no si existe una
-operación. Y agrupar colaboradores es un cambio de dominio, no de UI — por eso ambos viven en
-`:core:domain` y no en la feature.
 
 ---
 
@@ -1243,7 +1247,7 @@ sin arrastrar `kotlinx-browser`. No sale nada del dispositivo. Aun así se añad
 rechaza cualquier URL que no empiece por `data:`, para que la propiedad se compruebe leyendo cuatro
 líneas en vez de razonando sobre el llamante.
 
-**Hallazgo 3 — la garantía tenía una puerta que no pasaba por la app.** Es el más grave de los tres
+**La garantía tenía una puerta que no pasaba por la app.** Es el más grave de los tres
 y apareció en una revisión posterior, lo que dice algo sobre las dos primeras: **se auditó lo que la
 app hace y no lo que el sistema hace con lo que la app guarda.**
 
