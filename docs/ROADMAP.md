@@ -47,7 +47,8 @@ arrastrarlos dentro de otras listas los hace parecer trabajo que nadie hace.
 |---|---|---|
 | **Grupo Maven y paquete de `:core:foundation`** — no puede llevar `whyscan` | [ADR-0018](adr/ADR-0018-federar-la-base-y-no-la-marca.md) y los *Blockers* de `openspec/changes/federate-design-system/proposal.md` | El dueño del proyecto. Toda la federación está detrás de esto, y poner un nombre provisional para renombrar después es justo la parte cara |
 | **~~Correo de contacto de la ficha de Play~~** | resuelto el 30-08-2026 | <david@faro.net.ar>, ya escrito en los cuatro documentos legales, `SECURITY.md`, el código de conducta y las plantillas de issue |
-| **El nombre de la app y su `applicationId`** — ¿`com.whyscan.app` o `com.faro.whyscan`? | `androidApp/build.gradle.kts` | El dueño del proyecto, y **antes de la primera subida a Play**. Hoy es cambiar una línea; después de publicar es imposible: el `applicationId` es la URL de la ficha y la clave con la que el sistema reconoce una actualización. Es la única decisión de esta tabla con fecha de caducidad |
+| **~~El `applicationId`~~** | resuelto el 30-08-2026 | `ar.net.faro.whyscan` ([ADR-0019](adr/ADR-0019-el-applicationid-identifica-a-quien-publica.md)). Los paquetes de Kotlin **no** se tocan. Falta comprobar en Play Console que está libre, que sin red no se pudo hacer aquí |
+| **El nombre visible en la ficha** — ¿`WhyScan` o `Faro WhyScan`? | textos de la ficha | El dueño del proyecto. A diferencia del `applicationId`, esta **sí** se puede cambiar después de publicar |
 | **Cerrar la cadena con la entrada manual (G4)** | `openspec/changes/close-the-chain-with-manual-entry/` | El dueño del proyecto: arreglar el código o retirar la garantía de los cinco documentos que la prometen. La propuesta recomienda lo primero |
 
 ### Bloqueado por un número que solo produce CI
@@ -420,7 +421,8 @@ con sus latencias en la portada, ni una app con nombre de proyecto interno y sin
   uno interno—, y cada documento cargaba con una nota explicando por qué. Se unifican el nombre
   del proyecto Gradle, los paquetes de Kotlin (`com.whyscan.*`), el `namespace` de cada módulo,
   los ids de los plugins de convención (`whyscan.kmp.library`, `whyscan.kmp.compose`,
-  `whyscan.android.application`), el `applicationId` (`com.whyscan.app`), los tipos del sistema
+  `whyscan.android.application`), el `applicationId` (entonces `com.whyscan.app`; hoy
+  `ar.net.faro.whyscan`, ADR-0019), los tipos del sistema
   de diseño (`WhyScanTheme`, `WhyScanMark`, `WhyScanTypography`, `WhyScanShapes`), el tema de
   Android (`Theme.WhyScan`), la clase `Application` y los almacenes de datos de las cuatro
   plataformas. **Se escribe siempre como una sola palabra.** Nada que migrar: la app no se ha
@@ -1333,6 +1335,38 @@ harness afirmaba cosas que nadie contrastaba; y la regla de OpenSpec pedía algo
 tenía sentido. **Lo que se puede comprobar con un script, se comprueba; lo que no se puede
 verificar, no se empuja.** La segunda mitad es la que costó esta semana aprender.
 
+### Ronda 25 — la app pasa a publicarse bajo Faro ✅
+
+- [x] **`applicationId = "ar.net.faro.whyscan"`** ([ADR-0019](adr/ADR-0019-el-applicationid-identifica-a-quien-publica.md)).
+  Es la última ocasión en que esto costaba una línea: el `applicationId` es la URL de la ficha y la
+  clave con la que el sistema reconoce una actualización, y **después de la primera subida no se
+  puede cambiar**. Todavía no hay ninguna
+- [x] **`ar.net.faro` y no `com.faro`**, y no es cosmético: el dominio es `faro.net.ar`, así que su
+  orden inverso es ese. `com.faro` sería reclamar un dominio ajeno, y el día que haya que publicar
+  la base federada en Maven Central —que verifica la propiedad del dominio contra el `groupId`— no
+  se sostendría
+- [x] **Los paquetes de Kotlin no se tocan.** Siguen siendo `com.whyscan.*`. La regla que queda: el
+  espacio de nombres de la tienda identifica a **quien publica**, el del código identifica al
+  **producto**. Son dos preguntas distintas y cambian en momentos distintos — el editor acaba de
+  cambiar y el producto no se enteró
+- [x] **El único acoplamiento del repositorio, buscado antes de tocar nada.**
+  `BaselineProfileGenerator` llevaba el identificador escrito a mano, porque instala, lanza y
+  concede permisos con `pm grant` usando el `applicationId` y no el paquete del código. Cambiarlo
+  allí y no aquí habría dejado la generación del perfil fallando al buscar una pantalla, que es un
+  síntoma que no se parece en nada a la causa. No hay `authorities`, ni `FileProvider`, ni enlaces
+  profundos, ni reglas de R8 que lo nombren
+- [x] Con esto, el grupo Maven de `:core:foundation` queda fijado y **la federación deja de estar
+  bloqueada por un nombre**. Sigue bloqueada por el trabajo, que es otra cosa y mejor
+- [ ] **Comprobar en Play Console que `ar.net.faro.whyscan` está libre.** Sin red aquí, no se pudo
+- [ ] **El nombre visible de la ficha** —`WhyScan` o `Faro WhyScan`— sigue abierto, y a diferencia
+  del `applicationId` esa sí se puede cambiar después de publicar
+
+**Lo que esta ronda dice del proyecto:** el comentario que había junto al `applicationId` defendía
+que coincidiera con los paquetes —"así no hay dos nombres que mantener sincronizados ni ninguno que
+explicar"— y era cierto mientras no hubo editor. La decisión correcta hoy es justo la contraria, y el
+comentario viejo no estaba equivocado: estaba **fechado**. Por eso se reescribe con su motivo nuevo
+en lugar de borrarse.
+
 ### Antes de la ficha de Play, esto va primero
 
 Lo de abajo es trámite de tienda. Lo de esta lista no. Se hizo el repaso a propósito antes de tocar
@@ -1387,7 +1421,7 @@ que falta es un teléfono.
 
 **Trámite de la ficha**
 
-- [ ] Comprobar en Play Console que `com.whyscan.app` está libre y que "WhyScan" no colisiona con
+- [ ] Comprobar en Play Console que `ar.net.faro.whyscan` está libre y que "WhyScan" no colisiona con
   una
   ficha existente. **Sin red en el entorno de desarrollo, esto no se pudo verificar aquí**
 - [ ] Capturas, gráfico de cabecera 1024×500 y textos de la ficha, en los dos idiomas

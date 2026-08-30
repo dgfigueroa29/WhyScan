@@ -10,10 +10,15 @@ Las dos cosas conviven porque son la misma app en dos modos. Por defecto WhyScan
 apunta y se lee. El **modo avanzado** (Ajustes → Avanzado) devuelve el catálogo de los nueve motores,
 el comparador en paralelo y las latencias por lectura.
 
-> **Un solo nombre.** WhyScan es el nombre del producto, el del proyecto Gradle, el de los paquetes
-> de Kotlin (`com.whyscan.*`), el del `applicationId` de Play (`com.whyscan.app`) y el de los
+> **Un solo nombre para el producto, y otro para quien lo publica.** WhyScan es el nombre del
+> producto, el del proyecto Gradle, el de los paquetes de Kotlin (`com.whyscan.*`) y el de los
 > plugins de convención. Se escribe siempre como una sola palabra —`WhyScan`, `whyScan`,
 > `whyscan`—, nunca separado.
+>
+> El **`applicationId` de Play es `ar.net.faro.whyscan`**, y no coincide a propósito: el espacio de
+> nombres de la tienda identifica a **quien publica** —Faro, en el orden inverso de `faro.net.ar`— y
+> el del código identifica al producto. Ver
+> [ADR-0019](docs/adr/ADR-0019-el-applicationid-identifica-a-quien-publica.md).
 
 ---
 

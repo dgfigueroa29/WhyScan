@@ -6,9 +6,9 @@ mixing two of them makes the failure unreadable.
 
 ## 0. Unblock
 
-- [ ] **The project owner decides the Maven group and the foundation package name.** Must not
-      contain `whyscan`. Everything below is blocked on this; do not invent a placeholder and
-      rename later — the rename is the expensive part.
+- [x] **The Maven group and the foundation package name.** Decided on 2026-08-30:
+      group `ar.net.faro`, module `ar.net.faro.foundation` (ADR-0019). Nothing below is blocked on
+      a name any more.
 
 ## 1. Draw the line before moving anything
 

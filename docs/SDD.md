@@ -22,7 +22,8 @@ aplicación Android de módulo único hacia una aplicación **Compose Multiplatf
 > **Un solo nombre, escrito siempre igual.** **WhyScan** nombra el producto, el proyecto Gradle,
 > los paquetes de Kotlin (`com.whyscan.*`), el `namespace` de cada módulo, los plugins de convención
 > (`whyscan.kmp.library`, `whyscan.kmp.compose`, `whyscan.android.application`), el `applicationId`
-> de Play (`com.whyscan.app`) y los almacenes de datos de cada plataforma. **Es una sola palabra**:
+> de Play —que desde el ADR-0019 es `ar.net.faro.whyscan`, porque identifica a quien publica y no al
+> código— y los almacenes de datos de cada plataforma. **Es una sola palabra**:
 > `WhyScan` en prosa y en tipos, `whyScan` en identificadores lowerCamelCase, `whyscan` en paquetes,
 > ids de plugin y nombres de recurso. Nunca "Why Scan" ni "Why-Scan".
 >

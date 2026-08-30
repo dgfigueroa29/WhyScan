@@ -11,13 +11,17 @@ android {
         // ficha y la clave con la que el sistema reconoce una actualización. No se puede cambiar
         // después de la primera publicación, así que se ajusta ahora que todavía no hay ninguna.
         //
-        // No tiene por qué coincidir con los paquetes de Kotlin, pero aquí coincide: el proyecto
-        // usa `com.whyscan.*` en todas partes —paquetes, `namespace` de cada módulo, plugins de
-        // convención y almacenes de datos—, así que no hay dos nombres que mantener sincronizados
-        // ni ninguno que explicar.
+        // **Identifica a quien publica, no al código** (ADR-0019). El dominio es `faro.net.ar`, y
+        // el orden inverso de ese dominio es `ar.net.faro` — no `com.faro`, que sería reclamar un
+        // dominio ajeno. Los paquetes de Kotlin **siguen siendo `com.whyscan.*`** y no se renombran:
+        // el editor cambia, el producto no, y renombrar cientos de archivos no le arregla nada a
+        // nadie.
+        //
+        // El precio, dicho: hay dos espacios de nombres y hay que saber cuál es cuál. El de la
+        // tienda lleva la organización; el del código lleva el producto.
         //
         // Antes de la primera subida hay que comprobar en Play Console que este id está libre.
-        applicationId = "com.whyscan.app"
+        applicationId = "ar.net.faro.whyscan"
         versionCode = 1
         versionName = "1.0.0"
     }

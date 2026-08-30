@@ -28,11 +28,15 @@ no puede vivir bajo el nombre de un producto: es una promesa que se rompe el dí
 cambie de nombre o se archive.
 
 > **Aclaración añadida el 30-08-2026, porque esta sección se leyó al revés.** Esto habla **solo del
-> módulo nuevo `:core:foundation`**, que hoy no existe. **La app no se toca**: `com.whyscan.app`
-> sigue siendo el `applicationId`, `com.whyscan.*` siguen siendo sus paquetes, y este ADR nunca
-> propuso cambiarlos. Renombrar los paquetes de un producto que ya funciona no tendría ningún
-> beneficio, y cambiar el `applicationId` después de publicar es directamente imposible. La decisión
-> es dónde nace lo **nuevo**, no dónde vive lo que ya está.
+> módulo nuevo `:core:foundation`**, que hoy no existe. **Los paquetes de la app no se tocan**:
+> `com.whyscan.*` siguen siendo los suyos y este ADR nunca propuso renombrarlos, porque renombrar
+> cientos de archivos de un producto que ya funciona no le arregla nada a nadie. La decisión de aquí
+> es dónde nace lo **nuevo**.
+>
+> El `applicationId` **sí** cambió, pero por una decisión aparte y posterior:
+> [ADR-0019](ADR-0019-el-applicationid-identifica-a-quien-publica.md) lo fija en
+> `ar.net.faro.whyscan`, porque el espacio de nombres de la tienda identifica a quien publica y el
+> del código identifica al producto.
 
 Y hay una restricción que atraviesa todo lo anterior: **aquí no compila nada**. Esta decisión se
 puede tomar y escribir; la configuración de Gradle que la implementa no se puede verificar en este
@@ -66,11 +70,9 @@ empresa. El esmeralda, no.
 lleva `whyscan` en el nombre — el nombre concreto lo decide el dueño del proyecto, y hasta que lo
 haga esto está bloqueado, no supuesto.
 
-> **Resuelto el 30-08-2026: la organización es `faro`.** Queda por fijar la forma exacta de la
-> coordenada, y no es cosmético: Maven Central **verifica la propiedad del dominio** contra el
-> `groupId`, así que `faro.net.ar` justifica `ar.net.faro` y no `com.faro`. Si la publicación se
-> queda en un repositorio interno de la empresa, cualquiera de las dos vale. Elegir la estricta
-> ahora no cuesta nada; cambiarla después de publicar el primer artefacto, sí.
+> **Resuelto el 30-08-2026: el grupo es `ar.net.faro`**, en el orden inverso del dominio
+> `faro.net.ar` (ADR-0019). No `com.faro`, que sería reclamar un dominio ajeno: Maven Central
+> verifica la propiedad del dominio contra el `groupId`, y ahí eso no se sostendría.
 
 **3. Publicar exige cinco cosas, y sin las cinco no se publica.** Son la diferencia entre una
 biblioteca y una carpeta que otros copian:
@@ -111,8 +113,9 @@ verificación contestada tarea por tarea. Ninguno se puede ejecutar aquí.
   `Contrast`, `AppLanguage` o `LocalSnackbarHostState` toquen la paleta, y que aparezca un color
   literal fuera de `ScannerPalette` — que es como se coló el verde del contorno de las detecciones
   dentro de `ScanOverlay`, encima del vídeo, donde nadie lo iba a buscar.
-- Queda **una decisión que no es técnica y no se toma aquí**: el nombre del grupo Maven y del
-  paquete de la base. Hasta que exista, la federación no arranca.
+- Quedaba **una decisión que no es técnica**: el nombre del grupo Maven y del paquete de la base.
+  Resuelta el mismo día en `ar.net.faro` (ADR-0019), así que la federación ya no está bloqueada por
+  un nombre — está bloqueada por el trabajo, que es otra cosa y mejor.
 
 ## Alternativas descartadas
 

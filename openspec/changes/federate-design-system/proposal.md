@@ -1,6 +1,6 @@
 # Federate the design-system foundation so other applications can depend on it
 
-- **Status:** Proposed — **blocked on one decision the project owner must take** (see Blockers)
+- **Status:** Proposed — unblocked on 2026-08-30; ready to implement
 - **Capability:** `design-system`
 - **Decision:** [ADR-0018](../../../docs/adr/ADR-0018-federar-la-base-y-no-la-marca.md)
 
@@ -18,8 +18,10 @@ Three things stand in the way, and they are different problems:
 2. **There is no API surface.** No `explicitApi()`, so anything not marked `internal` is public API
    by accident. No binary-compatibility validation, so breaking a consumer is invisible in review.
    No publication, no versioning, no generated documentation.
-3. **The package is `com.whyscan`.** Shared code under a product's namespace is a promise that
-   breaks the day the product is renamed or archived.
+3. **The shared module would be born under a product's namespace.** Code other applications depend
+   on cannot live under `com.whyscan.*`: that is a promise which breaks the day the product is
+   renamed or archived. This is about where the **new** module is born — the application's own
+   packages are not renamed.
 
 ## What changes
 
@@ -58,21 +60,19 @@ consumer.
 
 ## Blockers
 
-**Mostly resolved on 2026-08-30: the organisation is `faro`.**
+**Resolved on 2026-08-30. None remain.**
 
-What remains is the exact coordinate, and it is not cosmetic: Maven Central verifies domain
-ownership against the `groupId`, so `faro.net.ar` justifies **`ar.net.faro`** and not `com.faro`.
-If publication stays on a company-internal repository, either works.
+The Maven group is **`ar.net.faro`**, the reverse of the `faro.net.ar` domain, and the module is
+`ar.net.faro.foundation`. Not `com.faro`: Maven Central verifies domain ownership against the
+`groupId`, and claiming a domain the organisation does not own would not survive that check.
+See [ADR-0019](../../../docs/adr/ADR-0019-el-applicationid-identifica-a-quien-publica.md).
 
-- `ar.net.faro.foundation` — correct in both worlds, and free to choose now.
-- `com.faro.foundation` — shorter, fine internally, and a problem the day someone wants Maven
-  Central.
+**The application's Kotlin packages are untouched.** `com.whyscan.*` stay as they are; renaming
+hundreds of files buys nothing. Its `applicationId` did change — to `ar.net.faro.whyscan`, by
+ADR-0019 — but that is the store's namespace, not the code's, and it is a separate decision from
+this one.
 
-Pick one before task 2; renaming after the first published artefact is the expensive part.
-
-**This does not touch the application.** `com.whyscan.app` stays the `applicationId` and
-`com.whyscan.*` stay its packages — see the clarification in ADR-0018. The decision here is where
-the **new** shared module is born.
+This change is now blocked only by the work itself.
 
 ## Verification
 
