@@ -140,6 +140,35 @@ object ScannerPalette {
     }
 
     /**
+     * Lo que se pinta **encima del vídeo**, donde no hay tema que valga.
+     *
+     * El visor dibuja sobre el preview de la cámara, y ahí el fondo no es una superficie del tema:
+     * es la escena que el usuario esté enfocando. `MaterialTheme.colorScheme` no significa nada
+     * sobre una pared blanca o sobre una caja negra, así que estos colores **no** salen de [Light]
+     * ni de [Dark] — son los mismos en los dos temas, a propósito.
+     *
+     * Estaban escritos a mano dentro de `ScanOverlay`, que es exactamente la clase de fuga que un
+     * sistema de diseño existe para impedir: un color de marca fuera de la paleta, en el único
+     * sitio donde nadie lo iba a buscar. El valor no cambia — cambia dónde vive y quién lo puede
+     * medir.
+     *
+     * **Lo que aquí no se puede garantizar, y hay que decirlo:** estos pares no entran en
+     * [measuredPairs] porque no tienen fondo conocido contra el que medirlos. El contraste sobre
+     * vídeo arbitrario no es una propiedad de la paleta y no lo decide ningún test — lo decide un
+     * dispositivo, apuntando a una escena real. Lo que sí se hace por diseño es no depender solo
+     * del color: la retícula lleva su propio trazo y las detecciones se dibujan con un contorno
+     * cerrado, así que la forma sigue leyéndose aunque el color se pierda contra el fondo.
+     */
+    object Overlay {
+
+        /** Contorno de un código detectado. Verde de marca, más luminoso que el `primary` claro. */
+        const val DETECTION = 0xFF34D399.toInt()
+
+        /** Esquinas del marco de encuadre. Blanco, que es lo único legible sobre cualquier escena. */
+        const val RETICLE = 0xFFFFFFFF.toInt()
+    }
+
+    /**
      * Los pares que hay que medir a 4.5:1: no solo los de Material, también los que **la UI usa de
      * hecho**.
      *

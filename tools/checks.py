@@ -496,6 +496,88 @@ def check_openspec() -> int:
     return total
 
 
+# Los tres archivos de `:core:designsystem` que hoy no dependen de la marca y se podrían compartir
+# con otra app tal cual (ADR-0018). No es una lista de deseos: es lo que la comprobación de abajo
+# mantiene cierto. Radius, Typography y Theme quedan fuera **porque sus valores son de WhyScan**,
+# aunque su mecánica sea genérica; separarlos es el cambio `federate-design-system`, no un hecho.
+FOUNDATION = ("Contrast.kt", "AppLanguage.kt", "LocalSnackbarHostState.kt")
+
+
+def check_design_system() -> int:
+    """Higiene del sistema de diseño: paridad claro/oscuro, colores sueltos y fuga de marca.
+
+    ## Por qué la paridad de roles está aquí y no en un test
+
+    Sí hay tests de contraste, y no cubren esto. El defecto es **declarar un rol en un tema y no en
+    el otro**: `lightColorScheme()` rellena lo que no se le pasa con la paleta de fábrica de
+    Material —morados y granates—, así que el rol olvidado no falla, *sale de otro color*. Ya pasó
+    dos veces, y está contado en el KDoc de `Theme.kt`: primero con los `on*` —el texto de un botón
+    primario salía morado en oscuro— y después con los `*Container`, que pintan el `FilterChip`
+    seleccionado, la `Card` y el `NavigationBar`.
+
+    Un test de contraste no lo caza porque mide los pares que se le nombran, y el rol olvidado no
+    está en ninguna lista. Comparar los dos esquemas sí, y cuesta veinte líneas.
+
+    ## Por qué los colores literales
+
+    Un `Color(0x...)` fuera de la paleta es un color que no mide nadie: no entra en `ContrastTest`,
+    no cambia con el tema y no aparece cuando alguien busca "de qué color es esto". Había uno —el
+    verde del contorno de las detecciones, escrito a mano en `ScanOverlay`—, y estaba en el único
+    sitio donde nadie lo iba a buscar: encima del vídeo, que es justo donde el contraste importa.
+    """
+    directory = os.path.join(REPO, "core", "designsystem", "src", "commonMain", "kotlin",
+                             "com", "whyscan", "core", "designsystem")
+    if not os.path.isdir(directory):
+        return 0
+
+    def block(text: str, pattern: str, item: str) -> set[str]:
+        found = re.search(pattern, text, re.S)
+        return set(re.findall(item, found.group(1), re.M)) if found else set()
+
+    palette_path = os.path.join(directory, "ScannerPalette.kt")
+    theme_path = os.path.join(directory, "Theme.kt")
+
+    roles = 0
+    if os.path.exists(palette_path):
+        palette = open(palette_path, encoding="utf-8").read()
+        light = block(palette, r"object Light \{(.*?)\n    \}", r"const val (\w+)")
+        dark = block(palette, r"object Dark \{(.*?)\n    \}", r"const val (\w+)")
+        roles = len(light & dark)
+        for name in sorted(light - dark):
+            report(palette_path, f"ScannerPalette.Dark no declara {name}, que sí está en Light")
+        for name in sorted(dark - light):
+            report(palette_path, f"ScannerPalette.Light no declara {name}, que sí está en Dark")
+
+    if os.path.exists(theme_path):
+        theme = open(theme_path, encoding="utf-8").read()
+        light = block(theme, r"lightColorScheme\((.*?)\n\)", r"^\s{4}(\w+) =")
+        dark = block(theme, r"darkColorScheme\((.*?)\n\)", r"^\s{4}(\w+) =")
+        for name in sorted(light - dark):
+            # Sin declarar, Material lo rellena con su paleta de fábrica: no falla, cambia de color.
+            report(theme_path, f"el esquema oscuro no fija '{name}': Material lo pondrá de fábrica")
+        for name in sorted(dark - light):
+            report(theme_path, f"el esquema claro no fija '{name}': Material lo pondrá de fábrica")
+
+    for source in ("core", "engines", "feature", "composeApp", "androidApp"):
+        for path in walk(os.path.join(REPO, source), ".kt"):
+            if os.path.basename(path) == "ScannerPalette.kt":
+                continue
+            for literal in set(re.findall(r"Color\((0x[0-9A-Fa-f]{6,8})", open(path, encoding="utf-8").read())):
+                report(path, f"color literal {literal} fuera de ScannerPalette: nadie lo mide")
+
+    for name in FOUNDATION:
+        path = os.path.join(directory, name)
+        if not os.path.exists(path):
+            report(directory, f"falta {name}, declarado como base sin marca en ADR-0018")
+            continue
+        text = open(path, encoding="utf-8").read()
+        for brand in ("ScannerPalette", "BrandMark"):
+            if re.search(rf"\b{brand}\b", text):
+                report(path, f"depende de {brand}: deja de ser compartible sin la marca (ADR-0018)")
+
+    return roles
+
+
 def check_markdown_links() -> None:
     """Enlaces relativos entre archivos del repositorio que no llevan a ninguna parte.
 
@@ -528,10 +610,12 @@ def main() -> int:
     adrs = check_adr()
     check_agent_contract()
     requirements = check_openspec()
+    roles = check_design_system()
     check_markdown_links()
 
     print(f"{keys} claves de recursos con paridad inglés/español")
     print(f"{adrs} ADR indexados, {requirements} requisitos vigentes en openspec/specs")
+    print(f"{roles} roles de color con paridad claro/oscuro")
 
     if problems:
         print(f"\n{len(problems)} hallazgos:\n")

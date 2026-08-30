@@ -36,6 +36,18 @@ teniendo el trabajo hecho: el cableado de accesibilidad de la Ronda 10 y el `Koi
 | **Tests de captura** (Roborazzi u otro)                             | propuestas de la Ronda 16    | Lo más caro y lo que más cierra: "que se vea bien" lleva desde la Fase 1 escrito como incubrible, y **no lo es** — Robolectric ya se usa aquí. Antes de comprometerse, un *spike* de una pantalla: los tests de captura son célebres por volverse ruido |
 | **Métricas del compilador de Compose**                              | propuestas de la Ronda 16    | `reportsDestination`: parámetros inestables y composables no saltables. Sin dispositivo, es lo único que dice algo real sobre recomposiciones |
 | **`IosPlatformActions.openUrl` sin la guarda de esquemas**          | [Ronda 9](#ronda-9--seguridad-y-privacidad-) | Una línea. Cae dentro de "lo mínimo para que iOS siga compilando", no de trabajar en iOS |
+| **Evaluaciones del harness**                                        | [`docs/ai/state-of-the-art.md`](ai/state-of-the-art.md) §1 | El hueco más grande: la tesis de `docs/ai/` no tiene ni un dato detrás. Tres o cuatro fixtures por skill |
+| **Revisión automática en cada PR**                                  | [`docs/ai/state-of-the-art.md`](ai/state-of-the-art.md) §2 | Hoy el harness solo sirve a quien ejecuta un agente en local. Es lo primero que lo haría útil para otra persona |
+
+### Bloqueado por una decisión que no es técnica
+
+No lo bloquea el hardware ni un número: lo bloquea alguien decidiendo. Están juntos porque
+arrastrarlos dentro de otras listas los hace parecer trabajo que nadie hace.
+
+| Qué | Dónde | Quién decide |
+|---|---|---|
+| **Grupo Maven y paquete de `:core:foundation`** — no puede llevar `whyscan` | [ADR-0018](adr/ADR-0018-federar-la-base-y-no-la-marca.md) y los *Blockers* de `openspec/changes/federate-design-system/proposal.md` | El dueño del proyecto. Toda la federación está detrás de esto, y poner un nombre provisional para renombrar después es justo la parte cara |
+| **Correo de contacto de la ficha de Play** | "Pendiente para publicar", más abajo | El dueño del proyecto. Hoy los documentos legales remiten a las incidencias del repositorio |
 
 ### Bloqueado por un número que solo produce CI
 
@@ -1169,6 +1181,56 @@ comprobar con un script no depende de que alguien se acuerde— se aplica ahora 
 documentación y al proceso. Y una regla nueva que sale de aquí: **si algo se puede comprobar
 mecánicamente, va a `tools/checks.py` y no a un archivo de instrucciones**. Una regla escrita depende
 de que se lea; una comprobada, no.
+
+### Ronda 22 — el sistema de diseño deja de ser el tema de una app 🚧
+
+Sale de una pregunta que no era sobre WhyScan: **otras apps de la empresa quieren reutilizar esto**.
+Al mirarlo de cerca, lo que había no se podía compartir, y el motivo no era la infraestructura que
+faltaba sino algo anterior.
+
+- [x] **`:core:designsystem` no es un sistema de diseño: es el tema de WhyScan.** De sus 930 líneas,
+  `ScannerPalette` y `BrandMark` **son** la marca, y compartirlas no es compartir: es que todas las
+  apps de la empresa se llamen WhyScan. `Theme`, `Radius` y `Typography` son mecánica genérica con
+  valores de aquí. Solo tres archivos —`Contrast`, `AppLanguage` y `LocalSnackbarHostState`— no
+  dependen de la marca, y ahora eso está **comprobado**, no supuesto
+- [x] **La fuga que encontró la auditoría.** `ScanOverlay` pintaba el contorno de las detecciones con
+  un `Color(0xFF34D399)` escrito a mano: un verde que no estaba en la paleta, que no medía nadie y
+  que no cambiaba con el tema. Y estaba en el único sitio donde nadie lo iba a buscar — **encima del
+  vídeo**, que es justo donde el contraste importa y donde el tema no llega. Ahora vive en
+  `ScannerPalette.Overlay`, con el mismo valor: cambia dónde está y quién lo puede mirar, no cómo se
+  ve
+- [x] **Y con él, lo que ese caso enseña.** Lo que se pinta sobre la cámara no puede salir del tema,
+  porque el fondo es la escena que el usuario esté enfocando y `colorScheme` no significa nada sobre
+  una pared blanca. Tampoco se puede medir su contraste: no hay fondo conocido. Lo honesto es
+  decirlo y no depender solo del color — la retícula lleva trazo y las detecciones, contorno cerrado
+- [x] **Paridad de roles claro/oscuro, comprobada.** Es el defecto que **ya pasó dos veces** y está
+  contado en el KDoc de `Theme.kt`: un rol que no se declara no falla, *sale del color de fábrica de
+  Material*. Primero los `on*` —texto morado en un botón primario— y después los `*Container`, que
+  pintan el `FilterChip` seleccionado, la `Card` y el `NavigationBar`. Ningún test de contraste lo
+  caza, porque mide los pares que se le nombran y el rol olvidado no está en ninguna lista.
+  Comparar los dos esquemas sí, y son veinte líneas de `check_design_system()`
+- [x] **[ADR-0018](adr/ADR-0018-federar-la-base-y-no-la-marca.md): se federa la base, no la marca.**
+  Nace `:core:foundation` con lo que sirve a cualquier app —el contraste como aritmética, el idioma
+  por encima del sistema, declarar los treinta y cuatro roles a partir de una paleta cualquiera— y
+  la marca se queda donde está. El corte, dicho de una vez: **lo reutilizable nunca fueron los
+  colores, son las reglas**
+- [x] **Las cinco garantías, escritas y secuenciadas** en `openspec/changes/federate-design-system/`:
+  `explicitApi()`, validador de compatibilidad binaria, versionado semántico con la política escrita
+  —en Compose cambiar un valor por defecto es compatible en fuente y rompe en binario—, documentación
+  generada, y **un consumidor que no sea WhyScan**. La quinta es la única que detecta el acoplamiento
+  de verdad, y es la que este repositorio no puede cerrar solo
+- [ ] **Implementar la federación. Bloqueada por una decisión, no por trabajo:** el grupo Maven y el
+  paquete no pueden llevar `whyscan`, y ese nombre lo pone el dueño del proyecto. Nada de esto se
+  puede ejecutar aquí de todas formas — es configuración de Gradle y **aquí no compila nada**
+- [x] **`docs/ai/state-of-the-art.md`**: dónde está de verdad este repositorio en trabajo con IA,
+  escrito para incomodar y no para halagar. La conclusión corta es que la estructura es buena
+  práctica actual bien ejecutada, no vanguardia, y que **el hueco más grande es que nada mide si el
+  harness sirve**
+
+**Lo que esta ronda dice del proyecto:** la pregunta "¿esto se puede compartir?" resultó ser una
+auditoría de diseño disfrazada. No hizo falta infraestructura para encontrar el problema — hizo falta
+mirar qué había dentro del módulo y separar lo que es de esta app de lo que es de cualquiera. La
+infraestructura viene después, y sin ese corte habría publicado la marca.
 
 ### Antes de la ficha de Play, esto va primero
 

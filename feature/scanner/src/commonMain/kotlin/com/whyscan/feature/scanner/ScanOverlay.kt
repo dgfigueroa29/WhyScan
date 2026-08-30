@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
+import com.whyscan.core.designsystem.ScannerPalette
 import com.whyscan.core.model.Detection
 import com.whyscan.core.model.Point
 
@@ -29,8 +30,8 @@ import com.whyscan.core.model.Point
 fun ScanOverlay(
     detections: List<Detection>,
     modifier: Modifier = Modifier,
-    reticleColor: Color = Color.White.copy(alpha = RETICLE_ALPHA),
-    detectionColor: Color = Color(0xFF34D399),
+    reticleColor: Color = Color(ScannerPalette.Overlay.RETICLE).copy(alpha = RETICLE_ALPHA),
+    detectionColor: Color = Color(ScannerPalette.Overlay.DETECTION),
 ) {
     Canvas(modifier = modifier.fillMaxSize()) {
         drawReticle(reticleColor)

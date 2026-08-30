@@ -17,6 +17,7 @@ had to be built deliberately.
 | [`planning.md`](planning.md) | How work is planned with an agent — and why the ROADMAP reads as it does |
 | [`prompt-library.md`](prompt-library.md) | Prompts that reliably produce good work here, and why |
 | [`provenance.md`](provenance.md) | Who wrote what, how it is disclosed, and who is accountable |
+| [`state-of-the-art.md`](state-of-the-art.md) | Where this setup actually stands, and the four gaps that are open |
 
 ## The four ideas the rest of this directory elaborates
 
