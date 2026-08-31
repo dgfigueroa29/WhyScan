@@ -239,6 +239,10 @@ class SelectScannerEngineUseCaseTest {
 
         // Los descartes son los de la primera pasada, que son los que explican por qué no hubo
         // cámara. Si fueran los de la segunda hablarían de una petición que el usuario no hizo.
+        //
+        // La entrada manual **no** está entre ellos, aunque la primera pasada la descartara por la
+        // fuente: es la que acabó atendiendo, y no puede ser a la vez la respuesta y el motivo del
+        // fallo. Esta línea es la que se cayó al implementar G4, por esperar solo lo primero.
         assertEquals(listOf(ScannerEngineId.ZXingJava), fromCamera.rejected.map { it.id })
     }
 

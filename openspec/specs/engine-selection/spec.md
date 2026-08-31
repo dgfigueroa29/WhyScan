@@ -32,6 +32,9 @@ When selection produces an empty chain for a request whose source is `LiveCamera
 SHALL re-select with `ScanSource.ManualInput` and return that chain, preserving the rejection
 reasons from the first pass.
 
+Those reasons SHALL NOT name an engine that ended up in the returned chain: an engine cannot be
+both the answer and a reason the request failed.
+
 The substitution SHALL happen in the selector, never by widening the engine's declared sources: it
 consumes no frames, and declaring a source it cannot serve is the dishonest descriptor ADR-0002
 exists to prevent.
@@ -52,6 +55,8 @@ The system SHALL NOT present a state in which scanning is impossible.
 - **AND** the returned chain is `[MANUAL_INPUT]`
 - **AND** the rejection list still names `ZXING_JAVA`, so the bench can explain why there was no
   camera
+- **AND** it does not name `MANUAL_INPUT`, which the first pass discarded for source and which is
+  now the engine answering
 
 #### Scenario: A static image nothing can decode
 

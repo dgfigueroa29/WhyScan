@@ -106,7 +106,14 @@ class SelectScannerEngineUseCase(
         // Se conservan los descartes de la **primera** pasada: son los que explican por qué no hubo
         // cámara, que es lo que el banco de motores le enseña al usuario. Los de la segunda hablan
         // de una petición que el usuario nunca hizo.
-        return EngineSelection(chain = manual.chain, rejected = rejected)
+        //
+        // Menos el motor que acabó atendiendo. La primera pasada descarta la entrada manual por la
+        // fuente —es su descarte más normal—, y devolverla a la vez en la cadena y en los descartes
+        // se contradice: el diagnóstico nombraría como culpable justo al motor que está leyendo.
+        return EngineSelection(
+            chain = manual.chain,
+            rejected = rejected.filterNot { it.id in manual.chain },
+        )
     }
 
     /**
