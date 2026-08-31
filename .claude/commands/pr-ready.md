@@ -33,6 +33,9 @@ Start from `git status --short` and `git diff main...HEAD`.
    by a shared-code change.
 10. **Honest reporting.** Draft the two lines the PR body must contain: what was verified here, and
     what only `Verify` can confirm.
+11. **After pushing, read `Verify`.** Not the commit — the run, on the pushed head. Say green or say
+    red with the failing job. "Pushed" is not an outcome, and a round declared finished over a red
+    run is the one failure this whole contract exists to prevent.
 
 ## Output
 

@@ -1414,6 +1414,31 @@ documentación mentía; leer el camino encontró **por qué importaba**, y no er
 señalado. Y el remate: el texto del aviso ya prometía lo que faltaba. La copia sabía lo que el
 producto debía hacer antes que el código.
 
+### Ronda 27 — `Verify` llevaba en rojo toda la ronda anterior ✅
+
+No lo miró nadie. Yo di la Ronda 26 por terminada, la ronda estaba subida, y `Verify` había fallado
+en el mismo empujón. El contrato entero de este repositorio dice "`Verify` es la autoridad" y a
+ninguno de sus pasos le tocaba **abrirla**.
+
+- [x] **El fallo era de una línea y era mío**, no del código: una aserción de
+  `SelectScannerEngineUseCaseTest` esperaba **un** motor descartado donde la primera pasada descarta
+  dos — la entrada manual también se descarta al pedir cámara, que es justamente lo que provoca la
+  sustitución
+- [x] **No se arregló cambiando la expectativa a los dos.** Eso dejaba el valor devuelto
+  contradiciéndose: la entrada manual aparecería a la vez en la cadena —es la que lee— y en la lista
+  de descartes, de donde sale el diagnóstico "motores descartados: …". El motor que resuelve la
+  petición no puede ser también el motivo del fallo. Se filtra, y el spec de `engine-selection` gana
+  la regla y el escenario que la comprueba
+- [x] **La regla que faltaba, escrita donde se lee.** Regla de oro 5 de `AGENTS.md` —"y una autoridad
+  hay que leerla"—, última casilla de la definición de terminado, paso 11 de `/pr-ready`, cuarta
+  pasada de `docs/ai/workflow.md` y su espejo en `CLAUDE.md`. Una ronda no termina porque el commit
+  haya subido: termina con `Verify` en verde sobre lo empujado
+
+**Lo que esta ronda dice del proyecto:** el harness ya tenía tres capas de comprobación offline y una
+autoridad real, y aun así se coló un rojo. No falló ninguna de las capas — falló el último paso, que
+no era paso de nadie. **Una verificación que nadie está obligado a leer es decoración**, y se salta
+igual que se la salta una persona: no decidiéndolo, sino sintiéndose terminado.
+
 ### Antes de la ficha de Play, esto va primero
 
 Lo de abajo es trámite de tienda. Lo de esta lista no. Se hizo el repaso a propósito antes de tocar

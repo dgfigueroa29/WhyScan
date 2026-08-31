@@ -43,10 +43,16 @@ is green, and even if the user asked for it in passing — say so and propose th
    covers what nothing else does: resource-catalog parity between languages, orphan keys, line
    length, import order, `package` vs. directory, and the privacy guarantee in the manifest.
 
-5. **`Verify` is the authority.** It runs on every pull request across the three platforms this
-   project can execute: detekt, core tests, Android (debug, lint and release with R8), Desktop and
-   Web. `iOS (manual)` and `Baseline profile (manual)` are deliberately separate and manual — what
-   they do is not an acceptance criterion for a change.
+5. **`Verify` is the authority — and an authority you do not read is not one.** It runs on every
+   pull request across the three platforms this project can execute: detekt, core tests, Android
+   (debug, lint and release with R8), Desktop and Web. `iOS (manual)` and
+   `Baseline profile (manual)` are deliberately separate and manual — what they do is not an
+   acceptance criterion for a change.
+
+   After pushing, **read the run for that branch**. A round is not finished because the commit
+   landed; it is finished when `Verify` is green on the pushed head. A red `Verify` is work now, not
+   a note for later. This rule exists because it was broken: see
+   [`docs/ai/workflow.md`](docs/ai/workflow.md) §"What happens when the loop is skipped".
 
 6. **No instrumented tests, ever (debt D6).** With no emulator in CI, a test that needs a device is
    a test that never runs and gives a false sense of safety. The rule stated precisely is *anything
@@ -208,6 +214,8 @@ PR body rather than quietly dropping it.
 - [ ] The OpenSpec change, if there was one, is archived under `openspec/changes/archive/`.
 - [ ] Nothing in the diff adds network access, analytics, backup, or an instrumented test.
 - [ ] The PR body says explicitly what was verified here and what only `Verify` can confirm.
+- [ ] **`Verify` is green on the pushed head.** Read the run; do not assume it. Until it is green
+      the change is not done, whatever the diff looks like.
 
 ---
 

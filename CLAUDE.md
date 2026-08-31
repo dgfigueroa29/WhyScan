@@ -35,7 +35,9 @@ sitio donde invertir de más.
   **Ejecutarlo antes de cada commit.**
 - La autoridad real es `Verify`, que corre en cada pull request y cubre las tres plataformas que
   este proyecto puede ejecutar: detekt, tests del núcleo, Android (debug, lint y release con R8),
-  Desktop y Web.
+  Desktop y Web. **Y una autoridad hay que leerla**: después de empujar se mira la ejecución de esa
+  rama. Una ronda no termina porque el commit haya subido, sino cuando `Verify` está en verde sobre
+  lo empujado. En rojo es trabajo de ahora, no una nota para después.
 - `iOS (manual)` y `Baseline profile (manual)` son workflows aparte y **solo manuales**, a
   propósito: lo que hacen no es un criterio para aceptar un cambio.
 - No hay tests instrumentados y no los va a haber (D6): sin emulador en CI, un test que exija

@@ -73,6 +73,8 @@ Three passes, in increasing cost:
 3. **`kotlin-reviewer`**, in its own context window. A reviewer that has not read the conversation
    defending the diff gives a more honest answer — that is the whole reason it is a subagent and not
    another turn.
+4. **`Verify` itself, after pushing.** The only pass that compiles anything. It is not optional and
+   it is not someone else's job: read the run on the pushed head before calling the work finished.
 
 Then write the two sentences the pull request needs: what was executed here, and what only `Verify`
 can decide. `/pr-ready` walks the full definition of done.
@@ -104,3 +106,13 @@ files and nobody knew the number. When it was finally measured, `:core:data` cam
 the cause was not missing tests but **dead code**: two classes no Koin module had declared since Room
 replaced them. The right answer was deleting them, not writing tests for them. A goal nobody measures
 does not tell you when it is missed; it is missed silently.
+
+And one from the writing of this very document:
+
+**An agent pushed a round, declared it finished, and `Verify` had been red the whole time.** The
+failure was a single assertion it had written itself: a selection test expecting one rejected engine
+where the first pass rejects two. Nothing in the loop was wrong except its last step — the agent had
+the rule "`Verify` is the authority" and never opened it. Pass 4 above and the last box of the
+definition of done exist because of that afternoon. The lesson generalises past this repository:
+**a verification step nobody is required to read is decoration**, and an agent will skip it in
+exactly the way a human does — not by deciding to, but by feeling done.
