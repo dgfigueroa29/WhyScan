@@ -22,7 +22,8 @@ aplicación Android de módulo único hacia una aplicación **Compose Multiplatf
 > **Un solo nombre, escrito siempre igual.** **WhyScan** nombra el producto, el proyecto Gradle,
 > los paquetes de Kotlin (`com.whyscan.*`), el `namespace` de cada módulo, los plugins de convención
 > (`whyscan.kmp.library`, `whyscan.kmp.compose`, `whyscan.android.application`), el `applicationId`
-> de Play (`com.whyscan.app`) y los almacenes de datos de cada plataforma. **Es una sola palabra**:
+> de Play —que desde el ADR-0019 es `ar.net.faro.whyscan`, porque identifica a quien publica y no al
+> código— y los almacenes de datos de cada plataforma. **Es una sola palabra**:
 > `WhyScan` en prosa y en tipos, `whyScan` en identificadores lowerCamelCase, `whyscan` en paquetes,
 > ids de plugin y nombres de recurso. Nunca "Why Scan" ni "Why-Scan".
 >
@@ -443,8 +444,11 @@ interface CameraControlEngine {
 - **Capacidades opcionales como interfaces separadas.** El GMS Code Scanner abre su propia UI y
   **no** permite controlar la linterna ni decodificar imágenes. Si `setTorch` estuviera en el
   contrato base, ese motor tendría que lanzar `UnsupportedOperationException` — un contrato que
-  miente. Con interfaces segregadas, la UI hace `engine as? CameraControlEngine` y muestra el
-  control solo si existe.
+  miente. Con interfaces segregadas, la UI hace
+  `engine.capability<CameraControlEngine>()` y muestra el control solo si existe. **No un
+  `as?` directo**: sobre una cadena decorada devuelve `null` aunque el motor de dentro sí lo
+  implemente, y ahí se pierde la linterna sin que falle nada (ver §13.2). El ADR-0007 conserva el
+  cast en su texto a propósito: registra la decisión tal como se tomó.
 - **`availability()` es `suspend`.** Determinar disponibilidad puede requerir I/O: consultar si
   los módulos de ML Kit ya se descargaron, si Google Play Services está actualizado, o si el
   navegador expone `BarcodeDetector`.
@@ -496,11 +500,12 @@ sealed interface ScanEvent {
     /** Todo evento sabe de qué motor viene; `null` solo si no lo produjo ninguno en concreto. */
     val engineId: ScannerEngineId?
 
-    data object SessionStarted : ScanEvent
+    data class SessionStarted(override val engineId: ScannerEngineId) : ScanEvent
     data class Detected(val detections: List<Detection>) : ScanEvent
     data class FrameAnalyzed(val analyzedAtMillis: Long) : ScanEvent  // telemetría/FPS
     data class Failed(val error: ScanError) : ScanEvent
-    data object SessionEnded : ScanEvent
+    data class EngineSwitched(...) : ScanEvent                        // cayó a un fallback
+    data class SessionEnded(override val engineId: ScannerEngineId) : ScanEvent
 }
 ```
 
@@ -519,8 +524,8 @@ ScannerEngineRegistry            ← conoce todos los motores enlazados en el bi
    │
    ├─ expect fun platformEngines(): List<BarcodeScannerEngine>
    │     androidMain → [GmsCodeScanner, MlKitCameraX, ZXingCpp, MlKitOcr, Manual]
-   │     iosMain     → [VisionScanner, ZXingCpp, MlKitOcr, Manual]
-   │     jvmMain     → [ZXingCpp, Manual]
+   │     iosMain     → [VisionScanner, ZXingCpp, VisionOcr, Manual]
+   │     jvmMain     → [ZXingJava, Manual]
    │     wasmJsMain  → [BrowserDetector, Manual]
    │
    ▼
@@ -686,15 +691,22 @@ Detalle operativo completo en `docs/ENGINES.md`. Resumen:
 | **GMS Code Scanner**              | Android               | Cámara (UI propia)           | Cero permisos, cero UI que mantener, modelo descargado por Play Services                        | UI no personalizable, sin linterna, sin modo continuo, requiere Play Services |
 | **ML Kit + CameraX**              | Android               | Cámara (UI propia de la app) | Control total del preview, overlay, linterna, zoom, modo continuo                               | Añade peso; modelo *unbundled* requiere descarga                              |
 | **Vision / AVFoundation**         | iOS                   | Cámara                       | Nativo del sistema, sin dependencias externas, muy rápido                                       | Solo iOS; el set de simbologías varía por versión de iOS                      |
-| **ZXing-cpp**                     | Android, iOS, Desktop | Cámara e imagen              | 100 % offline, mismo decodificador en todas las plataformas → **baseline de comparación justa** | Menos tolerante a códigos dañados o mal iluminados que ML Kit                 |
-| **BarcodeDetector API**           | Web (Wasm/JS)         | Cámara e imagen              | Cero peso, provisto por el navegador                                                            | Soporte desigual entre navegadores; requiere fallback a ZXing-cpp/Wasm        |
-| **ML Kit Text Recognition (OCR)** | Android, iOS          | Cámara e imagen              | Recupera códigos ilegibles leyendo el número impreso debajo                                     | No es un decodificador: requiere validar checksum del formato inferido        |
+| **ZXing-cpp**                     | Android, iOS          | Cámara e imagen              | 100 % offline, mismo decodificador en las dos → **baseline de comparación justa**               | No publica artefacto para JVM ni wasmJs (ADR-0008)                            |
+| **ZXing (Java)**                  | Desktop               | Imagen                       | Único decodificador de escritorio, verificado decodificando imágenes generadas en el test       | Sin captura de webcam: una sesión en vivo cae a la entrada manual             |
+| **BarcodeDetector API**           | Web (Wasm/JS)         | Cámara e imagen              | Cero peso, provisto por el navegador                                                            | Soporte desigual entre navegadores; detrás solo queda la entrada manual       |
+| **ML Kit Text Recognition (OCR)** | Android               | Cámara e imagen              | Recupera códigos ilegibles leyendo el número impreso debajo                                     | No es un decodificador: requiere validar checksum del formato inferido        |
+| **Vision Text Recognition (OCR)** | iOS                   | Cámara e imagen              | Lo mismo con `VNRecognizeTextRequest`; comparte `OcrCodeInterpreter` con el de ML Kit           | Motor distinto del de Android a propósito (D13): el reconocedor no es el mismo |
 | **Entrada manual**                | Todas                 | Teclado                      | Siempre disponible; red de seguridad final del fallback                                         | Requiere intervención del usuario                                             |
 
-La presencia de **ZXing-cpp en las cuatro plataformas** no es redundante: es el control
-experimental. Al ser el mismo decodificador en todas partes, cualquier diferencia de resultado
-entre plataformas se atribuye a la captura de cámara, no al algoritmo — que es exactamente la
-medición que hace útil a WhyScan.
+La presencia de **ZXing-cpp en Android y en iOS** no es redundante: es el control experimental. Al
+ser el mismo decodificador en las dos, cualquier diferencia de resultado entre esas plataformas se
+atribuye a la captura de cámara y no al algoritmo — que es exactamente la medición que hace útil a
+WhyScan. En Escritorio y en Web **no lo hay**, y por eso esa comparación no se extiende a las cuatro:
+zxing-cpp no publica artefacto para JVM ni para wasmJs (ADR-0008).
+
+> Esta tabla se corrigió en la auditoría del 30-08-2026: listaba siete filas para nueve motores,
+> daba Desktop a ZXing-cpp, iOS a ML Kit y prometía un fallback a ZXing-cpp/Wasm que se retiró en la
+> Fase 4. `docs/ENGINES.md` es la fuente y estaba bien; esto era un resumen que dejó de resumir.
 
 ---
 
@@ -857,8 +869,11 @@ de componentes de Android), por lo que no es una opción aquí. Ver `docs/adr/AD
 appModule              (composeApp)   → wiring raíz, arranca Koin
 ├── platformModule     (expect/actual) → motores de la plataforma, permisos, dispatchers
 ├── dataModule         (core:data)    → Registry, repositorios
-├── domainModule       (core:domain)  → UseCases y sus agrupadores (ScanSettings, ScanSessions)
-└── scannerModule      (feature:scanner) → ViewModels
+├── domainModule       (core:data)    → UseCases y sus agrupadores (ScanSettings, ScanSessions).
+│                                       Vive junto a `dataModule` y no en `:core:domain`
+├── scannerModule      (feature:scanner)  → ViewModel del escáner
+├── historyModule      (feature:history)  → ViewModel del historial
+└── settingsModule     (feature:settings) → ViewModel de ajustes
 ```
 
 Convenciones: constructor injection siempre; ningún `Context` en ViewModels. Los tests de ViewModel
@@ -957,6 +972,20 @@ guarden lo mismo—. `SaveDetectionUseCase` se queda fuera y no es una inconsist
 escáner al leer un código, que es otro camino y no quiere arrastrar el borrado ni las notas.
 
 La historia original, que es de donde salió el criterio: `ScannerViewModel` llegó a tener doce
+colaboradores por seguirla al pie de la letra, y cuatro de ellos eran la misma idea: tres casos de
+uso de una línea sobre `ScanPreferencesRepository` más el propio repositorio, inyectado aparte
+porque dos operaciones no tenían caso de uso. La corrección (deuda D16) fue en dos direcciones:
+
+- **Borrar** los que solo delegaban —los tres de preferencias y `ObserveEngineCatalogUseCase`—.
+  Un caso de uso que no añade una regla añade un nombre, y el nombre ya lo daba el repositorio. La
+  única regla que había, que un conjunto de formatos vacío significa *todos*, se conservó en
+  `ScanSettings`.
+- **Agrupar** los que sí tienen lógica y se usan siempre juntos: `ScanSessions` reúne arrancar,
+  decodificar y guardar, y se lleva consigo la traducción de preferencias a `ScanRequest`.
+
+El criterio que queda para el futuro: un caso de uso existe si guarda una regla, no si existe una
+operación. Y agrupar colaboradores es un cambio de dominio, no de UI — por eso ambos viven en
+`:core:domain` y no en la feature.
 
 ### D20: componer sin UI (`ComposeKoinContextTest`)
 
@@ -976,20 +1005,6 @@ Leyendo koin-compose se llega a la misma conclusión: `LocalKoinScopeContext` de
 defecto `KoinPlatform.getKoin().scopeRegistry.rootScope`, exactamente el scope que `KoinContext`
 proveía a mano. Pero leyendo la librería también estaba bien el `build()` de Room que no se llamaba
 nunca (§11), así que aquí no se da nada por bueno leyendo: se compone y se mira qué sale.
-colaboradores por seguirla al pie de la letra, y cuatro de ellos eran la misma idea: tres casos de
-uso de una línea sobre `ScanPreferencesRepository` más el propio repositorio, inyectado aparte
-porque dos operaciones no tenían caso de uso. La corrección (deuda D16) fue en dos direcciones:
-
-- **Borrar** los que solo delegaban —los tres de preferencias y `ObserveEngineCatalogUseCase`—.
-  Un caso de uso que no añade una regla añade un nombre, y el nombre ya lo daba el repositorio. La
-  única regla que había, que un conjunto de formatos vacío significa *todos*, se conservó en
-  `ScanSettings`.
-- **Agrupar** los que sí tienen lógica y se usan siempre juntos: `ScanSessions` reúne arrancar,
-  decodificar y guardar, y se lleva consigo la traducción de preferencias a `ScanRequest`.
-
-El criterio que queda para el futuro: un caso de uso existe si guarda una regla, no si existe una
-operación. Y agrupar colaboradores es un cambio de dominio, no de UI — por eso ambos viven en
-`:core:domain` y no en la feature.
 
 ---
 
@@ -1233,7 +1248,7 @@ sin arrastrar `kotlinx-browser`. No sale nada del dispositivo. Aun así se añad
 rechaza cualquier URL que no empiece por `data:`, para que la propiedad se compruebe leyendo cuatro
 líneas en vez de razonando sobre el llamante.
 
-**Hallazgo 3 — la garantía tenía una puerta que no pasaba por la app.** Es el más grave de los tres
+**La garantía tenía una puerta que no pasaba por la app.** Es el más grave de los tres
 y apareció en una revisión posterior, lo que dice algo sobre las dos primeras: **se auditó lo que la
 app hace y no lo que el sistema hace con lo que la app guarda.**
 
@@ -1300,6 +1315,28 @@ que encontrárselo en Drive cuando la app promete que no puede salir de aquí. T
 consecuencia directa en el trámite de Play: el formulario de seguridad de datos pregunta si los
 datos
 se transfieren fuera del dispositivo, y ahora la respuesta "no" es verdad.
+
+**Hallazgo 4 — `INTERNET` sí estaba en el APK, y lo llevaba desde el primer motor de Google.** El
+Hallazgo 2 pedía defender la invariante "no declarar `INTERNET`" porque una dependencia podía
+reintroducirla sin que nadie se enterase. **Ya lo había hecho.**
+
+`tools/merged_manifest.py` se escribió para ese escenario el 30-08-2026 y no llegó a ejecutarse
+hasta el día siguiente, porque el job de Android moría antes por otra cosa. La primera vez que corrió
+leyó el manifiesto **fusionado** de la build de debug y encontró `android.permission.INTERNET` junto
+a `ACCESS_NETWORK_STATE`. Los aportan `play-services-code-scanner` y los dos artefactos de ML Kit
+desde sus propios manifiestos; no son dependencias de solo-debug, así que **el APK de release
+llevaba lo mismo**. El manifiesto fuente estaba limpio, `check_privacy_guarantee()` estaba en verde,
+y la app le decía al usuario en dos pantallas que no pedía ese permiso.
+
+La corrección es retirarlo explícitamente —`tools:node="remove"`— y exigir que esa línea siga ahí.
+El razonamiento de por qué eso no rompe a los motores de Google, el coste que no se puede comprobar
+sin un teléfono y las cuatro alternativas descartadas están en el
+[ADR-0020](adr/ADR-0020-el-permiso-de-internet-se-quita-no-solo-se-omite.md).
+
+Es la tercera vez que el defecto tiene **la misma forma** —D18, `allowBackup`, y ahora el fusionador
+de manifiestos—: auditar lo que hace el código propio y no lo que la plataforma hace con él. Lo que
+cambia es que esta vez había una comprobación esperándolo. Tardó un día en poder ejecutarse, y en
+cuanto lo hizo encontró el defecto a la primera.
 
 ---
 
@@ -1532,10 +1569,20 @@ quien la implementa es el motor de dentro. De ahí salió `DecoratingScannerEngi
   resueltos: los umbrales **no** se subieron hasta que cupiera lo que había —eso deja la regla
   midiendo siempre lo que sea que haya—, sino que las cuatro excepciones legítimas llevan
   `@Suppress` en su sitio con el motivo al lado del código.
-- **Reglas de arquitectura** verificadas en CI: `:core:domain` no puede depender de Compose ni de
-  Android; `:engines:*` no puede depender de `:feature:*`.
-- **SonarCloud** para deuda técnica y duplicación; sin regresión permitida en PR.
-- Compilación con `allWarningsAsErrors` en módulos `:core:*`.
+- **Reglas de arquitectura**: `:core:domain` no puede depender de Compose ni de Android;
+  `:engines:*` no puede depender de `:feature:*`. **No las verifica nada**: son convención escrita
+  —en `AGENTS.md` y en `CONTRIBUTING`— y se revisan a mano. Automatizarlas es un cambio, no una
+  edición de este documento.
+- **`allWarningsAsErrors` no está activado**, y esa es la deuda D19: o se limpian todos los avisos o
+  se acepta el ruido de forma explícita. Ver la fila D19 del ROADMAP, que es donde vive la decisión.
+
+> **Corregido tras la auditoría del 30-08-2026.** Estas tres líneas prometían gates de CI que no
+> existen. La tercera —**SonarCloud** para deuda y duplicación, sin regresión permitida en PR— se
+> ha borrado directamente: no hay ninguna integración con Sonar en el repositorio, `grep` sobre los
+> `.kts`, los `.yml` y el catálogo no devuelve nada, y no hay decisión registrada de añadirla.
+> Prometer un control de calidad que no existe es peor que no tenerlo, porque quien lee esto da por
+> cubierto lo que nadie cubre. Si alguno de los tres se quiere de verdad, es una propuesta de
+> cambio.
 
 ### 13.4 Qué encontró el primer CI
 
@@ -1836,7 +1883,7 @@ que preservar (§2.1). El historial de git conserva el estado previo.
 | R6      | Web target sin acceso a cámara en contexto no-HTTPS                                             | Bajo    | Documentado; el motor reporta `Unsupported` con la razón                                                                                                                                                                                                                                                                                 |
 | R7      | Sobre-modularización ralentiza el build                                                         | Medio   | Convention plugins en `build-logic` (Fase 2) y medición con `--scan`                                                                                                                                                                                                                                                                     |
 | ~~R11~~ | ~~Room 2.7.2 y AGP 8.9.2 no se pudieron contrastar con Kotlin 2.3.20 y KSP 2.3.10~~             | —       | **Se materializó y está cerrado.** El primer CI falló exactamente ahí: KSP 2.3.10 exige AGP ≥ 8.10.0 y el proyecto estaba en 8.9.2. Se subió a **8.10.0**, el mínimo que el propio mensaje de KSP nombra. Room 2.7.2 pasó sin tocar nada. Salió tal como estaba previsto —"es lo primero que dirá el CI"— y costó una línea del catálogo |
-| R8      | Deriva entre el catálogo documentado y el código                                                | Bajo    | `docs/ENGINES.md` es la fuente; un test verifica que el registro y la tabla coinciden en IDs                                                                                                                                                                                                                                             |
+| R8      | Deriva entre el catálogo documentado y el código                                                | Bajo    | `docs/ENGINES.md` es la fuente; `check_engine_catalog()` verifica identificadores, fases y plataformas en cada PR                                                                                                                                                                                                                                             |
 | ~~R9~~  | ~~No existe un binding KMP publicado de zxing-cpp~~                                             | —       | **Cerrado por ADR-0008.** El inventario era incompleto: `io.github.zxing-cpp:kotlin-native:3.1.1` publica los tres targets de iOS con el cinterop hecho, y `:android:3.1.1` cubre Android. Se consumen los artefactos, sin cinterop propio. Deriva en R10 y en la deuda D13                                                              |
 | ~~R10~~ | ~~Los klibs de `kotlin-native` están compilados con Kotlin 2.2.0 y el proyecto está en 2.1.21~~ | —       | **Cerrado**: toolchain en Kotlin 2.3.20, CMP 1.11.1, KSP 2.3.10, Gradle 8.14.5                                                                                                                                                                                                                                                           |
 

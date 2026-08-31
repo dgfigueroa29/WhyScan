@@ -209,6 +209,20 @@ sealed interface ScannerAction {
     data object ScanFromImage : ScannerAction
 
     /**
+     * Escribir el código a mano, sin cambiar el motor preferido (G4).
+     *
+     * Existe porque la entrada manual era **inalcanzable donde más falta hacía**: se muestra solo
+     * si hay una sesión viva con el motor manual, y en escritorio no arranca ninguna —no hay
+     * captura de webcam— ni se dibuja el botón de arranque. El banco de motores, la otra vía, es de
+     * modo avanzado. Resultado: en escritorio y en modo básico no había forma de teclear un código.
+     *
+     * Es una acción propia y no `SelectEngine(ManualInput)` porque aquella **persiste** la elección
+     * (`settings.preferEngine`). Teclear un código una vez no puede dejar el motor preferido fijado
+     * para siempre, y menos en una plataforma que mañana podría tener cámara.
+     */
+    data object UseManualEntry : ScannerAction
+
+    /**
      * Ejecutar una acción sobre un resultado (RF-13).
      *
      * Lleva el texto ya redactado porque redactarlo es cosa de la pantalla: el dominio dice qué

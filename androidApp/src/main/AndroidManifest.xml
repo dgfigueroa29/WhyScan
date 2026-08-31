@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!--
         El permiso de cámara se declara desde la Fase 1 aunque todavía no haya motores de cámara:
@@ -17,6 +18,34 @@
     <uses-feature
         android:name="android.hardware.camera"
         android:required="false" />
+
+    <!--
+        No basta con **no** declarar `INTERNET`: hay que quitarlo.
+
+        Este archivo nunca lo declaró, y aun así **todos los APK que ha producido este proyecto lo
+        llevaban**. Lo aportan los manifiestos de las dependencias de Google —el Google Code Scanner
+        y los dos motores de ML Kit—, y el fusionador de AGP los mete sin preguntar. El manifiesto
+        fuente seguía limpio, la comprobación de `tools/checks.py` seguía en verde, y la app le decía
+        al usuario en Ajustes y en la pantalla de permiso que *"no pide permiso de internet"*. Era
+        falso desde que entró el primer motor de Google.
+
+        Lo destapó `tools/merged_manifest.py` **la primera vez que llegó a ejecutarse** (31-08-2026),
+        que es exactamente el escenario para el que se escribió. Es el mismo error de forma que
+        `allowBackup` y que D18: auditar lo que hace el código propio y no lo que el sistema hace con
+        él.
+
+        La decisión —y por qué quitarlo no rompe a los motores de Google— está en el ADR-0020: la
+        descarga del modelo la hace el proceso de Google Play Services, que tiene su propio permiso;
+        el nuestro no interviene. **Lo que ninguna comprobación de aquí puede demostrar es que sea
+        cierto en un teléfono**, así que está delegado y escrito como pendiente en el ROADMAP.
+
+        `ACCESS_NETWORK_STATE` —que también llega por la misma vía— se queda: solo permite *leer* si
+        hay conexión, no abrir ninguna, así que no toca la garantía, y quitarlo arriesgaría las
+        comprobaciones de disponibilidad de GMS a cambio de nada.
+    -->
+    <uses-permission
+        android:name="android.permission.INTERNET"
+        tools:node="remove" />
 
     <!--
         Sin copia de seguridad del sistema, y es parte de la misma promesa que la ausencia de

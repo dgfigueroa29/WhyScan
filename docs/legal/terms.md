@@ -104,5 +104,7 @@ of these terms.
 
 ## 11. Contact
 
-WhyScan is an open-source project. For any question about these terms, open an issue in the
-repository: <https://github.com/dgfigueroa29/WhyScan/issues>.
+For any question about these terms, write to **<david@faro.net.ar>**.
+
+If yours is an application defect rather than a legal question, a public issue at
+<https://github.com/dgfigueroa29/WhyScan/issues> gets there sooner.

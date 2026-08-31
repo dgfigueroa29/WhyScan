@@ -32,6 +32,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,6 +57,7 @@ import com.whyscan.feature.scanner.resources.action_grant_camera
 import com.whyscan.feature.scanner.resources.action_resume
 import com.whyscan.feature.scanner.resources.action_scan_from_image
 import com.whyscan.feature.scanner.resources.action_stop
+import com.whyscan.feature.scanner.resources.action_type_by_hand
 import com.whyscan.feature.scanner.resources.fullscreen_close
 import com.whyscan.feature.scanner.resources.fullscreen_elsewhere_body
 import com.whyscan.feature.scanner.resources.fullscreen_elsewhere_title
@@ -281,6 +283,15 @@ private fun NoCameraAvailable(state: ScannerState, onAction: (ScannerAction) -> 
             ) {
                 Text(stringResource(Res.string.action_scan_from_image))
             }
+        }
+
+        // La otra salida, y la que faltaba. El cuerpo de este mismo mensaje promete "escribir un
+        // código a mano" desde que se escribió, y no había forma de llegar: la entrada manual solo
+        // se muestra con una sesión viva del motor manual, aquí no arranca ninguna, y el banco de
+        // motores —la otra vía— es de modo avanzado. En escritorio y en modo básico eso dejaba la
+        // promesa sin cumplir (G4).
+        TextButton(onClick = { onAction(ScannerAction.UseManualEntry) }) {
+            Text(stringResource(Res.string.action_type_by_hand))
         }
     }
 }

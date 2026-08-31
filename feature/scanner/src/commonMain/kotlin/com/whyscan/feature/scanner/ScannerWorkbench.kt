@@ -126,7 +126,7 @@ internal fun WorkbenchControls(state: ScannerState, onAction: (ScannerAction) ->
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = stringResource(Res.string.session_error, error.toString()),
+                        text = stringResource(Res.string.session_error, error.readable()),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.weight(1f),

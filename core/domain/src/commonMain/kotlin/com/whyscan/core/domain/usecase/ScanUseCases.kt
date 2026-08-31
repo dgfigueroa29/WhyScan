@@ -74,6 +74,19 @@ class StartScanSessionUseCase(
         emitAll(chain.scan(request))
     }
 
+    /**
+     * El error de "aquí no hay nadie que pueda escanear".
+     *
+     * Desde que `SelectScannerEngineUseCase` cierra la cadena con la entrada manual (G4), llegar
+     * aquí pidiendo cámara es raro: hace falta que ni siquiera el motor manual esté disponible.
+     * Con una imagen estática sigue siendo el camino normal cuando nada la puede decodificar.
+     *
+     * El `reason` lleva los identificadores de los motores descartados y **eso es a propósito**:
+     * es información de diagnóstico. Ya no se pinta en pantalla — la UI traduce cada variante de
+     * `ScanError` a una frase, ver `ScanError.readable()` — porque antes se enseñaba el
+     * `toString()` del data class entero, identificadores incluidos, en una app cuyo criterio de
+     * salida es que nadie vea la palabra "motor".
+     */
     private fun noEngineError(selection: EngineSelection): ScanError {
         val reason = selection.rejected
             .takeIf { it.isNotEmpty() }

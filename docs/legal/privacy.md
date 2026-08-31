@@ -12,10 +12,18 @@ stated.
 **WhyScan does not collect, store on any server, or transmit anything you scan.** There is no
 account, no sign-up, no advertising, no analytics and no crash reporting.
 
-The app **does not declare the internet permission**. On Android that is not a promise we make: it
+The app **does not request the internet permission**. On Android that is not a promise we make: it
 is the operating system that stops a process without that permission from opening a network
-connection. You can check it in the app's `AndroidManifest.xml`, and from the phone itself, in the
-permission list your system settings show.
+connection. You can check it from the phone itself, in the permission list your system settings
+show.
+
+One detail, because you may look at the source and find it confusing: the manifest does mention
+`INTERNET` — with `tools:node="remove"`, which is the instruction that **takes it out**. It is
+there because the Google scanning libraries declare that permission in their own manifests and
+Android's build merges them into the app unless it is told not to. Until 31 August 2026 nobody was
+telling it not to, so builds before that date did carry the permission. It was found by a check
+written for exactly that case, and the decision is recorded in
+[ADR-0020](../adr/ADR-0020-el-permiso-de-internet-se-quita-no-solo-se-omite.md).
 
 ## What data exists, and where
 
@@ -112,5 +120,9 @@ so. The change history is public: it lives in the same repository as the code.
 
 ## Contact
 
-WhyScan is an open-source project. For any privacy question, open an issue in the repository:
-<https://github.com/dgfigueroa29/WhyScan/issues>.
+For any privacy question, or to exercise the rights in the previous section, write to
+**<david@faro.net.ar>**.
+
+WhyScan is also an open-source project: if yours is a defect rather than personal data, a public
+issue at <https://github.com/dgfigueroa29/WhyScan/issues> gets there sooner and helps more people.
+What does **not** belong in a public issue is anything that identifies you.

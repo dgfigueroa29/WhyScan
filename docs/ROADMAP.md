@@ -34,8 +34,22 @@ teniendo el trabajo hecho: el cableado de accesibilidad de la Ronda 10 y el `Koi
 | Qué                                                                 | Dónde                        | Nota                                                                       |
 |---------------------------------------------------------------------|------------------------------|------------------------------------------------------------------------------|
 | **Tests de captura** (Roborazzi u otro)                             | propuestas de la Ronda 16    | Lo más caro y lo que más cierra: "que se vea bien" lleva desde la Fase 1 escrito como incubrible, y **no lo es** — Robolectric ya se usa aquí. Antes de comprometerse, un *spike* de una pantalla: los tests de captura son célebres por volverse ruido |
-| **Métricas del compilador de Compose**                              | propuestas de la Ronda 16    | `reportsDestination`: parámetros inestables y composables no saltables. Sin dispositivo, es lo único que dice algo real sobre recomposiciones |
+| **Métricas del compilador de Compose**                              | `openspec/changes/compose-compiler-reports/` | Escrito como propuesta y **no empujado a ciegas**: toca `build-logic`, y si el accesor `composeCompiler` no se genera no cae solo Android, caen los cuatro jobs |
 | **`IosPlatformActions.openUrl` sin la guarda de esquemas**          | [Ronda 9](#ronda-9--seguridad-y-privacidad-) | Una línea. Cae dentro de "lo mínimo para que iOS siga compilando", no de trabajar en iOS |
+| **Revisión automática en cada PR**                                  | [`docs/ai/state-of-the-art.md`](ai/state-of-the-art.md) §2 | Hoy el harness solo sirve a quien ejecuta un agente en local. Es lo primero que lo haría útil para otra persona |
+
+### Bloqueado por una decisión que no es técnica
+
+No lo bloquea el hardware ni un número: lo bloquea alguien decidiendo. Están juntos porque
+arrastrarlos dentro de otras listas los hace parecer trabajo que nadie hace.
+
+| Qué | Dónde | Quién decide |
+|---|---|---|
+| **Grupo Maven y paquete de `:core:foundation`** — no puede llevar `whyscan` | [ADR-0018](adr/ADR-0018-federar-la-base-y-no-la-marca.md) y los *Blockers* de `openspec/changes/federate-design-system/proposal.md` | El dueño del proyecto. Toda la federación está detrás de esto, y poner un nombre provisional para renombrar después es justo la parte cara |
+| **~~Correo de contacto de la ficha de Play~~** | resuelto el 30-08-2026 | <david@faro.net.ar>, ya escrito en los cuatro documentos legales, `SECURITY.md`, el código de conducta y las plantillas de issue |
+| **~~El `applicationId`~~** | resuelto el 30-08-2026 | `ar.net.faro.whyscan` ([ADR-0019](adr/ADR-0019-el-applicationid-identifica-a-quien-publica.md)). Los paquetes de Kotlin **no** se tocan. Falta comprobar en Play Console que está libre, que sin red no se pudo hacer aquí |
+| **~~El nombre visible en la ficha~~** | resuelto el 30-08-2026 | `WhyScan` a secas. Confirma lo que el código ya decía, así que no hubo nada que cambiar ([ADR-0019](adr/ADR-0019-el-applicationid-identifica-a-quien-publica.md)) |
+| **Cerrar la cadena con la entrada manual (G4)** | `openspec/changes/close-the-chain-with-manual-entry/` | El dueño del proyecto: arreglar el código o retirar la garantía de los cinco documentos que la prometen. La propuesta recomienda lo primero |
 
 ### Bloqueado por un número que solo produce CI
 
@@ -137,7 +151,8 @@ con su estado real; los tests de `:core:domain` y `:core:data` pasan en CI.
 - [x] Controles de linterna en la UI, derivados de las capacidades declaradas
 - [x] Historial persistente con Room KMP (`:core:database` + `:feature:history`)
 - [x] Navegación entre escáner e historial, con botón atrás de Android
-- [x] CI en GitHub Actions: detekt + tests + Android + Desktop + Web en cada PR, iOS en `main`
+- [x] CI en GitHub Actions: detekt + tests + Android + Desktop + Web en cada PR. iOS salió de
+  `Verify` y vive en el workflow `iOS (manual)`, a demanda — ver la Fase 3
 - [x] Higiene del repo: `.editorconfig` alineado con detekt, `.idea/` fuera del control de versiones
 - [x] Preferencias persistentes con `multiplatform-settings` (D2) y control de zoom en la UI (D8)
 - [x] `ScanRequest.timeoutMillis` implementado (`DeadlineScannerEngine`): estaba en el modelo desde
@@ -406,7 +421,8 @@ con sus latencias en la portada, ni una app con nombre de proyecto interno y sin
   uno interno—, y cada documento cargaba con una nota explicando por qué. Se unifican el nombre
   del proyecto Gradle, los paquetes de Kotlin (`com.whyscan.*`), el `namespace` de cada módulo,
   los ids de los plugins de convención (`whyscan.kmp.library`, `whyscan.kmp.compose`,
-  `whyscan.android.application`), el `applicationId` (`com.whyscan.app`), los tipos del sistema
+  `whyscan.android.application`), el `applicationId` (entonces `com.whyscan.app`; hoy
+  `ar.net.faro.whyscan`, ADR-0019), los tipos del sistema
   de diseño (`WhyScanTheme`, `WhyScanMark`, `WhyScanTypography`, `WhyScanShapes`), el tema de
   Android (`Theme.WhyScan`), la clase `Application` y los almacenes de datos de las cuatro
   plataformas. **Se escribe siempre como una sola palabra.** Nada que migrar: la app no se ha
@@ -1121,6 +1137,354 @@ motores de cámara sin emulador" ya nombraba esta forma de agujero —lo que el 
 **fuera del proceso** no lo ve nadie desde aquí— y esta es la segunda vez que muerde por el mismo
 sitio: la primera fue la cadena de fallback reabriendo la cámara al cancelar, en la Ronda 16.
 
+### Ronda 21 — la estructura para trabajar con agentes, escrita y comprobada ✅
+
+Casi todo este repositorio lo ha escrito un agente, y hasta ahora las reglas de cómo hacerlo vivían
+en un solo archivo con nombre de producto (`CLAUDE.md`), en castellano, y sin nada que las
+comprobara. Esta ronda no cambia ni una línea de la app: cambia **cómo se hace el próximo cambio**.
+
+- [x] **`AGENTS.md` es el contrato canónico**, en inglés, con las reglas completas: las
+  inquebrantables, el mapa del repositorio, la matriz de qué se puede verificar aquí y qué no, el
+  ciclo de trabajo, la tabla de dónde va cada cosa, el checklist de "terminado" y los frenos de
+  mano. `CLAUDE.md` se queda como espejo en castellano y **no normativo**
+  ([ADR-0016](adr/ADR-0016-agents-md-como-contrato-canonico.md)). El coste está dicho en el propio
+  ADR: dos archivos que pueden separarse y ninguna comprobación que lea lo que dicen
+- [x] **El harness deja de ser improvisado.** `.claude/` con permisos y hooks versionados, siete
+  comandos (`/preflight`, `/pr-ready`, `/adr-new`, `/spec-propose`, `/spec-apply`, `/docs-sync`,
+  `/engine-add`), tres subagentes con contexto propio y tres skills. La pieza que más vale es el
+  hook: `tools/checks.py` corre **después de cada edición** de `.kt`, `.kts` o `.xml`, que en un
+  entorno donde no compila nada es el único bucle de realimentación por debajo del minuto. Es la
+  misma lección de la deuda D23 un nivel más arriba — lo que vive fuera del control de versiones se
+  pierde entre sesiones
+- [x] **OpenSpec para los cambios de comportamiento**
+  ([ADR-0017](adr/ADR-0017-openspec-para-cambios-de-comportamiento.md)). Faltaba la cuarta pregunta:
+  el SDD dice **cómo**, los ADR **por qué**, el ROADMAP **cuándo**, y nada decía **qué**, en
+  requisitos comprobables. Cuatro capacidades escritas —el SPI, la selección, el historial y las
+  garantías de privacidad, 23 requisitos con sus escenarios— y un cambio en curso: cubrir el
+  `actual` de Android de `DatabaseBuilderFactory`, que sigue siendo lo único de la cadena de Room
+  que no ejecuta ningún test. Lo que más cambia del proceso es que la pregunta de verificación —qué
+  lo demuestra y ¿eso corre en cada PR?— se hace **antes** de implementar
+- [x] **`docs/ai/`**: el modelo de trabajo con IA de punta a punta — el ciclo, el harness, cómo se
+  planifica, una biblioteca de prompts con el motivo de cada uno, y la procedencia. Esa última
+  incluye lo que el agente **no** hizo: los dos defectos más caros de este proyecto los encontró una
+  persona poniendo la app en un teléfono
+- [x] **Índice de ADR y plantilla**, con las diecisiete decisiones en una tabla. Los ADR se
+  escribían bien y no se encontraban
+- [x] **Lo que faltaba de un repositorio público**: contribuir en los dos idiomas, código de
+  conducta, política de seguridad —donde un defecto de privacidad **es** un defecto de seguridad—,
+  plantillas de issue y de PR, `CODEOWNERS`, y una guía de entrada en castellano e inglés
+- [x] **Y, sobre todo, comprobado.** `tools/checks.py` valida ahora las cabeceras de los ADR y su
+  paridad con el índice, que `AGENTS.md` y `CLAUDE.md` se enlacen, la forma de cada cambio de
+  OpenSpec —incluido que todo `### Requirement:` tenga al menos un `#### Scenario:`— y los enlaces
+  relativos entre documentos. Corre en cada PR, en el mismo paso de siempre. **Sin esto la ronda
+  entera sería decoración**: una estructura que solo existe mientras alguien se acuerda de seguirla
+  dura hasta el primer día con prisa
+
+**Lo que esta ronda dice del proyecto:** el criterio que gobierna el código —lo que se puede
+comprobar con un script no depende de que alguien se acuerde— se aplica ahora también a la
+documentación y al proceso. Y una regla nueva que sale de aquí: **si algo se puede comprobar
+mecánicamente, va a `tools/checks.py` y no a un archivo de instrucciones**. Una regla escrita depende
+de que se lea; una comprobada, no.
+
+### Ronda 22 — el sistema de diseño deja de ser el tema de una app 🚧
+
+Sale de una pregunta que no era sobre WhyScan: **otras apps de la empresa quieren reutilizar esto**.
+Al mirarlo de cerca, lo que había no se podía compartir, y el motivo no era la infraestructura que
+faltaba sino algo anterior.
+
+- [x] **`:core:designsystem` no es un sistema de diseño: es el tema de WhyScan.** De sus 930 líneas,
+  `ScannerPalette` y `BrandMark` **son** la marca, y compartirlas no es compartir: es que todas las
+  apps de la empresa se llamen WhyScan. `Theme`, `Radius` y `Typography` son mecánica genérica con
+  valores de aquí. Solo tres archivos —`Contrast`, `AppLanguage` y `LocalSnackbarHostState`— no
+  dependen de la marca, y ahora eso está **comprobado**, no supuesto
+- [x] **La fuga que encontró la auditoría.** `ScanOverlay` pintaba el contorno de las detecciones con
+  un `Color(0xFF34D399)` escrito a mano: un verde que no estaba en la paleta, que no medía nadie y
+  que no cambiaba con el tema. Y estaba en el único sitio donde nadie lo iba a buscar — **encima del
+  vídeo**, que es justo donde el contraste importa y donde el tema no llega. Ahora vive en
+  `ScannerPalette.Overlay`, con el mismo valor: cambia dónde está y quién lo puede mirar, no cómo se
+  ve
+- [x] **Y con él, lo que ese caso enseña.** Lo que se pinta sobre la cámara no puede salir del tema,
+  porque el fondo es la escena que el usuario esté enfocando y `colorScheme` no significa nada sobre
+  una pared blanca. Tampoco se puede medir su contraste: no hay fondo conocido. Lo honesto es
+  decirlo y no depender solo del color — la retícula lleva trazo y las detecciones, contorno cerrado
+- [x] **Paridad de roles claro/oscuro, comprobada.** Es el defecto que **ya pasó dos veces** y está
+  contado en el KDoc de `Theme.kt`: un rol que no se declara no falla, *sale del color de fábrica de
+  Material*. Primero los `on*` —texto morado en un botón primario— y después los `*Container`, que
+  pintan el `FilterChip` seleccionado, la `Card` y el `NavigationBar`. Ningún test de contraste lo
+  caza, porque mide los pares que se le nombran y el rol olvidado no está en ninguna lista.
+  Comparar los dos esquemas sí, y son veinte líneas de `check_design_system()`
+- [x] **[ADR-0018](adr/ADR-0018-federar-la-base-y-no-la-marca.md): se federa la base, no la marca.**
+  Nace `:core:foundation` con lo que sirve a cualquier app —el contraste como aritmética, el idioma
+  por encima del sistema, declarar los treinta y cuatro roles a partir de una paleta cualquiera— y
+  la marca se queda donde está. El corte, dicho de una vez: **lo reutilizable nunca fueron los
+  colores, son las reglas**
+- [x] **Las cinco garantías, escritas y secuenciadas** en `openspec/changes/federate-design-system/`:
+  `explicitApi()`, validador de compatibilidad binaria, versionado semántico con la política escrita
+  —en Compose cambiar un valor por defecto es compatible en fuente y rompe en binario—, documentación
+  generada, y **un consumidor que no sea WhyScan**. La quinta es la única que detecta el acoplamiento
+  de verdad, y es la que este repositorio no puede cerrar solo
+- [ ] **Implementar la federación. Bloqueada por una decisión, no por trabajo:** el grupo Maven y el
+  paquete no pueden llevar `whyscan`, y ese nombre lo pone el dueño del proyecto. Nada de esto se
+  puede ejecutar aquí de todas formas — es configuración de Gradle y **aquí no compila nada**
+- [x] **`docs/ai/state-of-the-art.md`**: dónde está de verdad este repositorio en trabajo con IA,
+  escrito para incomodar y no para halagar. La conclusión corta es que la estructura es buena
+  práctica actual bien ejecutada, no vanguardia, y que **el hueco más grande es que nada mide si el
+  harness sirve**
+
+**Lo que esta ronda dice del proyecto:** la pregunta "¿esto se puede compartir?" resultó ser una
+auditoría de diseño disfrazada. No hizo falta infraestructura para encontrar el problema — hizo falta
+mirar qué había dentro del módulo y separar lo que es de esta app de lo que es de cualquiera. La
+infraestructura viene después, y sin ese corte habría publicado la marca.
+
+### Ronda 23 — la auditoría, y lo que encontró de la propia documentación 🚧
+
+Se auditó **todo** `docs/` y `openspec/` contra el código, requisito por requisito. De los 23
+requisitos escritos en la Ronda 21, **nueve eran falsos**. Eso es exactamente el defecto contra el
+que avisa el ADR-0017: una fuente de verdad que miente es peor que no tenerla.
+
+- [x] **La garantía más citada del repositorio no existía.** Catorce archivos —`AGENTS.md` entre
+  ellos, como regla de cabecera— decían que "un test verifica que `ENGINES.md` y el catálogo no
+  divergen". **No lo verificaba nadie**, y no podía: comparar contra un Markdown exige leer del
+  disco y un `commonTest` de KMP no tiene sistema de archivos. La respuesta no fue borrar la frase
+  de catorce sitios sino **hacerla cierta**: `check_engine_catalog()` compara identificador, fase y
+  plataformas, y corre antes que Gradle en cada PR. Probado rompiendo la tabla a propósito
+- [ ] **`MANUAL_INPUT` no cierra la cadena, y cinco documentos dicen que sí.** Declara solo
+  `ScanSource.ManualInput`, así que `satisfies()` lo descarta ante cualquier petición de cámara: en
+  Escritorio —donde no hay captura de webcam— la cadena queda **vacía** y la sesión emite
+  `EngineUnavailable`. Es decir, el estado "no se puede escanear" que G4 promete que no existe. Hay
+  un test que fija ese comportamiento. Está en `openspec/changes/close-the-chain-with-manual-entry/`
+  y **necesita una decisión**: arreglar el código o retirar G4 de los cinco sitios
+- [x] **La suite de contrato la heredan dos motores de ocho, y es una decisión.** Los de cámara no
+  pueden: construirlos exige un emulador (D6). Seis documentos decían "no es opcional" sin la
+  salvedad. Y la suite **no verifica las cuatro garantías**: la tercera —que cancelar libere la
+  cámara— no se puede observar sin hardware
+- [x] **El SDD §13.3 prometía tres gates de CI que no existen**: reglas de arquitectura verificadas,
+  SonarCloud sin regresión, y `allWarningsAsErrors`. Ninguno. El de Sonar se ha borrado —no hay ni
+  rastro en el repositorio—, los otros dos quedan dichos como lo que son: convención sin automatizar
+  y la deuda D19
+- [x] **§7.5 y §8 del SDD llevaban desde la Fase 4 desactualizadas**: daban Desktop a ZXing-cpp, iOS
+  a ML Kit OCR, y prometían un fallback a ZXing-cpp/Wasm que se retiró. Siete filas para nueve
+  motores. `ENGINES.md` estaba bien; el resumen había dejado de resumir
+- [x] **La matriz de formatos mentía sobre el OCR en los dos sentidos**: Codabar salía como no
+  soportado estando declarado, y cuatro simbologías salían como parciales cuando
+  `OcrCodeInterpreter` **no las puede producir nunca** — infiere por longitud y dígito de control, y
+  solo emite EAN-8, UPC-A, EAN-13 e ITF. Corregido con una nota que dice que la columna es lo
+  *declarado*, no lo *producible*
+- [x] **Y un error mío de la Ronda 21.** La propuesta `cover-android-database-builder` planteaba un
+  test de Robolectric que abriera la base de Android — y el KDoc de `AndroidKoinGraphTest`, en el
+  mismo módulo, ya decía que `sqlite-bundled` trae binarios nativos que Robolectric no puede cargar.
+  Reescrita: cubre las dos decisiones que sí se pueden comprobar —el `applicationContext` y la ruta—
+  y **no cierra la casilla**, la estrecha. La lección quedó en `openspec/AGENTS.md`: contestar "qué
+  lo demuestra y ¿corre en cada PR?" no basta, falta **"¿puede ese test existir?"**
+- [x] Trece correcciones mecánicas más: contadores desfasados (ocho motores donde hay nueve, quince
+  ADR donde hay dieciocho, doscientas mil palabras del SDD donde hay veinticinco mil), dos filas de
+  la tabla de deuda que se contradecían entre sí, y `engine as? CameraControlEngine` en el §7.1
+  cuando el cast directo devuelve `null` a través de los decoradores
+
+**Lo que esta ronda dice del proyecto, y es incómodo:** la estructura de la Ronda 21 se escribió en
+un día y **nueve de sus veintitrés requisitos eran falsos**. No por descuido en la redacción, sino
+porque se escribieron leyendo el código una sola vez y sin contrastarlos. La auditoría es lo que
+convierte esa estructura en algo utilizable, y tiene que ser rutina y no un acto único — está en
+`docs/ai/state-of-the-art.md` §3. La otra mitad de la lección es más simple: **la comprobación
+mecánica gana a la frase escrita siempre**. Catorce archivos afirmaban una garantía durante dos años
+y no costaba nada comprobarla.
+
+### Ronda 24 — tapar el agujero de privacidad, y que el harness deje de poder mentir ✅
+
+Todo lo que la Ronda 23 dejó accionable y no dependía de una decisión ajena.
+
+- [x] **El manifiesto fusionado, que era el hueco más grande de la garantía de privacidad.**
+  `check_privacy_guarantee()` mira el manifiesto **fuente**, que es lo único que existe antes de
+  Gradle. Una dependencia que declare `INTERNET` en el suyo entra en el APK al fusionar, el
+  manifiesto de este repositorio sigue limpio, y la promesa que la app le hace al usuario en Ajustes
+  pasa a ser falsa **sin que cambie ni una línea de aquí**. Es el mismo error de forma que
+  `allowBackup` y que D18: auditar lo que hace el código propio y no lo que el sistema hace con él.
+  Lo cierra `tools/merged_manifest.py` en el job de Android, después de `assembleDebug`
+- [x] **Y se niega a pasar si no encuentra el archivo.** La ruta la elige AGP y cambia entre
+  versiones; una comprobación que no encuentra su objetivo y sale con cero da por revisado lo que
+  nadie revisó. Ya pasó aquí con detekt, que analizaba **cero archivos** y salía en verde
+- [x] **Los permisos que no rompen la garantía se imprimen, no fallan.** La app necesita `CAMERA` y
+  las dependencias de Google traen los suyos: convertir cualquier permiso nuevo en error rompería el
+  build por motivos legítimos, y una comprobación que molesta acaba desactivada. Van al resumen del
+  run, que es donde una revisión los ve sin excavar
+- [x] **`check_harness()`: que el harness no pueda mentir.** Cada agente, skill y comando con su
+  cabecera; el `name` de una skill coincidiendo con su carpeta —si no, no carga y no lo dice nadie—;
+  y **cada `XxxTest` y cada `check_xxx()` citado en un archivo que describe la verdad de hoy tiene
+  que existir**. Es exactamente lo que habría cazado en 2024 la garantía imaginaria de la Ronda 23.
+  Las propuestas de `openspec/changes/` quedan fuera a propósito: nombrar lo que todavía no existe
+  es su trabajo
+- [x] **Y esto no son evaluaciones, y hay que decirlo.** No mide si el harness *sirve* — mide que no
+  mienta, que es una precondición y no lo mismo. Medirlo de verdad exige ejecutar un modelo en CI,
+  y eso es una clave de API y un presupuesto, no una tarea. Sigue abierto como hueco nº1 en
+  `docs/ai/state-of-the-art.md`
+- [x] **La regla de OpenSpec tenía un agujero, y lo encontró la propia comprobación.** Exigía delta
+  a *todo* cambio, y uno de herramienta de build no tiene comportamiento observable que
+  especificar. Obligarle a inventarse una capacidad habría metido en `specs/` requisitos que el
+  usuario no puede observar. Ahora se exime declarando `**Capability:** none` **y diciendo por qué**
+  — y declarar las dos cosas a la vez falla, para que la exención no sea una puerta abierta
+- [x] **Métricas del compilador de Compose: escritas como propuesta y no empujadas.** Van en
+  `build-logic`, y si el accesor `composeCompiler` no se genera para un script precompilado no cae
+  solo Android: cae la compilación de `build-logic` y con ella los cuatro jobs. Probablemente
+  funcione — `libs.gradlePlugin.composeCompiler` está en el classpath como `implementation`— y
+  "probablemente" no es un criterio para empujar configuración de build que aquí no se puede
+  ejecutar
+
+**Lo que esta ronda dice del proyecto:** las tres cosas que se cerraron son la misma idea aplicada
+tres veces. La garantía de privacidad se comprobaba donde era cómodo y no donde podía romperse; el
+harness afirmaba cosas que nadie contrastaba; y la regla de OpenSpec pedía algo que en un caso no
+tenía sentido. **Lo que se puede comprobar con un script, se comprueba; lo que no se puede
+verificar, no se empuja.** La segunda mitad es la que costó esta semana aprender.
+
+### Ronda 25 — la app pasa a publicarse bajo Faro ✅
+
+- [x] **`applicationId = "ar.net.faro.whyscan"`** ([ADR-0019](adr/ADR-0019-el-applicationid-identifica-a-quien-publica.md)).
+  Es la última ocasión en que esto costaba una línea: el `applicationId` es la URL de la ficha y la
+  clave con la que el sistema reconoce una actualización, y **después de la primera subida no se
+  puede cambiar**. Todavía no hay ninguna
+- [x] **`ar.net.faro` y no `com.faro`**, y no es cosmético: el dominio es `faro.net.ar`, así que su
+  orden inverso es ese. `com.faro` sería reclamar un dominio ajeno, y el día que haya que publicar
+  la base federada en Maven Central —que verifica la propiedad del dominio contra el `groupId`— no
+  se sostendría
+- [x] **Los paquetes de Kotlin no se tocan.** Siguen siendo `com.whyscan.*`. La regla que queda: el
+  espacio de nombres de la tienda identifica a **quien publica**, el del código identifica al
+  **producto**. Son dos preguntas distintas y cambian en momentos distintos — el editor acaba de
+  cambiar y el producto no se enteró
+- [x] **El único acoplamiento del repositorio, buscado antes de tocar nada.**
+  `BaselineProfileGenerator` llevaba el identificador escrito a mano, porque instala, lanza y
+  concede permisos con `pm grant` usando el `applicationId` y no el paquete del código. Cambiarlo
+  allí y no aquí habría dejado la generación del perfil fallando al buscar una pantalla, que es un
+  síntoma que no se parece en nada a la causa. No hay `authorities`, ni `FileProvider`, ni enlaces
+  profundos, ni reglas de R8 que lo nombren
+- [x] Con esto, el grupo Maven de `:core:foundation` queda fijado y **la federación deja de estar
+  bloqueada por un nombre**. Sigue bloqueada por el trabajo, que es otra cosa y mejor
+- [ ] **Comprobar en Play Console que `ar.net.faro.whyscan` está libre.** Sin red aquí, no se pudo
+- [x] **El nombre visible es `WhyScan` a secas**, no `Faro WhyScan`. No tocó código: `app_name` ya
+  era eso en los dos catálogos, con `translatable="false"` porque un nombre de marca no se traduce.
+  Lo que sí conviene saber al rellenar la ficha es que **son dos campos distintos**: el nombre de la
+  app es `WhyScan` y el del desarrollador es Faro. Quien instale la app no ve a Faro en el icono ni
+  en la barra, y se acepta
+
+**Lo que esta ronda dice del proyecto:** el comentario que había junto al `applicationId` defendía
+que coincidiera con los paquetes —"así no hay dos nombres que mantener sincronizados ni ninguno que
+explicar"— y era cierto mientras no hubo editor. La decisión correcta hoy es justo la contraria, y el
+comentario viejo no estaba equivocado: estaba **fechado**. Por eso se reescribe con su motivo nuevo
+en lugar de borrarse.
+
+### Ronda 26 — G4 deja de ser una frase 🚧
+
+El objetivo G4 —"nunca hay un estado 'no se puede escanear'"— se afirmaba en **trece archivos** y no
+lo cumplía nadie. Lo destapó la auditoría de la Ronda 23, y al mirarlo de cerca resultó que el
+problema no era el que yo había anunciado.
+
+- [x] **Primero, una corrección mía.** Dije que en escritorio el usuario veía `EngineUnavailable`.
+  **Falso**: el visor ramifica antes —sin permiso, pantalla de permiso; sin motor de cámara, aviso
+  de "sin cámara en vivo"— y ni el arranque automático ni el botón de arranque se activan ahí. La
+  cadena vacía existía en el dominio y la UI casi nunca preguntaba. Exagerar un hallazgo cuesta la
+  misma confianza que no verlo
+- [x] **Lo que sí había, y era peor: la entrada manual era inalcanzable donde más falta hacía.** Se
+  muestra solo con una sesión viva del motor manual; en escritorio no arranca ninguna; el botón de
+  arranque no se dibuja; y el banco de motores —la otra vía— es de modo avanzado. **En escritorio y
+  en modo básico no había forma de teclear un código.** El propio texto del aviso lo prometía desde
+  que se escribió: *"Igual podés escanear una imagen o escribir un código a mano"*
+- [x] **`ScannerAction.UseManualEntry`**, con botón en la pantalla de "sin cámara". No reutiliza
+  `SelectEngine` ni `TryEngine` **a propósito**: las dos llaman a `settings.preferEngine`, y teclear
+  un código una vez no puede dejar el motor preferido fijado para siempre — menos en una plataforma
+  que mañana podría tener cámara. Sustituye la preferencia solo en memoria, para esa sesión
+- [x] **El selector cierra la cadena.** Si al pedir cámara no sobrevive nadie, vuelve a elegir
+  pidiendo entrada manual. **Solo para cámara**: una imagen estática que nadie puede decodificar
+  sigue fallando, porque el usuario eligió una foto y ofrecerle un teclado es cambiarle de tema —
+  y `DecodeImageUseCase` llama al mismo `select`. Hay un test dedicado a que nadie "simplifique" esa
+  condición
+- [x] **Los dos tests que fijaban la cadena vacía se cambiaron, no se borraron.** Eran el registro
+  del comportamiento anterior, y sus reemplazos dicen en voz alta la garantía nueva
+- [x] **El error dejaba de estar traducido y llevaba `toString()`.** La pantalla pintaba
+  `stringResource(session_error, error.toString())`, y en un `data class` eso es el volcado entero:
+  `EngineUnavailable(engineId=null, reason=Motores descartados: gms_code_scanner, …)`. Sin traducir
+  y con identificadores de motor, en una app cuyo criterio de salida es que nadie vea esa palabra.
+  Ahora hay una frase por variante, con un `when` **sin `else`** para que el compilador obligue a
+  traducir la próxima. El comparador tenía el mismo volcado
+- [x] **El comentario del `ScannerEngineCatalogTest`** decía garantizar que la cadena nunca queda
+  vacía. No lo comprobaba. Estar en las cuatro plataformas es condición necesaria y no suficiente
+- [ ] **Nadie ha visto la pantalla.** El botón nuevo está en el aviso de "sin cámara" y **el texto
+  es provisional**: dice lo que hace, no es copy final. Necesita ojos
+
+**Lo que esta ronda dice del proyecto:** el hallazgo bueno no salió de la auditoría automática sino
+de leer la ruta entera con la pregunta "¿y qué ve el usuario?". La auditoría encontró que la
+documentación mentía; leer el camino encontró **por qué importaba**, y no era donde yo había
+señalado. Y el remate: el texto del aviso ya prometía lo que faltaba. La copia sabía lo que el
+producto debía hacer antes que el código.
+
+### Ronda 27 — `Verify` llevaba en rojo toda la ronda anterior ✅
+
+No lo miró nadie. Yo di la Ronda 26 por terminada, la ronda estaba subida, y `Verify` había fallado
+en el mismo empujón. El contrato entero de este repositorio dice "`Verify` es la autoridad" y a
+ninguno de sus pasos le tocaba **abrirla**.
+
+- [x] **El fallo era de una línea y era mío**, no del código: una aserción de
+  `SelectScannerEngineUseCaseTest` esperaba **un** motor descartado donde la primera pasada descarta
+  dos — la entrada manual también se descarta al pedir cámara, que es justamente lo que provoca la
+  sustitución
+- [x] **No se arregló cambiando la expectativa a los dos.** Eso dejaba el valor devuelto
+  contradiciéndose: la entrada manual aparecería a la vez en la cadena —es la que lee— y en la lista
+  de descartes, de donde sale el diagnóstico "motores descartados: …". El motor que resuelve la
+  petición no puede ser también el motivo del fallo. Se filtra, y el spec de `engine-selection` gana
+  la regla y el escenario que la comprueba
+- [x] **La regla que faltaba, escrita donde se lee.** Regla de oro 5 de `AGENTS.md` —"y una autoridad
+  hay que leerla"—, última casilla de la definición de terminado, paso 11 de `/pr-ready`, cuarta
+  pasada de `docs/ai/workflow.md` y su espejo en `CLAUDE.md`. Una ronda no termina porque el commit
+  haya subido: termina con `Verify` en verde sobre lo empujado
+
+Y al leerla de verdad —por primera vez en varias rondas— aparecieron **dos rojos más**, ninguno de
+ellos el del test:
+
+- [x] **`Web (Wasm)` llevaba roto desde el 28-08-2026, en `main` incluida.** No lo rompió esta rama:
+  la última ejecución de `main` ya estaba en rojo por lo mismo. `compileProductionExecutableKotlinWasmJs`
+  moría con `OutOfMemoryError` porque `kotlin.daemon.jvmargs` era `-Xmx1024m` y el backend de Wasm
+  compila el programa **entero** de una vez, con los metadatos de todas las clases en memoria: el
+  pico crece con el tamaño de la app, no con el del módulo, así que el día que la app creció
+  suficiente dejó de caber. Subido a 6 GB, que es techo y no reserva. **Cuatro rondas de trabajo se
+  dieron por terminadas con una plataforma sin compilar**, y esa es la factura exacta de no leer la
+  autoridad
+- [x] **El propio control de privacidad del manifiesto fusionado fallaba por no encontrar el
+  archivo.** Se estrenó en esta ejecución —antes nunca llegó a correr, porque el job de Android se
+  saltaba— y su patrón único no acertó dónde deja AGP el manifiesto. **El fallo estaba bien: se negó
+  a pasar en vez de dar por revisado lo que no miró**, que es justo para lo que se escribió así.
+  Corregido con varios patrones y, sobre todo, listando en el log los manifiestos que sí existen: la
+  siguiente vez el arreglo sale de un dato y no de otra suposición. Los candidatos se **enseñan y no
+  se usan**, porque un manifiesto elegido a ciegas puede ser una fase intermedia sin `allowBackup`, y
+  gritar "la privacidad se rompió" cuando lo que se miró es el archivo equivocado destruiría la
+  credibilidad del único control que no puede permitirse perderla
+
+Y el control del manifiesto, ya arreglado y ejecutándose por fin, encontró a la primera lo que
+buscaba:
+
+- [x] **`INTERNET` estaba en el APK, y llevaba ahí desde el primer motor de Google.** No lo declara
+  este repositorio: lo aportan `play-services-code-scanner` y los dos artefactos de ML Kit desde sus
+  propios manifiestos, y el fusionador de AGP los mete sin preguntar. **Ninguna es de solo-debug, así
+  que el APK de release llevaba lo mismo.** El manifiesto fuente estaba limpio, la comprobación de
+  `checks.py` estaba en verde, y la app le decía al usuario en Ajustes y en la pantalla de permiso
+  que *no pide permiso de internet*. Era falso, y lo era desde hacía meses
+- [x] **Corregido retirándolo, no omitiéndolo**: `tools:node="remove"`, y `check_privacy_guarantee()`
+  pasa a **exigir** esa línea — borrarla devolvería el permiso al APK en silencio, que es
+  exactamente cómo llegó. `ACCESS_NETWORK_STATE` se queda: solo lee si hay conexión, no abre
+  ninguna. Todo el razonamiento, el coste y las cuatro alternativas descartadas, en el
+  [ADR-0020](adr/ADR-0020-el-permiso-de-internet-se-quita-no-solo-se-omite.md); el hallazgo, en el
+  SDD §12
+- [x] **Los textos que ve el usuario no se tocaron**, y esa fue la razón de elegir esta salida y no
+  la de reescribirlos: la promesa fuerte se podía sostener
+
+**Lo que esta ronda dice del proyecto:** el harness ya tenía tres capas de comprobación offline y una
+autoridad real, y aun así se colaron cuatro rojos — uno de días atrás en la rama principal, y otro
+que era **la promesa central del producto siendo falsa**. No falló ninguna de las capas: falló el
+último paso, que no era paso de nadie. **Una verificación que nadie está obligado a leer es
+decoración**, y se salta igual que se la salta una persona: no decidiéndolo, sino sintiéndose
+terminado. Que tres de los cuatro fallos no fueran de esta rama es el argumento, no la excusa:
+llevaban ahí porque nadie miraba.
+
+Y el remate, que vale por toda la ronda: el control que encontró la mentira **se escribió el día
+anterior, para exactamente ese escenario, y no había llegado a ejecutarse nunca**. Tardó un día en
+poder correr. Encontró el defecto a la primera.
+
 ### Antes de la ficha de Play, esto va primero
 
 Lo de abajo es trámite de tienda. Lo de esta lista no. Se hizo el repaso a propósito antes de tocar
@@ -1167,6 +1531,11 @@ que falta es un teléfono.
   imposible de comprobar sin abrir la app resultó no serlo: `koinInject` no es UI, así que
   `ComposeKoinContextTest` monta una `Composition` con el runtime de Compose y compara la instancia
   con la del grafo
+- [ ] **Comprobar que los motores de Google siguen leyendo sin el permiso `INTERNET`** (ADR-0020).
+  Quitarlo debería ser inocuo —la descarga del modelo la hace el proceso de Google Play Services,
+  que tiene su propio permiso—, pero eso es lo documentado, no lo ejecutado. Hace falta instalar y
+  probar `GMS_CODE_SCANNER`, `MLKIT_CAMERAX` y el OCR en un teléfono, **preferiblemente uno donde el
+  modelo no esté ya descargado**, que es el único caso en el que la diferencia se vería
 - [ ] Verificar el selector de idioma en iOS (D21)
 - [ ] Medir el arranque en frío, que es lo que Play reporta en Vitals desde el primer día
 - [ ] El `actual` de Android de `DatabaseBuilderFactory`, que es lo único de la cadena de Room que
@@ -1175,16 +1544,19 @@ que falta es un teléfono.
 
 **Trámite de la ficha**
 
-- [ ] Comprobar en Play Console que `com.whyscan.app` está libre y que "WhyScan" no colisiona con
+- [ ] Comprobar en Play Console que `ar.net.faro.whyscan` está libre y que "WhyScan" no colisiona con
   una
   ficha existente. **Sin red en el entorno de desarrollo, esto no se pudo verificar aquí**
-- [ ] Capturas, gráfico de cabecera 1024×500 y textos de la ficha, en los dos idiomas
+- [ ] Capturas, gráfico de cabecera 1024×500 y textos de la ficha, en los dos idiomas. **Nombre de
+  la app: `WhyScan`; desarrollador: Faro.** Son dos campos distintos de Play Console y es donde se
+  cruzan las dos decisiones del ADR-0019
 - [ ] Política de privacidad **publicada** y formulario de seguridad de datos. El documento ya está
   escrito y enlazado desde Ajustes (`docs/legal/`, Ronda 16); lo que falta es de tienda: pegar la
   dirección en Play Console y rellenar el formulario. Sin `INTERNET`, la respuesta a casi todo es
   "no se recoge nada", con la única salvedad que el propio documento nombra — el escáner del
-  sistema es un componente de Google. Queda una decisión que no es técnica: **qué correo de
-  contacto** va en la ficha; los documentos remiten hoy a las incidencias del repositorio
+  sistema es un componente de Google. El **correo de contacto ya está decidido**:
+  <david@faro.net.ar>, y figura en los cuatro documentos legales, en `SECURITY.md`, en el código de
+  conducta y en las plantillas de issue
 - [ ] Firma de release y `bundle` en vez de APK
 
 **Criterio de salida:** alguien que no sabe qué es un motor de escaneo abre la app, lee un código y
@@ -1272,7 +1644,7 @@ Registrada de forma explícita para que no se olvide:
 |---------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | ~~D1~~  | ~~Sin convention plugins: cada módulo repite su configuración KMP~~                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | **Saldada**: `build-logic/` con `whyscan.kmp.library`, `.kmp.compose` y `.android.application`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | ~~D2~~  | ~~Preferencias en memoria, no persistidas~~                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | **Saldada**: `multiplatform-settings` en las cuatro plataformas                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| ~~D3~~  | ~~Historial en memoria~~                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | **Saldada**: Room KMP en Android, iOS y Desktop. En Web sigue en memoria porque Room no tiene target wasmJs                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ~~D3~~  | ~~Historial en memoria~~                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | **Saldada**: Room KMP en Android, iOS y Desktop. En Web, JSON en el almacén del navegador porque Room no tiene target wasmJs — ver D9, que es la fila que cuenta cómo se cerró. Esta decía "sigue en memoria" y llevaba desde entonces contradiciendo a la otra en la misma tabla                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | ~~D4~~  | ~~Navegación propia sin deep links ni restauración de estado~~                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | **Saldada**: hecha la revisión de ADR-0005, el umbral (seis destinos o deep links) no se alcanza y la navegación propia se mantiene. Lo que sí era un defecto era la restauración: al recrearse la Activity —muerte del proceso, cambio de idioma o de tamaño de letra; no al rotar, que el manifiesto ya cubre— se volvía al escáner. `Navigator` guarda y restaura el backstack por ids estables y `MainActivity` lo pasa por `onSaveInstanceState`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | ~~D5~~  | ~~Strings hardcodeados en la UI~~                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | **Saldada**: `composeResources` por módulo. Los ViewModels emiten mensajes semánticos (`ScannerMessage`, `HistoryMessage`) y `ResultAction` dejó de traer etiqueta: el dominio dice qué acción, la UI cómo se llama                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | ~~D6~~  | ~~La suite de contrato no se ejecuta contra motores de cámara reales~~                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | **Cerrada como no-objetivo**: no habrá emulador en CI, así que ningún test puede exigir dispositivo. Lo cubre lo que sí corre sin él — ver más abajo                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
@@ -1285,7 +1657,7 @@ Registrada de forma explícita para que no se olvide:
 | ~~D14~~ | ~~El motor de Web escanea pero no muestra visor~~                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | **Saldada**: el `<video>` se coloca sobre el canvas desde `onGloballyPositioned`. A cambio tapa el overlay, declarado con `occludesOverlay`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | ~~D15~~ | ~~El texto que se copia de un WiFi lo compone el dominio~~                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | **Saldada**: `shareableContent()` devuelve la estructura y la pantalla la redacta con sus recursos. La acción del ViewModel lleva el texto ya hecho                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | ~~D13~~ | ~~Desktop y Web se quedan sin decodificador: zxing-cpp no publica artefacto JVM ni wasmJs~~                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | **Saldada en Desktop**: `:engines:zxing-java` sobre `com.google.zxing:core`, en el catálogo **como motor propio** y no con el nombre de zxing-cpp — son proyectos distintos y confundirlos falsearía la comparación. Solo imagen estática: el decodificador está, la captura de webcam no. **Web se queda como está**: no hay artefacto wasmJs y su respaldo sigue siendo la entrada manual                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| ~~D16~~ | ~~`ScannerViewModel` tiene doce colaboradores y veinte funciones~~                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | **Saldada**: seis dependencias. Los ajustes en `ScanSettings`, la sesión y el guardado en `ScanSessions`, las acciones sobre el resultado en `ResultActionRunner`. Los tres casos de uso de preferencias y el del catálogo se **borraron** en vez de envolverse —delegaban al repositorio sin añadir nada—, y la única regla que había se conservó donde se puede probar. Quince tests nuevos que antes exigían levantar el ViewModel entero. Quedan dos supresiones, ninguna global: `TooManyFunctions` en la clase (catorce acciones de usuario, catorce funciones) y `CyclomaticComplexMethod` en `onAction`, que es una tabla de despacho sobre un `sealed interface`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ~~D16~~ | ~~`ScannerViewModel` tiene doce colaboradores y veinte funciones~~                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | **Saldada**: siete dependencias. Los ajustes en `ScanSettings`, la sesión y el guardado en `ScanSessions`, las acciones sobre el resultado en `ResultActionRunner`. Los tres casos de uso de preferencias y el del catálogo se **borraron** en vez de envolverse —delegaban al repositorio sin añadir nada—, y la única regla que había se conservó donde se puede probar. Quince tests nuevos que antes exigían levantar el ViewModel entero. Quedan dos supresiones, ninguna global: `TooManyFunctions` en la clase (veintitrés acciones de usuario, veintitrés funciones) y `CyclomaticComplexMethod` en `onAction`, que es una tabla de despacho sobre un `sealed interface`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | ~~D17~~ | ~~`IosPlatformActions.openUrl` usa `UIApplication.openURL:`, que Apple depreció en iOS 10~~                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | **Saldada**: los dos sitios que lo usaban —ese y `IosPermissionController.openAppSettings`— pasan a `openURL:options:completionHandler:`. No se espera al `completionHandler` a propósito: `openUrl` responde si la app **puede** abrir la URL, cosa que ya contesta `canOpenURL`, y suspender hasta que el sistema termine de cambiar de app no le añade nada a quien llama. Verificado enlazando el framework en el workflow `iOS (manual)`, que es toda la comprobación que cabe sin un iPhone                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | ~~D18~~ | ~~**Nada comprueba que el grafo de Koin resuelva.**~~ El defecto que la abrió lo demostró el primer arranque real en un dispositivo: `platformModule` registraba el executor de análisis como `ExecutorService` mientras los tres motores de cámara lo piden como `Executor`, y Koin resuelve por igualdad exacta de tipo. La app moría al componer la primera pantalla con `NoDefinitionFoundException`. **El compilador no puede verlo** —los `get()` son genéricos que se resuelven en ejecución— y el CI tampoco: compila, pasa lint, pasa R8 y publica un APK que revienta al abrirse. Es el mismo agujero que el criterio de salida de la Fase 1, visto desde el otro lado. **Saldada a medias, y la mitad que falta está dicha.** `KoinGraphTest` (`composeApp/src/desktopTest`) arranca el grafo real y **resuelve** cada tipo que la raíz de la app consume, agrupado por el ViewModel que lo pide. No usa `verify()` sino resolución de verdad, que es más fuerte: instancia en vez de reflexionar. Cubre `dataModule`, `domainModule` y los tres módulos de feature —comunes a las cuatro plataformas— más el `platformModule` de escritorio. En su primera ejecución destapó el defecto del driver de Room que no se aplicaba (SDD §11) | **Saldada del todo.** `AndroidKoinGraphTest` monta el `platformModule` de Android con Robolectric —un `Context` de verdad en la JVM, sin emulador— y lo ejecuta `:composeApp:testDebugUnitTest` en el job de checks. Incluye el test del `Executor` que la abrió                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | ~~D24~~ | ~~**Declarar una versión de dependencia no la impone.**~~ Se fijó `kotlinx-datetime` en 0.6.2 —donde `kotlinx.datetime.Instant` es una clase de verdad— y Gradle resolvió una superior porque otro punto del grafo la pedía. El resultado fue lo peor de los dos mundos: **compilaba y reventaba al ejecutar** con `ClassNotFoundException`, porque en 0.7+ ese nombre sobrevive como typealias y un typealias no existe en el bytecode                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | **Saldada**: `tools/check_resolved_versions.py` cruza el informe de dependencias de Gradle con el catálogo. **Falla** cuando lo sustituido es una versión **nuestra** —alguien la escribió y el grafo la ignoró, que es exactamente este caso— y solo **informa** de los ascensos entre terceros, que son funcionamiento normal y convertirlos en error dejaría un build que falla por decisiones ajenas. Falla también **cerrado**: si el informe llega vacío devuelve error en vez de aprobar por no haber leído nada. Comprobado con el caso real antes de subirlo — y **en su primera ejecución encontró uno**: el catálogo declaraba `androidx.core:core-ktx` en 1.15.0 y el grafo resolvía 1.18.0, así que lo escrito era una versión que no usaba nadie                                                                                                                                                                                                                                                                                                                                                                                                                |

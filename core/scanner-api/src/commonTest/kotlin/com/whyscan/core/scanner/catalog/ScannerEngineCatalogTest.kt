@@ -55,7 +55,12 @@ class ScannerEngineCatalogTest {
 
     @Test
     fun `la entrada manual esta disponible en las cuatro plataformas`() {
-        // Es lo que garantiza que la cadena de fallback nunca se quede vacía (G4).
+        // Condición **necesaria** de G4, no suficiente, y el comentario anterior decía lo
+        // contrario: "es lo que garantiza que la cadena de fallback nunca se quede vacía".
+        // No lo garantizaba. Estar en las cuatro plataformas no sirve de nada si el selector
+        // descarta el motor por la fuente, que es lo que pasaba con cualquier petición de
+        // cámara. Quien de verdad cierra la cadena es `SelectScannerEngineUseCase`, y quien lo
+        // comprueba es su test — no este.
         assertEquals(
             ScannerPlatform.entries.toSet(),
             ScannerEngineCatalog.manualInput.platforms,

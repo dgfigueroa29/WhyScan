@@ -1,0 +1,74 @@
+name: Feature request / Propuesta de funcionalidad
+description: Something the app should do and does not. · Algo que la app debería hacer y no hace.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check `docs/ROADMAP.md` first: it lists what is planned, what is blocked on hardware, and
+        what is **out of scope by decision** — with the decision linked. A proposal that contradicts
+        a recorded decision needs a new decision (an ADR), which is worth knowing before you argue
+        for it.
+
+        Mira antes `docs/ROADMAP.md`: dice qué está planificado, qué está bloqueado por hardware y
+        qué está **fuera de alcance por decisión**, con el enlace a esa decisión. Una propuesta que
+        contradice algo ya decidido necesita una decisión nueva (un ADR), y conviene saberlo antes
+        de defenderla.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem / El problema
+      description: >-
+        What are you trying to do that you cannot? Describe the situation, not the solution — the
+        best answer is often not the one that first comes to mind.
+      placeholder: >-
+        Scanning a shelf of products, I lose track of which codes I already read, because they all
+        look the same in the history.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you have in mind / Qué se te ocurre
+      description: Optional. If you have a solution in mind, describe it — and what it would cost.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform / Plataforma
+      description: >-
+        Android is the priority. iOS is deprioritized until there is hardware to test it on.
+      multiple: true
+      options:
+        - Android
+        - Desktop (JVM)
+        - Web (Wasm)
+        - iOS
+        - All / Todas
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Constraints this respects / Restricciones que respeta
+      description: >-
+        These are not negotiable, and a proposal that breaks one will be declined. Confirming them
+        saves everyone a round trip.
+      options:
+        - label: >-
+            It needs no network access. The app has no `INTERNET` permission, by design and by
+            promise. · No necesita red. La app no tiene permiso `INTERNET`, por diseño y por promesa.
+          required: true
+        - label: >-
+            It sends no data anywhere, and adds no analytics or crash reporting. · No envía datos a
+            ningún sitio ni añade analítica ni informes de fallos.
+          required: true
+        - label: >-
+            I read the ROADMAP and this is not already listed or already decided against. · Leí el
+            ROADMAP y esto no está ya listado ni ya descartado.
+          required: true

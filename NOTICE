@@ -1,0 +1,48 @@
+WhyScan
+Copyright 2026 Faro
+
+This product includes software developed by Faro (https://faro.net.ar).
+
+Licensed under the Apache License, Version 2.0. See the LICENSE file for the full terms.
+
+--------------------------------------------------------------------------------
+Third-party components
+--------------------------------------------------------------------------------
+
+WhyScan links the following components. Each is used under its own licence; this
+file is an attribution notice and does not replace those licences.
+
+The scanning engines are listed with the identifier they carry inside the
+application, so a row here can be matched against docs/ENGINES.md and against
+ScannerEngineCatalog.
+
+Apache License 2.0
+  Kotlin and the Kotlin Multiplatform toolchain — JetBrains
+  Compose Multiplatform — JetBrains
+  AndroidX, including CameraX and Room — The Android Open Source Project
+  Koin — Kotzilla
+  Google Play Services Code Scanner        (engine GMS_CODE_SCANNER)
+  ML Kit Barcode Scanning                  (engine MLKIT_CAMERAX)
+  ML Kit Text Recognition                  (engine MLKIT_OCR)
+  ZXing "Zebra Crossing"                   (engine ZXING_JAVA)
+  zxing-cpp                                (engine ZXING_CPP)
+
+Apple system frameworks, used under the Apple SDK licence
+  Vision and AVFoundation                  (engines VISION_IOS, VISION_OCR)
+
+Browser platform API, no third-party code shipped
+  BarcodeDetector                          (engine BROWSER_DETECTOR)
+
+No third-party component
+  Manual entry                             (engine MANUAL_INPUT)
+
+--------------------------------------------------------------------------------
+A note on what leaves the device
+--------------------------------------------------------------------------------
+
+Of the components above, exactly one processes a scan outside the application's
+own process: the Google Play Services Code Scanner, which opens its own screen.
+That is disclosed to users in docs/legal/privacy.md and docs/legal/privacidad.md.
+
+Everything else decodes in-process. The application declares no INTERNET
+permission and ships no network client; see SECURITY.md.

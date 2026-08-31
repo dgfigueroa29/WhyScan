@@ -18,12 +18,26 @@
     <string name="session_scanning_simple">Scanning…</string>
     <string name="session_switched_from">Fell back from %1$s: the previous engine could not continue.</string>
     <string name="session_error">Error: %1$s</string>
+    <!-- Errores de sesión, uno por variante de `ScanError`. Antes la pantalla pintaba
+         `error.toString()`, que en un `data class` de Kotlin es su volcado entero: el usuario veía
+         `EngineUnavailable(engineId=null, reason=Motores descartados: gms_code_scanner, ...)`. -->
+    <string name="error_permission_denied">WhyScan needs the camera to scan.</string>
+    <string name="error_camera_unavailable">The camera could not be opened.</string>
+    <string name="error_engine_unavailable">No scanner could handle this request.</string>
+    <string name="error_decode_failed">That could not be read. Try again.</string>
+    <string name="error_format_rejected">That code is not one of the formats you selected.</string>
+    <string name="error_timeout">Time ran out without a reading.</string>
+    <string name="error_cancelled">Scan cancelled.</string>
+    <string name="error_unexpected">Something went wrong.</string>
 
     <!-- Controls -->
     <string name="action_stop">Stop</string>
     <string name="action_auto">Auto</string>
     <string name="action_dismiss">Dismiss</string>
     <string name="action_scan_from_image">From image</string>
+    <!-- Botón de la pantalla "sin cámara". El cuerpo de ese mensaje ya prometía teclear un código
+         desde que se escribió, y hasta ahora no había forma de hacerlo. -->
+    <string name="action_type_by_hand">Type it in</string>
     <string name="action_grant_camera">Grant camera access</string>
     <string name="action_submit">Submit</string>
     <string name="continuous_scan">Continuous scanning</string>

@@ -10,10 +10,15 @@ Las dos cosas conviven porque son la misma app en dos modos. Por defecto WhyScan
 apunta y se lee. El **modo avanzado** (Ajustes → Avanzado) devuelve el catálogo de los nueve motores,
 el comparador en paralelo y las latencias por lectura.
 
-> **Un solo nombre.** WhyScan es el nombre del producto, el del proyecto Gradle, el de los paquetes
-> de Kotlin (`com.whyscan.*`), el del `applicationId` de Play (`com.whyscan.app`) y el de los
+> **Un solo nombre para el producto, y otro para quien lo publica.** WhyScan es el nombre del
+> producto, el del proyecto Gradle, el de los paquetes de Kotlin (`com.whyscan.*`) y el de los
 > plugins de convención. Se escribe siempre como una sola palabra —`WhyScan`, `whyScan`,
 > `whyscan`—, nunca separado.
+>
+> El **`applicationId` de Play es `ar.net.faro.whyscan`**, y no coincide a propósito: el espacio de
+> nombres de la tienda identifica a **quien publica** —Faro, en el orden inverso de `faro.net.ar`— y
+> el del código identifica al producto. Ver
+> [ADR-0019](docs/adr/ADR-0019-el-applicationid-identifica-a-quien-publica.md).
 
 ---
 
@@ -35,7 +40,7 @@ el comparador en paralelo y las latencias por lectura.
 | Arranque en un dispositivo real                  | ✅ **primera vez en agosto de 2026**, y encontró un defecto de DI que el CI no podía ver (D18)                                                                                                                                                                                                                                                 |
 | `targetSdk` 36 (requisito de Play)               | ✅ con el atrás adaptado al *predictive back*                                                                                                                                                                                                                                                                                                  |
 | BarcodeDetector del navegador (Web)              | ✅ implementado, con visor sobre el canvas                                                                                                                                                                                                                                                                                                     |
-| OCR con ML Kit Text Recognition (Android)        | ✅ implementado; en iOS irá con Vision, no con ML Kit                                                                                                                                                                                                                                                                                          |
+| OCR con ML Kit Text Recognition (Android)        | ✅ implementado; en iOS es `VISION_OCR`, con `VNRecognizeTextRequest` — implementado y enlazando. Lo que falta es que **lea**, y eso necesita un iPhone                                                                                                                                                                                                                                                                                          |
 | Escaneo desde imagen (RF-07)                     | ✅ selector en las cuatro plataformas, sin pedir permisos                                                                                                                                                                                                                                                                                      |
 | ZXing-cpp (Android + iOS)                        | ✅ implementado — el mismo decodificador C++ en ambas, que es lo que hace comparables las lecturas                                                                                                                                                                                                                                             |
 | Acciones sobre el resultado (RF-13)              | ✅ copiar, compartir y abrir, según el significado del código                                                                                                                                                                                                                                                                                  |
@@ -62,7 +67,7 @@ el comparador en paralelo y las latencias por lectura.
 | Baseline profile                                 | ✅ grabado y versionado ([ADR-0013](docs/adr/ADR-0013-baseline-profile.md)); se regenera desde el workflow `Baseline profile (manual)`. Lo que sigue sin saberse es **cuánto** mejora el arranque: eso exige un dispositivo |
 | Qué hay de nuevo                                 | ✅ una vez tras cada actualización, y siempre accesible desde Ajustes. A quien acaba de instalar no se le estrena nada                                                                                                                                                                                                                         |
 | Accesibilidad (RNF-05)                           | ✅ contraste AA **verificado por test** (56 pares, los dos temas), semántica para lectores de pantalla y **modo dislexia** que ajusta la escala tipográfica entera                                                                                                                                                                             |
-| Privacidad (RNF-03)                              | ✅ auditada: sin trazas, sin cliente HTTP, sin analítica, sin permiso `INTERNET` y **sin copia de seguridad del sistema** — esa última era la puerta que no pasaba por la app, y la vigila un chequeo en CI                                                                                                                                    |
+| Privacidad (RNF-03)                              | ✅ auditada: sin trazas, sin cliente HTTP, sin analítica, **sin copia de seguridad del sistema** y con el permiso `INTERNET` **retirado del manifiesto fusionado** — lo aportaban las librerías de Google y ningún APK anterior al 31-08-2026 estaba limpio (ADR-0020). Las dos puertas que no pasaban por la app, y las dos las vigila CI       |
 | ZXing en Java (Desktop)                          | ✅ el único decodificador de escritorio; **verificado de verdad**, decodificando imágenes generadas en el test                                                                                                                                                                                                                                 |
 
 El catálogo muestra las nueve alternativas con su estado real; los motores aún no implementados se
@@ -405,6 +410,35 @@ cada PR a propósito — ver [ADR-0013](docs/adr/ADR-0013-baseline-profile.md).
 
 El coste es constante: **un módulo y una entrada en el catálogo**. Ni la UI ni el dominio cambian.
 Los ocho pasos están en [`docs/ENGINES.md`](docs/ENGINES.md#cómo-añadir-un-motor).
+
+---
+
+## Cómo se trabaja aquí, y cómo se trabaja con agentes
+
+Casi todo este repositorio lo ha escrito un agente de IA dirigido por el dueño del proyecto. No es
+una nota al pie: es la razón de que el repositorio tenga la forma que tiene, y está documentado
+entero — incluido lo que el agente **no** pudo hacer.
+
+| Necesitas | Está en |
+|---|---|
+| Empezar, con el repositorio recién clonado | [`docs/guides/primeros-pasos.md`](docs/guides/primeros-pasos.md) · [English](docs/guides/getting-started.md) |
+| El contrato que sigue un agente, completo | [`AGENTS.md`](AGENTS.md) — normativo, en inglés. Su espejo en castellano es [`CLAUDE.md`](CLAUDE.md) |
+| Comandos, subagentes, skills y hooks | [`.claude/README.md`](.claude/README.md) |
+| Proponer un cambio de comportamiento antes de escribirlo | [`openspec/README.md`](openspec/README.md) |
+| Cómo se usa la IA aquí, de punta a punta | [`docs/ai/README.md`](docs/ai/README.md) |
+| Las decisiones tomadas, con su coste | [`docs/adr/README.md`](docs/adr/README.md) |
+| Contribuir | [`CONTRIBUTING.es.md`](CONTRIBUTING.es.md) · [English](CONTRIBUTING.md) |
+| Dónde preguntar, y qué no va nunca en un issue público | [`SUPPORT.md`](SUPPORT.md) |
+| Reportar algo de seguridad o privacidad, en privado | [`SECURITY.md`](SECURITY.md) · <david@faro.net.ar> |
+
+La idea que sostiene el resto está en una línea: **un agente produce buen software cuando el entorno
+hace barato ver el trabajo malo.** Aquí no compila nada en local, así que cada red de seguridad hubo
+que construirla a mano — `python3 tools/checks.py` en segundos, tests que comparan la documentación
+contra el código, y una regla escrita de que decir que algo se probó cuando no se pudo probar es el
+peor fallo posible. Eso último también vale para las personas.
+
+Los idiomas están repartidos por función: el código y `docs/` en castellano, las superficies que
+leen los agentes en inglés, y las guías para personas en los dos ([ADR-0016](docs/adr/ADR-0016-agents-md-como-contrato-canonico.md)).
 
 ---
 

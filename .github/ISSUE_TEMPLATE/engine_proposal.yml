@@ -1,0 +1,99 @@
+name: Scanning engine proposal / Propuesta de motor de escaneo
+description: Propose a tenth engine for the bench. · Proponer un décimo motor para el banco.
+labels: ["engine", "enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The bench exists to compare alternatives, so a new engine is welcome — if it is a genuine
+        alternative rather than another way to reach the same decoder.
+
+        Read [`docs/ENGINES.md`](https://github.com/dgfigueroa29/WhyScan/blob/main/docs/ENGINES.md)
+        and [ADR-0002](https://github.com/dgfigueroa29/WhyScan/blob/main/docs/adr/ADR-0002-scanner-engine-spi.md)
+        first: the SPI is the whole design, and an engine that cannot declare honest capabilities
+        does not fit it.
+
+  - type: input
+    id: engine
+    attributes:
+      label: Engine / Motor
+      description: Name and the library or system framework behind it.
+      placeholder: "Dynamsoft Barcode Reader · com.dynamsoft:dbr"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platforms
+    attributes:
+      label: Platforms / Plataformas
+      multiple: true
+      options:
+        - Android
+        - iOS
+        - Desktop (JVM)
+        - Web (Wasm)
+    validations:
+      required: true
+
+  - type: textarea
+    id: distinct
+    attributes:
+      label: What makes it a different engine / Qué lo hace un motor distinto
+      description: >-
+        Two ways of reaching the same decoder are one engine. `ZXING_JAVA` and `ZXING_CPP` are
+        separate because the decoder differs; the two OCR engines are separate for the same reason,
+        even though they share an interpreter. Attributing one engine's reading to another would
+        falsify the comparison this app exists to make.
+      placeholder: >-
+        It uses its own detection pipeline, not ML Kit's, and reports confidence per symbol.
+    validations:
+      required: true
+
+  - type: textarea
+    id: capabilities
+    attributes:
+      label: Declared capabilities / Capacidades declaradas
+      description: >-
+        What it would honestly declare in `ScannerCapabilities`. The selector and the whole UI branch
+        on these, and `BarcodeScannerEngineContractTest` checks the declaration against real
+        behaviour — so a generous declaration fails the build, not the review.
+      value: |
+        - supportedFormats:
+        - sources:
+        - supportsContinuousScan:
+        - supportsMultipleCodes:
+        - providesOwnUi:
+        - supportsTorch / supportsZoom:
+        - reportsCornerPoints / reportsConfidence:
+        - requiresNetwork:
+        - requiresRuntimeDownload:
+    validations:
+      required: true
+
+  - type: input
+    id: licence
+    attributes:
+      label: Licence / Licencia
+      description: >-
+        The project is Apache 2.0. A licence that conflicts with it, or one that requires a paid key
+        or a per-scan fee, is a blocker.
+      placeholder: "Apache 2.0 / BSD-3 / proprietary — SDK key required"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Constraints / Restricciones
+      options:
+        - label: >-
+            It works fully offline. `requiresNetwork` must be false — an engine that phones home
+            cannot ship in this app. · Funciona del todo sin red. `requiresNetwork` tiene que ser
+            falso: un motor que llama a casa no puede entrar en esta app.
+          required: true
+        - label: >-
+            I understand a new engine must inherit `BarcodeScannerEngineContractTest` and be added
+            to both `ScannerEngineCatalog` and `docs/ENGINES.md`, which a test compares. · Entiendo
+            que un motor nuevo hereda `BarcodeScannerEngineContractTest` y se añade al catálogo y a
+            `docs/ENGINES.md`, que un test compara.
+          required: true

@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.whyscan.core.designsystem.Spacing
 import com.whyscan.core.domain.scan.EngineMetrics
+import com.whyscan.feature.scanner.readable
 import com.whyscan.feature.scanner.resources.Res
 import com.whyscan.feature.scanner.resources.action_stop
 import com.whyscan.feature.scanner.resources.comparison_counts
@@ -109,7 +110,7 @@ private fun Header(state: ComparisonState, onAction: (ComparisonAction) -> Unit)
 
             state.error?.let {
                 Text(
-                    text = stringResource(Res.string.session_error, it.toString()),
+                    text = stringResource(Res.string.session_error, it.readable()),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                 )

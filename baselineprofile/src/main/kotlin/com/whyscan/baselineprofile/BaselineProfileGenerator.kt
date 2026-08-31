@@ -85,7 +85,11 @@ private fun MacrobenchmarkScope.openDestination(label: String) {
     device.waitForIdle()
 }
 
-private const val APP_PACKAGE = "com.whyscan.app"
+// El `applicationId` de `:androidApp`, no el paquete de este archivo. Los dos son distintos desde
+// el ADR-0019 —la tienda lleva la organización, el código lleva el producto— y aquí hace falta el
+// primero: es con el que el sistema instala, lanza y concede permisos (`pm grant`). Si se cambia
+// allí y no aquí, la generación del perfil no encuentra la app y falla buscando una pantalla.
+private const val APP_PACKAGE = "ar.net.faro.whyscan"
 
 // Las etiquetas de la barra inferior en inglés: la imagen del emulador arranca en en-US y el idioma
 // de la app, sin preferencia guardada, sigue al del sistema. Si algún día cambian los textos de
