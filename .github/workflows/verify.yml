@@ -177,9 +177,7 @@ jobs:
       # rompería el build por motivos legítimos, y una comprobación que molesta acaba desactivada.
       - name: Permisos del manifiesto fusionado
         run: |
-          python3 tools/merged_manifest.py \
-            'androidApp/build/intermediates/merged_manifests/**/AndroidManifest.xml' \
-            | tee manifiesto.txt
+          python3 tools/merged_manifest.py | tee manifiesto.txt
           status=${PIPESTATUS[0]}
 
           {

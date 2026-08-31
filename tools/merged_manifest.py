@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """La garantía de privacidad sobre el manifiesto **fusionado**, no sobre el que escribimos.
 
-    python3 tools/merged_manifest.py 'androidApp/build/intermediates/merged_manifests/**/AndroidManifest.xml'
+    python3 tools/merged_manifest.py            # busca por los patrones conocidos de AGP
+    python3 tools/merged_manifest.py 'ruta/**/AndroidManifest.xml'   # o con los que se le pasen
 
 ## Por qué hace falta esto además de `checks.py`
 
@@ -35,6 +36,11 @@ Una comprobación que no encuentra su objetivo y sale con cero es peor que no te
 revisado lo que nadie revisó, y en este proyecto ya pasó con detekt, que analizaba **cero archivos**
 y salía en verde. La ruta del manifiesto fusionado la elige AGP y cambia entre versiones, así que
 aquí se busca por patrón y **no encontrar nada es un fallo**.
+
+Eso pasó en la primera ejecución real: el patrón único apuntaba a `merged_manifests/` y AGP dejaba
+el archivo en otro sitio, así que el paso murió en un segundo. Se corrigió de dos formas a la vez
+—varios patrones, y **listar lo que sí hay** cuando ninguno acierta—, porque adivinar la ruta otra
+vez habría costado otra ronda de CI para volver a no saber nada.
 """
 
 from __future__ import annotations
@@ -52,7 +58,19 @@ import checks  # noqa: E402  — necesita el `sys.path` de arriba
 
 ANDROID = "{http://schemas.android.com/apk/res/android}"
 
-DEFAULT_PATTERN = "androidApp/build/intermediates/merged_manifests/**/AndroidManifest.xml"
+INTERMEDIATES = "androidApp/build/intermediates"
+
+# AGP elige dónde deja el manifiesto de un módulo de aplicación y lo ha movido entre versiones:
+# `merged_manifests/` y `packaged_manifests/`, con o sin el nombre de la tarea como carpeta
+# intermedia. Se prueban por orden y basta con que uno acierte. El tercero es el comodín que
+# sobrevive al próximo cambio de nombre sin dejar de mirar **solo** al módulo de aplicación: los
+# manifiestos de las librerías no llevan `allowBackup` ni `dataExtractionRules`, y darían un fallo
+# falso en cuanto entraran en la lista.
+DEFAULT_PATTERNS = (
+    f"{INTERMEDIATES}/merged_manifests/**/AndroidManifest.xml",
+    f"{INTERMEDIATES}/packaged_manifests/**/AndroidManifest.xml",
+    f"{INTERMEDIATES}/*manifest*/**/AndroidManifest.xml",
+)
 
 
 def permissions(path: str) -> list[str]:
@@ -64,17 +82,50 @@ def permissions(path: str) -> list[str]:
     )
 
 
+def not_found(patterns: list[str]) -> int:
+    """El fallo por no encontrar nada, con lo que hace falta para arreglarlo en un solo intento."""
+    print("no se encontró ningún manifiesto fusionado. Patrones probados:")
+    for pattern in patterns:
+        print(f"  - {pattern}")
+    print()
+    print("Esto es un fallo y no un aviso: si AGP cambió la ruta, esta comprobación dejaría de")
+    print("mirar nada y saldría en verde, que es la peor forma de tener un control de calidad.")
+    print("Hay que corregir el patrón, no quitar el paso.")
+    print()
+
+    # Lo que sí hay, para que el arreglo salga de un dato y no de otra suposición. Se enseña y
+    # **no** se usa: un manifiesto encontrado a ciegas puede ser una fase intermedia sin
+    # `allowBackup`, y fallar diciendo que la garantía de privacidad se rompió cuando lo que pasa
+    # es que se miró el archivo equivocado sería peor que este fallo. Aquí se informa; el patrón lo
+    # arregla una persona.
+    candidates = sorted(glob.glob("androidApp/build/**/AndroidManifest.xml", recursive=True))
+    if candidates:
+        print("manifiestos que sí existen bajo androidApp/build (candidatos para el patrón):")
+        for path in candidates:
+            print(f"  - {path}")
+        return 1
+
+    existing = sorted(glob.glob(f"{INTERMEDIATES}/*"))
+    if existing:
+        print(f"carpetas que sí existen en {INTERMEDIATES}:")
+        for path in existing:
+            print(f"  - {os.path.basename(path)}")
+    else:
+        print(f"{INTERMEDIATES} no existe: ¿se ejecutó `assembleDebug` antes de este paso?")
+    return 1
+
+
 def main(argv: list[str]) -> int:
-    pattern = argv[1] if len(argv) > 1 else DEFAULT_PATTERN
-    found = sorted(glob.glob(pattern, recursive=True))
+    patterns = argv[1:] or list(DEFAULT_PATTERNS)
+
+    found: list[str] = []
+    for pattern in patterns:
+        found = sorted(glob.glob(pattern, recursive=True))
+        if found:
+            break
 
     if not found:
-        print(f"no se encontró ningún manifiesto fusionado con el patrón: {pattern}")
-        print()
-        print("Esto es un fallo y no un aviso: si AGP cambió la ruta, esta comprobación dejaría de")
-        print("mirar nada y saldría en verde, que es la peor forma de tener un control de calidad.")
-        print("Hay que corregir el patrón, no quitar el paso.")
-        return 1
+        return not_found(patterns)
 
     for manifest in found:
         print(f"manifiesto fusionado: {os.path.relpath(manifest)}")

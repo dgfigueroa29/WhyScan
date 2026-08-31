@@ -1434,10 +1434,33 @@ ninguno de sus pasos le tocaba **abrirla**.
   pasada de `docs/ai/workflow.md` y su espejo en `CLAUDE.md`. Una ronda no termina porque el commit
   haya subido: termina con `Verify` en verde sobre lo empujado
 
+Y al leerla de verdad —por primera vez en varias rondas— aparecieron **dos rojos más**, ninguno de
+ellos el del test:
+
+- [x] **`Web (Wasm)` llevaba roto desde el 28-08-2026, en `main` incluida.** No lo rompió esta rama:
+  la última ejecución de `main` ya estaba en rojo por lo mismo. `compileProductionExecutableKotlinWasmJs`
+  moría con `OutOfMemoryError` porque `kotlin.daemon.jvmargs` era `-Xmx1024m` y el backend de Wasm
+  compila el programa **entero** de una vez, con los metadatos de todas las clases en memoria: el
+  pico crece con el tamaño de la app, no con el del módulo, así que el día que la app creció
+  suficiente dejó de caber. Subido a 6 GB, que es techo y no reserva. **Cuatro rondas de trabajo se
+  dieron por terminadas con una plataforma sin compilar**, y esa es la factura exacta de no leer la
+  autoridad
+- [x] **El propio control de privacidad del manifiesto fusionado fallaba por no encontrar el
+  archivo.** Se estrenó en esta ejecución —antes nunca llegó a correr, porque el job de Android se
+  saltaba— y su patrón único no acertó dónde deja AGP el manifiesto. **El fallo estaba bien: se negó
+  a pasar en vez de dar por revisado lo que no miró**, que es justo para lo que se escribió así.
+  Corregido con varios patrones y, sobre todo, listando en el log los manifiestos que sí existen: la
+  siguiente vez el arreglo sale de un dato y no de otra suposición. Los candidatos se **enseñan y no
+  se usan**, porque un manifiesto elegido a ciegas puede ser una fase intermedia sin `allowBackup`, y
+  gritar "la privacidad se rompió" cuando lo que se miró es el archivo equivocado destruiría la
+  credibilidad del único control que no puede permitirse perderla
+
 **Lo que esta ronda dice del proyecto:** el harness ya tenía tres capas de comprobación offline y una
-autoridad real, y aun así se coló un rojo. No falló ninguna de las capas — falló el último paso, que
-no era paso de nadie. **Una verificación que nadie está obligado a leer es decoración**, y se salta
-igual que se la salta una persona: no decidiéndolo, sino sintiéndose terminado.
+autoridad real, y aun así se colaron tres rojos, uno de ellos de hace días y en la rama principal. No
+falló ninguna de las capas — falló el último paso, que no era paso de nadie. **Una verificación que
+nadie está obligado a leer es decoración**, y se salta igual que se la salta una persona: no
+decidiéndolo, sino sintiéndose terminado. Que dos de los tres fallos no fueran de esta rama es el
+argumento, no la excusa: llevaban ahí porque nadie miraba.
 
 ### Antes de la ficha de Play, esto va primero
 
