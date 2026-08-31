@@ -231,7 +231,14 @@ def check_privacy_guarantee(manifest: str | None = None) -> None:
     El manifiesto fusionado solo existe después de `assembleDebug`, así que no puede comprobarse
     aquí sin romper lo que hace útil a este archivo —segundos, sin red y sin Gradle—. Lo hace
     `tools/merged_manifest.py`, en el job de Android de `Verify`, reutilizando esta misma función.
+
+    **Y el hueco era real.** La primera vez que esa otra comprobación llegó a ejecutarse —31-08-2026—
+    encontró `INTERNET` en el manifiesto fusionado: lo aportan las dependencias de Google. Desde
+    entonces el manifiesto fuente lleva la retirada explícita (`tools:node="remove"`, ADR-0020) y
+    esta función exige que siga ahí: quitarla devolvería el permiso al APK en silencio, que es
+    justo como llegó la primera vez.
     """
+    source = manifest is None
     manifest = manifest or os.path.join(REPO, "androidApp", "src", "main", "AndroidManifest.xml")
     if not os.path.exists(manifest):
         report(manifest, "no existe: ¿se movió el módulo de Android?")
@@ -239,10 +246,32 @@ def check_privacy_guarantee(manifest: str | None = None) -> None:
 
     root = ET.parse(manifest).getroot()
     android = "{http://schemas.android.com/apk/res/android}"
+    tools = "{http://schemas.android.com/tools}"
 
+    removes_internet = False
     for permission in root.iter("uses-permission"):
-        if permission.get(f"{android}name") == "android.permission.INTERNET":
+        if permission.get(f"{android}name") != "android.permission.INTERNET":
+            continue
+
+        # `tools:node="remove"` no es declarar el permiso: es lo contrario, la instrucción al
+        # fusionador de AGP para que lo tire aunque una dependencia lo aporte. Distinguirlos importa
+        # porque el manifiesto de esta app **tiene** que llevar esa línea desde el 31-08-2026: los
+        # motores de Google traen `INTERNET` en el suyo, y sin la retirada la garantía era falsa en
+        # todos los APK (ADR-0020). Confundir las dos cosas convertiría el arreglo en un fallo.
+        if permission.get(f"{tools}node") == "remove":
+            removes_internet = True
+        else:
             report(manifest, "declara INTERNET: la garantía de privacidad deja de ser cierta")
+
+    # Solo en el fuente: en el fusionado la instrucción ya se consumió y no aparece. Que allí no
+    # esté `INTERNET` es precisamente la prueba de que funcionó.
+    if source and not removes_internet:
+        report(
+            manifest,
+            'falta <uses-permission android:name="android.permission.INTERNET" '
+            'tools:node="remove" />: sin esa línea las dependencias de Google lo devuelven al APK '
+            "(ADR-0020)",
+        )
 
     application = root.find("application")
     if application is None:

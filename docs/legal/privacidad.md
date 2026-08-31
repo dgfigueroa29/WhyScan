@@ -12,10 +12,17 @@ donde hay un matiz, está dicho.
 **WhyScan no recoge, no guarda en ningún servidor y no transmite nada de lo que escaneás.** No hay
 cuenta, no hay registro, no hay publicidad, no hay analítica y no hay informes de fallos.
 
-La app **no declara el permiso de internet**. En Android eso no es una promesa nuestra: es el
-sistema operativo el que impide que un proceso sin ese permiso abra una conexión de red. Se puede
-comprobar en el `AndroidManifest.xml` de la app, y también desde el propio teléfono, en la lista de
-permisos que muestran los ajustes del sistema.
+La app **no pide el permiso de internet**. En Android eso no es una promesa nuestra: es el sistema
+operativo el que impide que un proceso sin ese permiso abra una conexión de red. Se puede comprobar
+desde el propio teléfono, en la lista de permisos que muestran los ajustes del sistema.
+
+Un detalle, por si mirás el código y te confunde: el manifiesto sí menciona `INTERNET` — con
+`tools:node="remove"`, que es la instrucción que lo **quita**. Está ahí porque las librerías de
+escaneo de Google declaran ese permiso en sus propios manifiestos y la build de Android los fusiona
+con el de la app salvo que se le diga que no. Hasta el 31 de agosto de 2026 nadie se lo decía, así
+que las builds anteriores a esa fecha sí llevaban el permiso. Lo encontró una comprobación escrita
+justo para ese caso, y la decisión está en el
+[ADR-0020](../adr/ADR-0020-el-permiso-de-internet-se-quita-no-solo-se-omite.md).
 
 ## Qué datos existen, y dónde
 

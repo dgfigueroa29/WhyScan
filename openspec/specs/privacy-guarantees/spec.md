@@ -16,8 +16,13 @@ Design: `docs/SDD.md` §12, `docs/legal/privacidad.md`, `docs/legal/privacy.md`,
 The Android manifest SHALL NOT declare the `INTERNET` permission. The application SHALL NOT contain
 an HTTP client, analytics, crash reporting or telemetry of any kind.
 
+Not declaring it is **not sufficient**. The Google engine dependencies contribute `INTERNET` through
+their own manifests, so the application manifest SHALL remove it explicitly with
+`tools:node="remove"`, and `tools/checks.py` SHALL fail if that removal is absent (ADR-0020).
+
 `tools/checks.py` SHALL fail if the **source** manifest declares `INTERNET`, and it SHALL run in CI
-before any Gradle task.
+before any Gradle task. A `uses-permission` entry carrying `tools:node="remove"` is a removal, not a
+declaration, and SHALL NOT be treated as one.
 
 #### Scenario: The permission is added to the application's own manifest
 
@@ -34,6 +39,13 @@ The **merged** manifest SHALL be checked as well, after `assembleDebug`, by
 - **THEN** the merged-manifest check fails and the pull request is rejected
 - **AND** the source manifest stays clean, which is exactly why checking only the source was not
   enough
+
+#### Scenario: The removal is deleted from the application manifest
+
+- **WHEN** the `tools:node="remove"` entry is deleted from `androidApp/src/main/AndroidManifest.xml`
+- **THEN** `check_privacy_guarantee()` fails on the source manifest, before any build runs
+- **AND** the failure names ADR-0020, because without that line the Google engines put the
+  permission back into the APK and nothing in the source would show it
 
 #### Scenario: The merged manifest cannot be found
 

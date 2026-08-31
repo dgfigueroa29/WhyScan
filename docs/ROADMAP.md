@@ -1455,12 +1455,35 @@ ellos el del test:
   gritar "la privacidad se rompió" cuando lo que se miró es el archivo equivocado destruiría la
   credibilidad del único control que no puede permitirse perderla
 
+Y el control del manifiesto, ya arreglado y ejecutándose por fin, encontró a la primera lo que
+buscaba:
+
+- [x] **`INTERNET` estaba en el APK, y llevaba ahí desde el primer motor de Google.** No lo declara
+  este repositorio: lo aportan `play-services-code-scanner` y los dos artefactos de ML Kit desde sus
+  propios manifiestos, y el fusionador de AGP los mete sin preguntar. **Ninguna es de solo-debug, así
+  que el APK de release llevaba lo mismo.** El manifiesto fuente estaba limpio, la comprobación de
+  `checks.py` estaba en verde, y la app le decía al usuario en Ajustes y en la pantalla de permiso
+  que *no pide permiso de internet*. Era falso, y lo era desde hacía meses
+- [x] **Corregido retirándolo, no omitiéndolo**: `tools:node="remove"`, y `check_privacy_guarantee()`
+  pasa a **exigir** esa línea — borrarla devolvería el permiso al APK en silencio, que es
+  exactamente cómo llegó. `ACCESS_NETWORK_STATE` se queda: solo lee si hay conexión, no abre
+  ninguna. Todo el razonamiento, el coste y las cuatro alternativas descartadas, en el
+  [ADR-0020](adr/ADR-0020-el-permiso-de-internet-se-quita-no-solo-se-omite.md); el hallazgo, en el
+  SDD §12
+- [x] **Los textos que ve el usuario no se tocaron**, y esa fue la razón de elegir esta salida y no
+  la de reescribirlos: la promesa fuerte se podía sostener
+
 **Lo que esta ronda dice del proyecto:** el harness ya tenía tres capas de comprobación offline y una
-autoridad real, y aun así se colaron tres rojos, uno de ellos de hace días y en la rama principal. No
-falló ninguna de las capas — falló el último paso, que no era paso de nadie. **Una verificación que
-nadie está obligado a leer es decoración**, y se salta igual que se la salta una persona: no
-decidiéndolo, sino sintiéndose terminado. Que dos de los tres fallos no fueran de esta rama es el
-argumento, no la excusa: llevaban ahí porque nadie miraba.
+autoridad real, y aun así se colaron cuatro rojos — uno de días atrás en la rama principal, y otro
+que era **la promesa central del producto siendo falsa**. No falló ninguna de las capas: falló el
+último paso, que no era paso de nadie. **Una verificación que nadie está obligado a leer es
+decoración**, y se salta igual que se la salta una persona: no decidiéndolo, sino sintiéndose
+terminado. Que tres de los cuatro fallos no fueran de esta rama es el argumento, no la excusa:
+llevaban ahí porque nadie miraba.
+
+Y el remate, que vale por toda la ronda: el control que encontró la mentira **se escribió el día
+anterior, para exactamente ese escenario, y no había llegado a ejecutarse nunca**. Tardó un día en
+poder correr. Encontró el defecto a la primera.
 
 ### Antes de la ficha de Play, esto va primero
 
@@ -1508,6 +1531,11 @@ que falta es un teléfono.
   imposible de comprobar sin abrir la app resultó no serlo: `koinInject` no es UI, así que
   `ComposeKoinContextTest` monta una `Composition` con el runtime de Compose y compara la instancia
   con la del grafo
+- [ ] **Comprobar que los motores de Google siguen leyendo sin el permiso `INTERNET`** (ADR-0020).
+  Quitarlo debería ser inocuo —la descarga del modelo la hace el proceso de Google Play Services,
+  que tiene su propio permiso—, pero eso es lo documentado, no lo ejecutado. Hace falta instalar y
+  probar `GMS_CODE_SCANNER`, `MLKIT_CAMERAX` y el OCR en un teléfono, **preferiblemente uno donde el
+  modelo no esté ya descargado**, que es el único caso en el que la diferencia se vería
 - [ ] Verificar el selector de idioma en iOS (D21)
 - [ ] Medir el arranque en frío, que es lo que Play reporta en Vitals desde el primer día
 - [ ] El `actual` de Android de `DatabaseBuilderFactory`, que es lo único de la cadena de Room que

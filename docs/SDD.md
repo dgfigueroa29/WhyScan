@@ -1316,6 +1316,28 @@ consecuencia directa en el trámite de Play: el formulario de seguridad de datos
 datos
 se transfieren fuera del dispositivo, y ahora la respuesta "no" es verdad.
 
+**Hallazgo 4 — `INTERNET` sí estaba en el APK, y lo llevaba desde el primer motor de Google.** El
+Hallazgo 2 pedía defender la invariante "no declarar `INTERNET`" porque una dependencia podía
+reintroducirla sin que nadie se enterase. **Ya lo había hecho.**
+
+`tools/merged_manifest.py` se escribió para ese escenario el 30-08-2026 y no llegó a ejecutarse
+hasta el día siguiente, porque el job de Android moría antes por otra cosa. La primera vez que corrió
+leyó el manifiesto **fusionado** de la build de debug y encontró `android.permission.INTERNET` junto
+a `ACCESS_NETWORK_STATE`. Los aportan `play-services-code-scanner` y los dos artefactos de ML Kit
+desde sus propios manifiestos; no son dependencias de solo-debug, así que **el APK de release
+llevaba lo mismo**. El manifiesto fuente estaba limpio, `check_privacy_guarantee()` estaba en verde,
+y la app le decía al usuario en dos pantallas que no pedía ese permiso.
+
+La corrección es retirarlo explícitamente —`tools:node="remove"`— y exigir que esa línea siga ahí.
+El razonamiento de por qué eso no rompe a los motores de Google, el coste que no se puede comprobar
+sin un teléfono y las cuatro alternativas descartadas están en el
+[ADR-0020](adr/ADR-0020-el-permiso-de-internet-se-quita-no-solo-se-omite.md).
+
+Es la tercera vez que el defecto tiene **la misma forma** —D18, `allowBackup`, y ahora el fusionador
+de manifiestos—: auditar lo que hace el código propio y no lo que la plataforma hace con él. Lo que
+cambia es que esta vez había una comprobación esperándolo. Tardó un día en poder ejecutarse, y en
+cuanto lo hizo encontró el defecto a la primera.
+
 ---
 
 ### 12.1 Accesibilidad (RNF-05)
