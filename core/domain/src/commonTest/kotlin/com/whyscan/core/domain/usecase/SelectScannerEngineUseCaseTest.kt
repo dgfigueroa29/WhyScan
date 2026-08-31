@@ -193,7 +193,7 @@ class SelectScannerEngineUseCaseTest {
     }
 
     @Test
-    fun `en escritorio ZXing encabeza al pedir imagen y desaparece al pedir camara`() {
+    fun `en escritorio ZXing encabeza al pedir imagen y la camara cae a la entrada manual`() {
         // Es el motor de escritorio (D13) y solo decodifica archivos. Que la prioridad lo ponga
         // primero no puede colarlo en una sesión de cámara: ahí no hay nada que pueda hacer, y una
         // cadena que empieza por un motor inútil deja al usuario mirando una pantalla vacía.
@@ -231,11 +231,21 @@ class SelectScannerEngineUseCaseTest {
         )
 
         assertEquals(listOf(ScannerEngineId.ZXingJava), fromImage.chain)
-        assertTrue(fromCamera.chain.isEmpty())
+
+        // Antes esto afirmaba `fromCamera.chain.isEmpty()`, y esa cadena vacía era el estado "no se
+        // puede escanear" que el objetivo G4 dice que no existe. En escritorio no hay captura de
+        // webcam, así que **toda** petición de cámara caía ahí.
+        assertEquals(listOf(ScannerEngineId.ManualInput), fromCamera.chain)
+
+        // Los descartes son los de la primera pasada, que son los que explican por qué no hubo
+        // cámara. Si fueran los de la segunda hablarían de una petición que el usuario no hizo.
+        assertEquals(listOf(ScannerEngineId.ZXingJava), fromCamera.rejected.map { it.id })
     }
 
     @Test
-    fun `sin motores elegibles la cadena queda vacia`() {
+    fun `sin motores elegibles y pidiendo camara, la entrada manual cierra la cadena`() {
+        // El motor manual está descartado por disponibilidad, no por la fuente: aquí no hay nada
+        // que sustituir y la cadena se queda vacía de verdad. Es el único caso en el que debe.
         val catalog = listOf(
             FakeScannerEngine(
                 id = ScannerEngineId.ManualInput,
@@ -247,5 +257,31 @@ class SelectScannerEngineUseCaseTest {
 
         assertTrue(selection.chain.isEmpty())
         assertEquals(1, selection.rejected.size)
+    }
+
+    @Test
+    fun `una imagen que nadie puede decodificar sigue fallando, no cae a manual`() {
+        // La sustitución es **solo** para `LiveCamera`, y este test es lo que impide que alguien la
+        // simplifique a "si la cadena está vacía, manual". El usuario eligió una foto: ofrecerle un
+        // teclado no es un respaldo, es cambiarle de tema. `DecodeImageUseCase` llama a este mismo
+        // `select`, así que la confusión no sería teórica.
+        val catalog = listOf(
+            FakeScannerEngine(
+                id = ScannerEngineId.ManualInput,
+                capabilities = FakeScannerEngine.defaultCapabilities(
+                    sources = setOf(ScanSource.ManualInput),
+                    torch = false,
+                ),
+            ).status(),
+        )
+
+        val selection = useCase.select(
+            catalog = catalog,
+            request = ScanRequest(source = ScanSource.StaticImage),
+            preferredEngineId = null,
+            platform = ScannerPlatform.Desktop,
+        )
+
+        assertTrue(selection.chain.isEmpty())
     }
 }

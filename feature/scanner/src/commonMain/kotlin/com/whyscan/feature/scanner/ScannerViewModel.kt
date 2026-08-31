@@ -3,6 +3,7 @@ package com.whyscan.feature.scanner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.whyscan.core.domain.concurrency.launchCatching
+import com.whyscan.core.domain.repository.ScanPreferences
 import com.whyscan.core.domain.repository.ScannerEngineRepository
 import com.whyscan.core.domain.scan.ResultAction
 import com.whyscan.core.domain.usecase.ScanHistory
@@ -119,6 +120,7 @@ class ScannerViewModel(
             is ScannerAction.ManualInputChanged -> _state.update { it.copy(manualInput = action.value) }
             ScannerAction.SubmitManualInput -> submitManualInput()
             ScannerAction.ScanFromImage -> scanFromImage()
+            ScannerAction.UseManualEntry -> useManualEntry()
             is ScannerAction.RunResultAction -> runResultAction(action.action, action.text)
             ScannerAction.ToggleTorch -> toggleTorch()
             is ScannerAction.SetZoom -> setZoom(action.ratio)
@@ -365,7 +367,24 @@ class ScannerViewModel(
         launchSafely { settings.setContinuous(enabled) }
     }
 
-    private fun startSession() {
+    /**
+     * Arranca una sesión escribiendo el código a mano, **sin tocar las preferencias** (G4).
+     *
+     * El motor preferido se sustituye solo para esta sesión copiando las preferencias en memoria.
+     * Así `ScanSessions.sourceFor()` pone la fuente en `ManualInput` —que es lo que hace que el
+     * selector no descarte el motor manual— y `settings.preferEngine` no se llama en ningún
+     * momento. Ver el KDoc de [ScannerAction.UseManualEntry].
+     */
+    private fun useManualEntry() {
+        autoStartPending = false
+        startSession { it.copy(preferredEngineId = ScannerEngineId.ManualInput) }
+    }
+
+    /**
+     * @param adjust cambia las preferencias **solo para esta sesión**. Por defecto no cambia nada,
+     * que es el caso normal: la sesión usa lo que el usuario tenga guardado.
+     */
+    private fun startSession(adjust: (ScanPreferences) -> ScanPreferences = { it }) {
         sessionJob?.cancel()
         _state.update {
             it.copy(
@@ -377,7 +396,7 @@ class ScannerViewModel(
         }
 
         sessionJob = launchSafely {
-            sessions.start(settings.current()).collect(::reduce)
+            sessions.start(adjust(settings.current())).collect(::reduce)
         }
     }
 

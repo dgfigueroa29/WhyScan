@@ -1370,6 +1370,50 @@ explicar"— y era cierto mientras no hubo editor. La decisión correcta hoy es 
 comentario viejo no estaba equivocado: estaba **fechado**. Por eso se reescribe con su motivo nuevo
 en lugar de borrarse.
 
+### Ronda 26 — G4 deja de ser una frase 🚧
+
+El objetivo G4 —"nunca hay un estado 'no se puede escanear'"— se afirmaba en **trece archivos** y no
+lo cumplía nadie. Lo destapó la auditoría de la Ronda 23, y al mirarlo de cerca resultó que el
+problema no era el que yo había anunciado.
+
+- [x] **Primero, una corrección mía.** Dije que en escritorio el usuario veía `EngineUnavailable`.
+  **Falso**: el visor ramifica antes —sin permiso, pantalla de permiso; sin motor de cámara, aviso
+  de "sin cámara en vivo"— y ni el arranque automático ni el botón de arranque se activan ahí. La
+  cadena vacía existía en el dominio y la UI casi nunca preguntaba. Exagerar un hallazgo cuesta la
+  misma confianza que no verlo
+- [x] **Lo que sí había, y era peor: la entrada manual era inalcanzable donde más falta hacía.** Se
+  muestra solo con una sesión viva del motor manual; en escritorio no arranca ninguna; el botón de
+  arranque no se dibuja; y el banco de motores —la otra vía— es de modo avanzado. **En escritorio y
+  en modo básico no había forma de teclear un código.** El propio texto del aviso lo prometía desde
+  que se escribió: *"Igual podés escanear una imagen o escribir un código a mano"*
+- [x] **`ScannerAction.UseManualEntry`**, con botón en la pantalla de "sin cámara". No reutiliza
+  `SelectEngine` ni `TryEngine` **a propósito**: las dos llaman a `settings.preferEngine`, y teclear
+  un código una vez no puede dejar el motor preferido fijado para siempre — menos en una plataforma
+  que mañana podría tener cámara. Sustituye la preferencia solo en memoria, para esa sesión
+- [x] **El selector cierra la cadena.** Si al pedir cámara no sobrevive nadie, vuelve a elegir
+  pidiendo entrada manual. **Solo para cámara**: una imagen estática que nadie puede decodificar
+  sigue fallando, porque el usuario eligió una foto y ofrecerle un teclado es cambiarle de tema —
+  y `DecodeImageUseCase` llama al mismo `select`. Hay un test dedicado a que nadie "simplifique" esa
+  condición
+- [x] **Los dos tests que fijaban la cadena vacía se cambiaron, no se borraron.** Eran el registro
+  del comportamiento anterior, y sus reemplazos dicen en voz alta la garantía nueva
+- [x] **El error dejaba de estar traducido y llevaba `toString()`.** La pantalla pintaba
+  `stringResource(session_error, error.toString())`, y en un `data class` eso es el volcado entero:
+  `EngineUnavailable(engineId=null, reason=Motores descartados: gms_code_scanner, …)`. Sin traducir
+  y con identificadores de motor, en una app cuyo criterio de salida es que nadie vea esa palabra.
+  Ahora hay una frase por variante, con un `when` **sin `else`** para que el compilador obligue a
+  traducir la próxima. El comparador tenía el mismo volcado
+- [x] **El comentario del `ScannerEngineCatalogTest`** decía garantizar que la cadena nunca queda
+  vacía. No lo comprobaba. Estar en las cuatro plataformas es condición necesaria y no suficiente
+- [ ] **Nadie ha visto la pantalla.** El botón nuevo está en el aviso de "sin cámara" y **el texto
+  es provisional**: dice lo que hace, no es copy final. Necesita ojos
+
+**Lo que esta ronda dice del proyecto:** el hallazgo bueno no salió de la auditoría automática sino
+de leer la ruta entera con la pregunta "¿y qué ve el usuario?". La auditoría encontró que la
+documentación mentía; leer el camino encontró **por qué importaba**, y no era donde yo había
+señalado. Y el remate: el texto del aviso ya prometía lo que faltaba. La copia sabía lo que el
+producto debía hacer antes que el código.
+
 ### Antes de la ficha de Play, esto va primero
 
 Lo de abajo es trámite de tienda. Lo de esta lista no. Se hizo el repaso a propósito antes de tocar

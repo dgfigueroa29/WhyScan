@@ -13,12 +13,21 @@
     <string name="session_scanning_simple">Escaneando…</string>
     <string name="session_switched_from">Se degradó desde %1$s: el motor anterior no pudo continuar.</string>
     <string name="session_error">Error: %1$s</string>
+    <string name="error_permission_denied">WhyScan necesita la cámara para escanear.</string>
+    <string name="error_camera_unavailable">No se pudo abrir la cámara.</string>
+    <string name="error_engine_unavailable">Ningún motor pudo atender esta petición.</string>
+    <string name="error_decode_failed">No se pudo leer. Probá de nuevo.</string>
+    <string name="error_format_rejected">Ese código no está entre los formatos que elegiste.</string>
+    <string name="error_timeout">Se acabó el tiempo sin ninguna lectura.</string>
+    <string name="error_cancelled">Escaneo cancelado.</string>
+    <string name="error_unexpected">Algo salió mal.</string>
 
     <!-- Controles -->
     <string name="action_stop">Detener</string>
     <string name="action_auto">Auto</string>
     <string name="action_dismiss">Descartar</string>
     <string name="action_scan_from_image">Desde imagen</string>
+    <string name="action_type_by_hand">Escribirlo</string>
     <string name="action_grant_camera">Conceder permiso de cámara</string>
     <string name="action_submit">Enviar</string>
     <string name="continuous_scan">Escaneo continuo</string>

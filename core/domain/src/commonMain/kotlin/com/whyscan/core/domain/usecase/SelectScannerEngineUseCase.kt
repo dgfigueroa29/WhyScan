@@ -25,6 +25,9 @@ import kotlinx.coroutines.flow.first
  * 3. Ordenar los supervivientes por prioridad de plataforma y, a igualdad, por cobertura de
  *    formatos.
  * 4. Si el usuario fijó un motor y sobrevivió, promoverlo al frente sin alterar el resto.
+ * 5. Si aun así no queda nadie y se pedía **cámara**, volver a elegir pidiendo entrada manual. Es
+ *    lo que hace cierto el objetivo G4 — que nunca haya un estado "no se puede escanear"— y lo que
+ *    hasta ahora solo estaba escrito.
  */
 class SelectScannerEngineUseCase(
     private val repository: ScannerEngineRepository,
@@ -76,7 +79,34 @@ class SelectScannerEngineUseCase(
             .map { it.id }
 
         val chain = promote(ordered, preferredEngineId)
-        return EngineSelection(chain = chain, rejected = rejected)
+        if (chain.isNotEmpty() || request.source != ScanSource.LiveCamera) {
+            return EngineSelection(chain = chain, rejected = rejected)
+        }
+
+        // La cadena se quedó vacía pidiendo cámara: aquí es donde G4 —"nunca hay un estado 'no se
+        // puede escanear'"— se cumplía solo sobre el papel. La entrada manual declara **solo**
+        // `ScanSource.ManualInput`, así que `satisfies()` la descarta ante cualquier petición de
+        // cámara, justo cuando es lo único que queda.
+        //
+        // La sustitución va aquí y no ampliando el descriptor del motor manual: no consume frames,
+        // y declarar una fuente que no sabe atender es el descriptor deshonesto que evita el
+        // ADR-0002. Lo que cambia es la **petición**, que es de quien era el problema.
+        //
+        // Solo para `LiveCamera`. Una petición de imagen estática que nadie puede decodificar tiene
+        // que seguir fallando: el usuario eligió una foto, y ofrecerle un teclado no es un respaldo,
+        // es cambiarle de tema. `DecodeImageUseCase` llama a este mismo `select`, y por eso la
+        // condición es sobre la fuente y no sobre que la cadena esté vacía.
+        val manual = select(
+            catalog = catalog,
+            request = request.copy(source = ScanSource.ManualInput),
+            preferredEngineId = preferredEngineId,
+            platform = platform,
+        )
+
+        // Se conservan los descartes de la **primera** pasada: son los que explican por qué no hubo
+        // cámara, que es lo que el banco de motores le enseña al usuario. Los de la segunda hablan
+        // de una petición que el usuario nunca hizo.
+        return EngineSelection(chain = manual.chain, rejected = rejected)
     }
 
     /**

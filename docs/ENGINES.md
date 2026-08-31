@@ -169,12 +169,25 @@ Excepciones de la política:
 - Si el `ScanRequest` pide **escaneo continuo** o **múltiples códigos**, `GMS_CODE_SCANNER` queda
   descartado por capacidades y `MLKIT_CAMERAX` encabeza la cadena en Android.
 - Si el `ScanRequest` pide **imagen estática**, solo entran motores con `ScanSource.StaticImage`.
-- `MANUAL_INPUT` **debería** cerrar siempre la cadena, y hoy no lo hace: declara solo
-  `ScanSource.ManualInput`, así que el selector lo descarta ante cualquier petición de cámara y la
-  cadena se queda vacía. Ver el cambio `close-the-chain-with-manual-entry`.
-- **En escritorio, una petición de cámara en vivo cae directamente a `MANUAL_INPUT`**: `ZXING_JAVA`
-  no declara esa fuente, así que el selector lo descarta antes de elegirlo. El decodificador está
-  ahí, pero no hay captura de webcam que lo alimente.
+- `MANUAL_INPUT` cierra siempre la cadena: si al pedir **cámara** no sobrevive ningún motor, el
+  selector vuelve a elegir pidiendo entrada manual y devuelve esa cadena. Nunca hay un estado "no
+  se puede escanear" (G4).
+
+  La sustitución vive en el **selector**, no en el descriptor: el motor manual sigue declarando solo
+  `ScanSource.ManualInput`, porque no consume frames y declarar una fuente que no sabe atender es el
+  descriptor deshonesto que evita el ADR-0002. Lo que cambia es la petición.
+
+  **Solo para cámara.** Una imagen estática que nadie puede decodificar sigue fallando: el usuario
+  eligió una foto, y ofrecerle un teclado no es un respaldo.
+- **En escritorio, una petición de cámara en vivo cae a `MANUAL_INPUT`**: `ZXING_JAVA` no declara
+  esa fuente, así que el selector lo descarta antes de elegirlo. El decodificador está ahí, pero no
+  hay captura de webcam que lo alimente.
+
+  En la pantalla eso se ve antes de llegar al selector: sin ningún motor de cámara usable, el visor
+  muestra "sin cámara en vivo" con dos salidas —escanear una imagen y **escribir el código a
+  mano**—. La segunda faltaba: el propio texto de ese aviso la prometía desde que se escribió y no
+  había forma de llegar, porque la entrada manual solo aparece con una sesión viva y en escritorio
+  no arrancaba ninguna.
 - **Web no tiene respaldo tras el navegador**: zxing-cpp no publica artefacto wasmJs (ADR-0008), así
   que listarlo en esa cadena sería una entrada muerta. Lo que la cierra es la entrada manual.
 

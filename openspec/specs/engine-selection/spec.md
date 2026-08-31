@@ -23,19 +23,20 @@ It SHALL discard engines that do not report `EngineAvailability.Available`, and 
 - **THEN** the next engine in the chain takes over
 - **AND** the session continues without the user restarting it
 
-### Requirement: Manual entry is reachable on every platform, and closes the chain once chosen
+### Requirement: Manual entry closes every camera chain
 
-`MANUAL_INPUT` SHALL be available on all four platforms, SHALL declare `ScanSource.ManualInput`, and
-SHALL therefore be selected for any request whose source is manual input.
+`MANUAL_INPUT` SHALL be available on all four platforms and SHALL declare only
+`ScanSource.ManualInput`.
 
-When the user selects the manual engine, the domain SHALL set the request source to
-`ScanSource.ManualInput` so that the selector does not discard it — `sourceFor()` in `ScanSessions`.
+When selection produces an empty chain for a request whose source is `LiveCamera`, the selector
+SHALL re-select with `ScanSource.ManualInput` and return that chain, preserving the rejection
+reasons from the first pass.
 
-> **Known gap, stated rather than glossed.** Because `MANUAL_INPUT` declares only
-> `ScanSource.ManualInput`, `ScannerCapabilities.satisfies()` rejects it for any live-camera
-> request. It therefore does **not** close a camera chain automatically, and the goal G4 — "there is
-> never a state in which scanning is impossible" — is not currently met. See the change
-> `close-the-chain-with-manual-entry`.
+The substitution SHALL happen in the selector, never by widening the engine's declared sources: it
+consumes no frames, and declaring a source it cannot serve is the dishonest descriptor ADR-0002
+exists to prevent.
+
+The system SHALL NOT present a state in which scanning is impossible.
 
 #### Scenario: The user selects manual entry
 
@@ -43,19 +44,47 @@ When the user selects the manual engine, the domain SHALL set the request source
 - **THEN** `sourceFor()` sets the request source to `ScanSource.ManualInput`
 - **AND** the selector returns a chain containing it, and the text field is rendered
 
-#### Scenario: A desktop live-camera request — today's behaviour
+#### Scenario: A desktop live-camera request
 
 - **WHEN** a live camera scan is requested on Desktop, where `ZXING_JAVA` declares only static-image
   input and there is no webcam capture
-- **THEN** the chain is **empty** and the session emits `ScanError.EngineUnavailable`
-- **AND** `SelectScannerEngineUseCaseTest` asserts exactly that empty chain
-- **AND** the user sees an error rather than the typed-entry fallback the goal promises
+- **THEN** the first pass produces an empty chain and the selector re-selects with manual input
+- **AND** the returned chain is `[MANUAL_INPUT]`
+- **AND** the rejection list still names `ZXING_JAVA`, so the bench can explain why there was no
+  camera
 
-#### Scenario: Web beyond the browser detector — today's behaviour
+#### Scenario: A static image nothing can decode
 
-- **WHEN** the browser does not expose `BarcodeDetector` and the request is for a live camera
-- **THEN** the chain is empty, since `zxing-cpp` publishes no wasmJs artefact (ADR-0008) and manual
-  entry does not satisfy a camera source
+- **WHEN** a static-image request finds no engine able to decode it
+- **THEN** the chain stays empty and the session fails
+- **AND** no substitution happens, because the user chose a photograph and a keyboard is not a
+  fallback for that
+
+#### Scenario: Not even manual entry is available
+
+- **WHEN** the manual engine itself is unavailable rather than merely unsuited to the source
+- **THEN** the chain is empty and the session fails
+- **AND** this is the only case in which it should
+
+### Requirement: Manual entry is reachable without the engine bench
+
+Every screen that replaces the viewfinder because no camera is usable SHALL offer a way to type a
+code by hand.
+
+That action SHALL NOT persist the user's preferred engine: it starts one manual session and leaves
+preferences untouched.
+
+#### Scenario: Desktop in basic mode
+
+- **WHEN** a Desktop user in basic mode opens the scanner and no live-camera engine exists
+- **THEN** the screen offers both scanning from an image and typing a code by hand
+- **AND** neither requires advanced mode, where the engine bench lives
+
+#### Scenario: Typing one code does not change the preference
+
+- **WHEN** the user types a code from that screen
+- **THEN** `preferEngine` is not called
+- **AND** a platform that later gains a camera engine is not left pinned to manual input
 
 ### Requirement: The request constrains the chain
 

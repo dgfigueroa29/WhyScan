@@ -225,7 +225,7 @@ object ScannerEngineCatalog {
         platforms = ScannerPlatform.entries.toSet(),
         plannedPhase = 1,
         requiresDependency = null,
-        strength = "Siempre disponible: cierra la cadena de fallback en las cuatro plataformas",
+        strength = "Siempre disponible: el selector cierra con él la cadena en las cuatro plataformas",
         limitation = "Requiere que el usuario lea el código a mano",
         capabilities = ScannerCapabilities(
             supportedFormats = BarcodeFormat.all,
