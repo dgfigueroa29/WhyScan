@@ -56,9 +56,15 @@ Por coherencia con lo mismo, el grupo Maven de `:core:foundation` (ADR-0018) es 
 - Queda pendiente lo de siempre y ahora con el nombre nuevo: **comprobar en Play Console que
   `ar.net.faro.whyscan` está libre**. Sin red en el entorno de desarrollo, eso no se pudo verificar
   aquí.
-- El nombre visible de la app en la ficha es una decisión aparte y no la toma este ADR. `WhyScan`
-  a secas y `Faro WhyScan` siguen las dos sobre la mesa; a diferencia del `applicationId`, esa se
-  puede cambiar después.
+- El nombre visible de la app en la ficha es una decisión aparte y no la toma este ADR.
+
+  > **Resuelto el mismo día: `WhyScan` a secas.** No `Faro WhyScan`. Confirma lo que el código ya
+  > decía —`app_name` es `WhyScan` en los dos catálogos, con `translatable="false"` porque un nombre
+  > de marca no se traduce— así que no hubo nada que cambiar.
+  >
+  > El coste, dicho: **quien instale la app no ve a Faro por ningún lado.** El editor aparece en la
+  > ficha de Play, no en el icono ni en la barra. Es aceptable porque el producto es el que tiene el
+  > nombre ganado, y porque a diferencia del `applicationId` esto sí se puede cambiar después.
 
 ## Alternativas descartadas
 

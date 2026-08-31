@@ -48,7 +48,7 @@ arrastrarlos dentro de otras listas los hace parecer trabajo que nadie hace.
 | **Grupo Maven y paquete de `:core:foundation`** — no puede llevar `whyscan` | [ADR-0018](adr/ADR-0018-federar-la-base-y-no-la-marca.md) y los *Blockers* de `openspec/changes/federate-design-system/proposal.md` | El dueño del proyecto. Toda la federación está detrás de esto, y poner un nombre provisional para renombrar después es justo la parte cara |
 | **~~Correo de contacto de la ficha de Play~~** | resuelto el 30-08-2026 | <david@faro.net.ar>, ya escrito en los cuatro documentos legales, `SECURITY.md`, el código de conducta y las plantillas de issue |
 | **~~El `applicationId`~~** | resuelto el 30-08-2026 | `ar.net.faro.whyscan` ([ADR-0019](adr/ADR-0019-el-applicationid-identifica-a-quien-publica.md)). Los paquetes de Kotlin **no** se tocan. Falta comprobar en Play Console que está libre, que sin red no se pudo hacer aquí |
-| **El nombre visible en la ficha** — ¿`WhyScan` o `Faro WhyScan`? | textos de la ficha | El dueño del proyecto. A diferencia del `applicationId`, esta **sí** se puede cambiar después de publicar |
+| **~~El nombre visible en la ficha~~** | resuelto el 30-08-2026 | `WhyScan` a secas. Confirma lo que el código ya decía, así que no hubo nada que cambiar ([ADR-0019](adr/ADR-0019-el-applicationid-identifica-a-quien-publica.md)) |
 | **Cerrar la cadena con la entrada manual (G4)** | `openspec/changes/close-the-chain-with-manual-entry/` | El dueño del proyecto: arreglar el código o retirar la garantía de los cinco documentos que la prometen. La propuesta recomienda lo primero |
 
 ### Bloqueado por un número que solo produce CI
@@ -1358,8 +1358,11 @@ verificar, no se empuja.** La segunda mitad es la que costó esta semana aprende
 - [x] Con esto, el grupo Maven de `:core:foundation` queda fijado y **la federación deja de estar
   bloqueada por un nombre**. Sigue bloqueada por el trabajo, que es otra cosa y mejor
 - [ ] **Comprobar en Play Console que `ar.net.faro.whyscan` está libre.** Sin red aquí, no se pudo
-- [ ] **El nombre visible de la ficha** —`WhyScan` o `Faro WhyScan`— sigue abierto, y a diferencia
-  del `applicationId` esa sí se puede cambiar después de publicar
+- [x] **El nombre visible es `WhyScan` a secas**, no `Faro WhyScan`. No tocó código: `app_name` ya
+  era eso en los dos catálogos, con `translatable="false"` porque un nombre de marca no se traduce.
+  Lo que sí conviene saber al rellenar la ficha es que **son dos campos distintos**: el nombre de la
+  app es `WhyScan` y el del desarrollador es Faro. Quien instale la app no ve a Faro en el icono ni
+  en la barra, y se acepta
 
 **Lo que esta ronda dice del proyecto:** el comentario que había junto al `applicationId` defendía
 que coincidiera con los paquetes —"así no hay dos nombres que mantener sincronizados ni ninguno que
@@ -1424,7 +1427,9 @@ que falta es un teléfono.
 - [ ] Comprobar en Play Console que `ar.net.faro.whyscan` está libre y que "WhyScan" no colisiona con
   una
   ficha existente. **Sin red en el entorno de desarrollo, esto no se pudo verificar aquí**
-- [ ] Capturas, gráfico de cabecera 1024×500 y textos de la ficha, en los dos idiomas
+- [ ] Capturas, gráfico de cabecera 1024×500 y textos de la ficha, en los dos idiomas. **Nombre de
+  la app: `WhyScan`; desarrollador: Faro.** Son dos campos distintos de Play Console y es donde se
+  cruzan las dos decisiones del ADR-0019
 - [ ] Política de privacidad **publicada** y formulario de seguridad de datos. El documento ya está
   escrito y enlazado desde Ajustes (`docs/legal/`, Ronda 16); lo que falta es de tienda: pegar la
   dirección en Play Console y rellenar el formulario. Sin `INTERNET`, la respuesta a casi todo es
