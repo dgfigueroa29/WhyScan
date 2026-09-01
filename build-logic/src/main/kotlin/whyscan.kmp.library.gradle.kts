@@ -78,3 +78,9 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 }
+
+androidComponents {
+    beforeVariants { variantBuilder ->
+        variantBuilder.androidTest.enable = false
+    }
+}

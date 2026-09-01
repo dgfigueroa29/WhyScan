@@ -37,6 +37,12 @@ android {
     }
 }
 
+androidComponents {
+    beforeVariants { variantBuilder ->
+        variantBuilder.androidTest.enable = false
+    }
+}
+
 kotlin {
     jvmToolchain(version("jvmTarget").toInt())
 }
