@@ -100,7 +100,7 @@ depender de ningún servidor nuestro, porque no hay ninguno.
 ## 10. Privacidad
 
 Qué datos maneja la app y dónde se quedan está en la [política de
-privacidad](https://github.com/dgfigueroa29/WhyScan/blob/main/docs/legal/privacidad.md), que forma
+privacidad](https://faro.net.ar/whyscan-privacidad), que forma
 parte de estos términos.
 
 ## 11. Contacto

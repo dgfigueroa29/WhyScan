@@ -38,8 +38,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.whyscan.core.designsystem.LocalSnackbarHostState
-import com.whyscan.core.designsystem.ProvideAppLanguage
+import ar.net.faro.foundation.LocalSnackbarHostState
+import ar.net.faro.foundation.ProvideAppLanguage
 import com.whyscan.core.designsystem.WhyScanTheme
 import com.whyscan.core.domain.repository.AppPreferencesRepository
 import com.whyscan.feature.history.HistoryScreen

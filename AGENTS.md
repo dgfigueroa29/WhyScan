@@ -82,7 +82,7 @@ The repository is bilingual by role, not by accident:
 | `docs/ENGINES.md`, `docs/ROADMAP.md`, `docs/SDD.md`, `docs/adr/**` | Spanish | Existing source of truth, written by and for the project owner |
 | `AGENTS.md`, `.claude/**`, `openspec/**`, `docs/ai/**` | English | Agent-facing surfaces; English is what tooling and models parse most reliably |
 | `CONTRIBUTING`, `SECURITY`, `CODE_OF_CONDUCT`, `docs/guides/**` | English **and** Spanish | Human-facing, public repository, two audiences |
-| `docs/legal/**` | Spanish and English | Shipped to users from Settings → About |
+| `docs/legal/**` | Spanish and English | Source for legal documents (web-hosted, ADR-0021) |
 
 Comments explain **why**, never what. A comment that repeats the code is noise; one that preserves
 the reason for a decision — or the defect that forced it — earns its place.

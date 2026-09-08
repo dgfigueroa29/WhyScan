@@ -43,7 +43,7 @@ import androidx.compose.ui.unit.dp
 // —¿`ANILLO_ESQUINA_SUPERIOR_DERECHA_X`?— y rompería la correspondencia línea a línea con los dos
 // XML, que es lo que hace comprobable que los tres dibujan lo mismo.
 @Suppress("MagicNumber")
-val WhyScanMark: ImageVector by lazy {
+public val WhyScanMark: ImageVector by lazy {
     ImageVector.Builder(
         name = "WhyScanMark",
         defaultWidth = 24.dp,

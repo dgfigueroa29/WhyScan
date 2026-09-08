@@ -7,7 +7,7 @@ README, on the Settings → About screen, and in the published privacy policy, s
 **specification**, not an intention — and the parts of it that can be checked mechanically are
 checked on every pull request.
 
-Design: `docs/SDD.md` §12, `docs/legal/privacidad.md`, `docs/legal/privacy.md`, RNF-03.
+Design: `docs/SDD.md` §12, `docs/legal/privacidad.md`, `docs/legal/privacy.md`, RNF-03, ADR-0021.
 
 ## Requirements
 

@@ -91,3 +91,5 @@ lint/generated/
 lint/outputs/
 lint/tmp/
 # lint/reports/
+/.kiro
+*.lock
