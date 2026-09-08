@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.Color
  * @param palette los colores de la marca.
  * @param isDark si se debe crear un esquema oscuro o claro.
  */
+@Suppress("MagicNumber", "LongMethod")
 public fun colorSchemeFrom(palette: Palette, isDark: Boolean): ColorScheme {
     return if (isDark) {
         darkColorScheme(

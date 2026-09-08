@@ -4,8 +4,6 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import ar.net.faro.foundation.LocalCodeValueStyle
 import ar.net.faro.foundation.colorSchemeFrom
 
@@ -21,21 +19,6 @@ import ar.net.faro.foundation.colorSchemeFrom
 // aritmética en `commonTest` (`ContrastTest`) en lugar de quedar como una intención del documento.
 
 /** Espaciados del sistema de diseño. Evita `dp` sueltos repartidos por las pantallas. */
-public object Spacing {
-    /** Separación entre un icono y su etiqueta, o entre dos chips. */
-    public val xxs: Dp = 2.dp
-    public val xs: Dp = 4.dp
-    public val sm: Dp = 8.dp
-
-    /** El margen de contenido por defecto. */
-    public val md: Dp = 16.dp
-    public val lg: Dp = 24.dp
-    public val xl: Dp = 32.dp
-
-    /** Huecos de estado vacío y separaciones entre bloques de una pantalla de ajustes. */
-    public val xxl: Dp = 48.dp
-}
-
 /**
  * Envuelve el contenido en el tema de WhyScan.
  *

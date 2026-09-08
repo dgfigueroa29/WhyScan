@@ -63,6 +63,7 @@ public fun Typography.forEasierReading(
 /**
  * Ajusta un estilo concreto para facilitar la lectura.
  */
+@Suppress("MagicNumber")
 public fun TextStyle.forEasierReading(
     family: FontFamily = FontFamily.SansSerif,
     sizeFactor: Float = 1.15f,
