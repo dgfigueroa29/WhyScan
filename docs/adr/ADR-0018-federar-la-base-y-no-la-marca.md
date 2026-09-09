@@ -83,7 +83,7 @@ biblioteca y una carpeta que otros copian:
   pasa a ser un diff que se ve en la revisión en lugar de una llamada de teléfono.
 - **Versionado semántico con la política escrita**, porque en Compose no es obvia: cambiar el valor
   por defecto de un parámetro es compatible en fuente y **rompe** en binario, y añadir un parámetro
-  a un `@Composable` público rompe las dos.
+  a un `@Composable` público rompe las dos. Ver [Política de versionado](../legal/VERSIONING.md).
 - **Documentación generada** (Dokka). Un consumidor que tiene que leerte el código no es un
   consumidor, es un fork.
 - **Un consumidor que no sea WhyScan.** Un módulo `samples/` que dependa **solo** de la API pública

@@ -53,8 +53,8 @@
         dentro de la app a propósito: un texto legal cambia sin que la app cambie, y la ficha de
         Play necesita poder enlazar la política sin abrir el APK.
     -->
-    <string name="legal_privacy_url">https://github.com/dgfigueroa29/WhyScan/blob/main/docs/legal/privacidad.md</string>
-    <string name="legal_terms_url">https://github.com/dgfigueroa29/WhyScan/blob/main/docs/legal/terminos.md</string>
+    <string name="legal_privacy_url">https://faro.net.ar/whyscan-privacidad</string>
+    <string name="legal_terms_url">https://faro.net.ar/whyscan-terminos</string>
 
     <string name="message_link_failed">No se pudo abrir el documento. Puede que no haya ningún navegador instalado.</string>
 

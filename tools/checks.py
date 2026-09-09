@@ -643,11 +643,11 @@ def check_engine_catalog() -> int:
     return len(declared)
 
 
-# Los tres archivos de `:core:designsystem` que hoy no dependen de la marca y se podrían compartir
-# con otra app tal cual (ADR-0018). No es una lista de deseos: es lo que la comprobación de abajo
-# mantiene cierto. Radius, Typography y Theme quedan fuera **porque sus valores son de WhyScan**,
-# aunque su mecánica sea genérica; separarlos es el cambio `federate-design-system`, no un hecho.
-FOUNDATION = ("Contrast.kt", "AppLanguage.kt", "LocalSnackbarHostState.kt")
+# Archivos y módulos que hoy no dependen de la marca y se podrían compartir con otra app tal
+# cual (ADR-0018). No es una lista de deseos: es lo que la comprobación de abajo mantiene cierto.
+# Radius, Typography y Theme de WhyScan quedan fuera porque sus valores son de la marca, aunque su
+# mecánica sea genérica; el resto de :core:foundation debe estar limpio de ScannerPalette y BrandMark.
+FOUNDATION_MODULE = os.path.join("core", "foundation")
 
 
 def check_design_system() -> int:
@@ -682,28 +682,35 @@ def check_design_system() -> int:
         return set(re.findall(item, found.group(1), re.M)) if found else set()
 
     palette_path = os.path.join(directory, "ScannerPalette.kt")
-    theme_path = os.path.join(directory, "Theme.kt")
 
     roles = 0
     if os.path.exists(palette_path):
         palette = open(palette_path, encoding="utf-8").read()
-        light = block(palette, r"object Light \{(.*?)\n    \}", r"const val (\w+)")
-        dark = block(palette, r"object Dark \{(.*?)\n    \}", r"const val (\w+)")
-        roles = len(light & dark)
-        for name in sorted(light - dark):
+        light_consts = block(palette, r"object Light \{(.*?)\n    \}", r"const val (\w+)")
+        dark_consts = block(palette, r"object Dark \{(.*?)\n    \}", r"const val (\w+)")
+        roles = len(light_consts & dark_consts)
+        for name in sorted(light_consts - dark_consts):
             report(palette_path, f"ScannerPalette.Dark no declara {name}, que sí está en Light")
-        for name in sorted(dark - light):
+        for name in sorted(dark_consts - light_consts):
             report(palette_path, f"ScannerPalette.Light no declara {name}, que sí está en Dark")
 
-    if os.path.exists(theme_path):
-        theme = open(theme_path, encoding="utf-8").read()
-        light = block(theme, r"lightColorScheme\((.*?)\n\)", r"^\s{4}(\w+) =")
-        dark = block(theme, r"darkColorScheme\((.*?)\n\)", r"^\s{4}(\w+) =")
-        for name in sorted(light - dark):
-            # Sin declarar, Material lo rellena con su paleta de fábrica: no falla, cambia de color.
-            report(theme_path, f"el esquema oscuro no fija '{name}': Material lo pondrá de fábrica")
-        for name in sorted(dark - light):
-            report(theme_path, f"el esquema claro no fija '{name}': Material lo pondrá de fábrica")
+        # Mira los roles que se pasan a Palette() en light() y dark().
+        # El tema de WhyScan debe fijar todos los roles para evitar los morados por defecto.
+        required = {
+            "primary", "onPrimary", "primaryContainer", "onPrimaryContainer",
+            "secondary", "onSecondary", "secondaryContainer", "onSecondaryContainer",
+            "tertiary", "onTertiary", "tertiaryContainer", "onTertiaryContainer",
+            "error", "onError", "errorContainer", "onErrorContainer",
+            "background", "onBackground", "surface", "onSurface", "surfaceVariant", "onSurfaceVariant",
+            "surfaceContainerLowest", "surfaceContainerLow", "surfaceContainer", "surfaceContainerHigh",
+            "surfaceContainerHighest", "outline", "outlineVariant", "scrim", "inverseSurface",
+            "inverseOnSurface", "inversePrimary"
+        }
+        for kind in ("light", "dark"):
+            # Busca el bloque de argumentos de Palette(...) dentro de la función light() o dark().
+            params = block(palette, rf"fun {kind}\(\): Palette = with\(.*?\) \{{.*?Palette\((.*?)\)\n\s+}}", r"^\s{12}(\w+) =")
+            for name in sorted(required - params):
+                report(palette_path, f"ScannerPalette.{kind}() no fija '{name}': Material lo pondrá de fábrica")
 
     for source in ("core", "engines", "feature", "composeApp", "androidApp"):
         for path in walk(os.path.join(REPO, source), ".kt"):
@@ -712,15 +719,14 @@ def check_design_system() -> int:
             for literal in set(re.findall(r"Color\((0x[0-9A-Fa-f]{6,8})", open(path, encoding="utf-8").read())):
                 report(path, f"color literal {literal} fuera de ScannerPalette: nadie lo mide")
 
-    for name in FOUNDATION:
-        path = os.path.join(directory, name)
-        if not os.path.exists(path):
-            report(directory, f"falta {name}, declarado como base sin marca en ADR-0018")
-            continue
-        text = open(path, encoding="utf-8").read()
-        for brand in ("ScannerPalette", "BrandMark"):
-            if re.search(rf"\b{brand}\b", text):
-                report(path, f"depende de {brand}: deja de ser compartible sin la marca (ADR-0018)")
+    # Todo :core:foundation debe estar limpio de la marca (ADR-0018).
+    foundation_dir = os.path.join(REPO, FOUNDATION_MODULE)
+    if os.path.isdir(foundation_dir):
+        for path in walk(foundation_dir, ".kt"):
+            text = open(path, encoding="utf-8").read()
+            for brand in ("ScannerPalette", "BrandMark", "WhyScanTheme"):
+                if re.search(rf"\b{brand}\b", text):
+                    report(path, f"depende de {brand}: deja de ser compartible sin la marca (ADR-0018)")
 
     return roles
 

@@ -1,8 +1,9 @@
 package com.whyscan.core.designsystem
 
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import ar.net.faro.foundation.shapesFrom
 
 /**
  * Radios de WhyScan, algo más redondeados que los de fábrica de Material 3.
@@ -16,24 +17,24 @@ import androidx.compose.ui.unit.dp
  * aparecía un `RoundedCornerShape(Spacing.md)`: un radio tomado prestado de una escala de
  * espaciados, que es un `dp` suelto con disfraz.
  */
-object Radius {
+public object Radius {
     /** Chips y campos pequeños. */
-    val xs = 8.dp
+    public val xs: Dp = 8.dp
 
     /** Botones y campos de texto. */
-    val sm = 12.dp
+    public val sm: Dp = 12.dp
 
     /** Tarjetas. El valor más usado de toda la app. */
-    val md = 16.dp
+    public val md: Dp = 16.dp
 
     /** Visor de cámara, diálogos y contenedores grandes. */
-    val lg = 22.dp
+    public val lg: Dp = 22.dp
 
     /** Hojas inferiores y superficies que nacen del borde de la pantalla. */
-    val xl = 28.dp
+    public val xl: Dp = 28.dp
 
     /** Píldoras: `FilterChip` de formato, indicador de navegación. */
-    val pill = 999.dp
+    public val pill: Dp = 999.dp
 }
 
 /**
@@ -43,10 +44,10 @@ object Radius {
  * Llamar `Shapes` al objeto para poder llamar `Shapes.kt` al fichero no era opción: chocaría con
  * `androidx.compose.material3.Shapes`, que se usa tres líneas más abajo.
  */
-internal val WhyScanShapes = Shapes(
-    extraSmall = RoundedCornerShape(Radius.xs),
-    small = RoundedCornerShape(Radius.sm),
-    medium = RoundedCornerShape(Radius.md),
-    large = RoundedCornerShape(Radius.lg),
-    extraLarge = RoundedCornerShape(Radius.xl),
+internal val WhyScanShapes: Shapes = shapesFrom(
+    extraSmall = Radius.xs,
+    small = Radius.sm,
+    medium = Radius.md,
+    large = Radius.lg,
+    extraLarge = Radius.xl,
 )

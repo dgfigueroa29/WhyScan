@@ -18,11 +18,11 @@
 # 8.13.2 al abrir el proyecto en Android Studio por primera vez. Gradle 8.14.5 cumple de sobra el
 # mínimo que AGP 8.13 pide, y el CI ensambla debug, pasa lint y ensambla release con R8 sobre esta
 # versión, así que se queda.
-kotlin = "2.4.10"
+kotlin = "2.4.20"
 #noinspection AndroidGradlePluginVersion
 agp = "8.13.2"
 #noinspection NewerVersionAvailable,GradleDependency
-composeMultiplatform = "1.11.1"
+composeMultiplatform = "1.11.0"
 # Las dos piezas de Compose que NO van a la versión del plugin. No es un descuido: es lo que
 # declara `ComposePlugin$Dependencies` dentro del propio plugin 1.11.1, y el motivo de cada una
 # está junto a su coordenada en `[libraries]`. Al subir `composeMultiplatform` hay que releerlo.
@@ -173,7 +173,7 @@ zxingJava = "3.5.4"
 # **El coste de esto, dicho:** hasta ahora el plugin era quien sabía qué versión de cada pieza va
 # con cada versión de Compose, y ese conocimiento pasa a estar aquí. Al subir `composeMultiplatform`
 # hay que volver a leer `ComposePlugin$Dependencies` de la versión nueva en lugar de suponer que
-# todo sube junto — porque, como se ve arriba, no sube junto. A cambio, Dependabot ve estas
+# sube junto — porque, como se ve arriba, no sube junto. A cambio, Dependabot ve estas
 # dependencias, que antes le eran invisibles.
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "composeMultiplatform" }
 compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "composeMultiplatform" }

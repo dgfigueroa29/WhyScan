@@ -32,6 +32,7 @@ respuesta a *por qué esto es así y no de la otra forma*, escrita cuando todav�
 | [0018](ADR-0018-federar-la-base-y-no-la-marca.md) | Se federa la base del sistema de diseño, no la marca | Aceptada | 2026-08-30 |
 | [0019](ADR-0019-el-applicationid-identifica-a-quien-publica.md) | El `applicationId` identifica a quien publica, no al código | Aceptada | 2026-08-30 |
 | [0020](ADR-0020-el-permiso-de-internet-se-quita-no-solo-se-omite.md) | El permiso de internet se quita, no solo se omite | Aceptada | 2026-08-31 |
+| [0021](ADR-0021-las-direcciones-legales-apuntan-al-dominio-de-la-organizacion.md) | Las direcciones legales apuntan al dominio de la organización, no al repositorio | Aceptada | 2026-09-01 |
 
 `tools/checks.py` comprueba que esta tabla y los archivos no se separen: cada ADR está indexado, cada
 fila del índice apunta a un archivo que existe, y todos llevan sus campos de cabecera.

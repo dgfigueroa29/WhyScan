@@ -1200,7 +1200,8 @@ Garantías de privacidad (RNF-03), verificables en revisión de código:
 #### La política de privacidad y los términos de uso
 
 Las garantías de arriba dejaron de vivir solo en este documento: están escritas para el usuario en
-`docs/legal/`, en los dos idiomas, y **enlazadas desde Ajustes → Acerca de**.
+`docs/legal/`, en los dos idiomas, y **enlazadas desde Ajustes → Acerca de** (vía web en el dominio
+de la organización, ADR-0021).
 
 No son un trámite copiado de una plantilla, y por eso valen: cada afirmación se corresponde con algo
 **verificable en el código** —el manifiesto sin `INTERNET`, `allowBackup="false"` más
@@ -1218,6 +1219,7 @@ Dos decisiones de implementación que no son obvias:
   `RunResultAction` en §9.5: el dominio no sabe que existen dos idiomas.
 - **Los documentos viven en la web y no dentro de la app.** Un texto legal cambia sin que la app
   cambie, y la ficha de Play necesita poder enlazar la política sin abrir el APK. El coste es que
+  el acceso depende de la red y del dominio `faro.net.ar` (ADR-0021).
   leerlos exige salir de una app que presume de no necesitar red — se asume, y por eso el enlace lo
   dice antes de abrirse, también para quien no ve la pantalla.
 

@@ -99,7 +99,7 @@ any server of ours, because there is none.
 ## 10. Privacy
 
 What data the app handles and where it stays is in the [privacy
-policy](https://github.com/dgfigueroa29/WhyScan/blob/main/docs/legal/privacy.md), which forms part
+policy](https://faro.net.ar/en/whyscan-privacy), which forms part
 of these terms.
 
 ## 11. Contact
