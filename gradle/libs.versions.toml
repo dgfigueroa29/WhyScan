@@ -116,7 +116,7 @@ turbine = "1.2.1"
 # `androidUnitTest` monte el grafo de Koin de Android, que es donde estaba el defecto D18. No
 # contradice la decisión D6 de no tener tests instrumentados: eso descarta lo que exige dispositivo,
 # y esto corre en el mismo job que el resto de tests.
-robolectric = "4.16.1"
+robolectric = "4.17"
 
 # Rendimiento
 #
