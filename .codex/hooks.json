@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "'/home/faro/dev/personal/TestScanner/.codex/hooks/preflight.sh'",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}
