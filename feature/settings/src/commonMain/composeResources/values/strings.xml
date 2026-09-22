@@ -53,8 +53,8 @@
         live on the web rather than inside the app on purpose: a legal text changes without the app
         changing, and the Play listing needs to link the policy without opening the APK.
     -->
-    <string name="legal_privacy_url">https://faro.net.ar/en/whyscan-privacy</string>
-    <string name="legal_terms_url">https://faro.net.ar/en/whyscan-terms</string>
+    <string name="legal_privacy_url">https://faro.net.ar/apps/whyscan/privacidad</string>
+    <string name="legal_terms_url">https://faro.net.ar/apps/whyscan/terminos</string>
 
     <string name="message_link_failed">The document could not be opened. There may be no browser installed.</string>
 

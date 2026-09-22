@@ -22,8 +22,8 @@ android {
         //
         // Antes de la primera subida hay que comprobar en Play Console que este id está libre.
         applicationId = "ar.net.faro.whyscan"
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.0.1"
     }
 
     buildTypes {
