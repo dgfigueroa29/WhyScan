@@ -20,7 +20,7 @@
 # versión, así que se queda.
 kotlin = "2.4.20"
 #noinspection AndroidGradlePluginVersion
-agp = "8.13.2"
+agp = "9.4.1"
 #noinspection NewerVersionAvailable,GradleDependency
 composeMultiplatform = "1.11.0"
 # Las dos piezas de Compose que NO van a la versión del plugin. No es un descuido: es lo que
