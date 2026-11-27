@@ -94,7 +94,7 @@ androidxCoreKtx = "1.18.0"
 # es el mínimo de esta app. Lleva en 1.0.1 desde 2022 y no es abandono: la biblioteca es un puente
 # hacia una API de plataforma que ya no cambia.
 #noinspection GradleDependency
-androidxCoreSplashscreen = "1.0.1"
+androidxCoreSplashscreen = "1.2.0"
 # La que pide Koin 4.2.2; subirla más alto haría que Gradle resolviera por encima de lo que espera.
 #noinspection NewerVersionAvailable
 lifecycle = "2.9.6"
@@ -105,7 +105,7 @@ koin = "4.2.2"
 # Persistencia
 multiplatformSettings = "1.3.0"
 # Sin verificar contra KSP 2.3.10: androidx.room solo se publica en el maven de Google.
-room = "2.8.4"
+room = "2.8.5"
 sqlite = "2.7.0"
 # KSP cambió de esquema de versiones: 2.3.10 es la compilada contra Kotlin 2.3.20.
 ksp = "2.3.12"
@@ -126,10 +126,10 @@ robolectric = "4.17"
 # `profileinstaller` va en la app y no en el módulo generador: es lo que instala el perfil en
 # Android 7-11, donde el sistema no lo hace solo. Con `minSdk` 24, eso es la mitad del rango que
 # esta app soporta.
-benchmark = "1.4.1"
+benchmark = "1.5.0"
 profileinstaller = "1.4.1"
 androidxTestJunit = "1.3.0"
-uiautomator = "2.4.0"
+uiautomator = "2.4.1"
 junit = "4.13.2"
 
 # Quality
@@ -143,7 +143,7 @@ kover = "0.9.11"
 playServicesCodeScanner = "16.1.0"
 mlkitBarcode = "17.3.0"
 mlkitTextRecognition = "16.0.1"
-camerax = "1.6.2"
+camerax = "1.7.0"
 # Baseline de comparación: dos artefactos distintos del mismo proyecto (ADR-0008).
 zxingcpp = "3.1.1"
 # ZXing en Java puro, para escritorio. Otro proyecto que el anterior pese al nombre: este es el
